@@ -1,0 +1,118 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  keywords?: string;
+}
+
+const {
+  title = "学霸资料库 - 中小学同步教辅期末冲刺卷与成人考证真题高清下载",
+  description = "免费提供中小学人教版/北师大版期末冲刺卷、名校模拟密卷、奥数思维培优、教师资格证与考公考研真题资料，A4高清可打印版，一键转存极速下载。",
+  keywords = "期末冲刺卷,中小学试卷下载,人教版同步教辅,小学奥数,教师资格证真题,夸克网盘学习资料"
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    
+    <!-- SEO TDK 深度优化 -->
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="keywords" content={keywords} />
+    
+    <!-- 移动端防缩放与原生流畅渲染 -->
+    <meta name="theme-color" content="#2563eb" />
+  </head>
+  <body class="min-h-screen flex flex-col bg-slate-50 text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
+    <!-- 顶部导航栏 -->
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <!-- Logo 品牌区 -->
+          <div class="flex items-center space-x-3">
+            <a href="/" class="flex items-center space-x-2 text-blue-600 font-extrabold text-xl tracking-tight">
+              <span class="p-2 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </span>
+              <span>学霸资料库<span class="text-xs ml-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded-md font-medium border border-blue-200">2026冲刺版</span></span>
+            </a>
+          </div>
+
+          <!-- 学段导航分类 -->
+          <nav class="hidden md:flex items-center space-x-1 font-medium text-slate-600">
+            <a href="/?stage=all" class="px-3 py-2 rounded-lg hover:text-blue-600 hover:bg-slate-100 transition">全部分类</a>
+            <a href="/?stage=primary" class="px-3 py-2 rounded-lg hover:text-blue-600 hover:bg-slate-100 transition">小学阶段</a>
+            <a href="/?stage=junior" class="px-3 py-2 rounded-lg hover:text-blue-600 hover:bg-slate-100 transition">初中冲刺</a>
+            <a href="/?stage=senior" class="px-3 py-2 rounded-lg hover:text-blue-600 hover:bg-slate-100 transition">高中真题</a>
+            <a href="/?stage=cert" class="px-3 py-2 rounded-lg text-emerald-600 hover:bg-emerald-50 rounded-lg transition font-semibold">教师资格/考公考研</a>
+          </nav>
+
+          <!-- 夸克转存说明与快捷入口 -->
+          <div class="flex items-center space-x-3">
+            <div class="hidden sm:flex items-center text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
+              <span class="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
+              全站试卷配高清手写解析
+            </div>
+            <a href="/#search-box" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主体区域 -->
+    <main class="flex-1">
+      <slot />
+    </main>
+
+    <!-- 页脚与合规免责声明（合规关键） -->
+    <footer class="bg-white border-t border-slate-200 mt-16 py-12 text-sm text-slate-500">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div class="space-y-3 md:col-span-2">
+            <div class="font-bold text-slate-800 text-base flex items-center space-x-2">
+              <span>学霸资料库 - 刚需教辅学习资源站</span>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed">
+              聚焦中小学同步名校密卷、期末押题卷、奥数思维拓展及成人考证真题。所有资料均经过排版清洗，支持 A4 纸张直接打印练习，帮助家长和考生高效备考。
+            </p>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-700 mb-2">快速导航</div>
+            <ul class="space-y-1.5 text-xs">
+              <li><a href="/?stage=primary" class="hover:text-blue-600">小学 1-6 年级期末卷</a></li>
+              <li><a href="/?stage=junior" class="hover:text-blue-600">中考历年真题分类汇编</a></li>
+              <li><a href="/?stage=cert" class="hover:text-blue-600">教师资格证统考笔试清单</a></li>
+              <li><a href="/?stage=exam" class="hover:text-blue-600">国家公务员申论行测冲刺</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-700 mb-2">版权保护与合规通道</div>
+            <p class="text-xs text-slate-500 leading-relaxed">
+              侵权投诉/下架建议：<br />
+              <span class="font-mono text-slate-700">support@learninghub.local</span><br />
+              收到邮件后我们将在 24 小时内彻底核实并下架链接。
+            </p>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-6 text-xs text-slate-400 text-center space-y-1">
+          <p>免责声明：本站所有资源均来自互联网公开平台与公开考试题型归纳整理，仅供个人学习研究交流使用，版权归原作者所有。</p>
+          <p>© 2026 学霸资料库. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

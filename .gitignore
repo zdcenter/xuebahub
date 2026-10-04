@@ -1,0 +1,44 @@
+# Node & Frontend dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs & caches
+dist/
+.astro/
+.angular/
+out/
+build/
+tmp/
+
+# Go binaries and test artifacts
+*.exe
+*.test
+*.out
+apps/api/bin/
+server
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files & Local Secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Docker & Database local volumes
+pgdata/
+*.db
+*.sqlite
+
+# IDE & OS cache
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace

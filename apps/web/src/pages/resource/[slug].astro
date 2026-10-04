@@ -1,0 +1,424 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const { slug } = Astro.params;
+
+// 从 Go API 获取详情
+let resource: any = null;
+try {
+  const resp = await fetch(`http://127.0.0.1:8080/api/v1/public/resources/${slug}`, { signal: AbortSignal.timeout(2000) });
+  if (resp.ok) {
+    const json = await resp.json();
+    const data = json.data;
+    if (data) {
+      let previewImgs: Array<{ title: string; url: string }> = [];
+      if (Array.isArray(data.preview_images) && data.preview_images.length > 0) {
+        previewImgs = data.preview_images.map((img: any, idx: number) => {
+          if (typeof img === 'string') {
+            return { title: `资料预览节选第 ${idx + 1} 页`, url: img };
+          }
+          return { title: img.title || `资料预览第 ${idx + 1} 页`, url: img.url };
+        });
+      }
+
+      resource = {
+        id: data.id,
+        slug: data.slug || slug,
+        title: data.title,
+        subtitle: data.subtitle,
+        description: data.description || data.title,
+        stage: data.stage,
+        grade: data.grade,
+        subject: data.subject,
+        edition: data.edition,
+        fileType: data.file_type || "PDF",
+        fileSize: data.file_size || "15 MB",
+        pageCount: data.page_count || 20,
+        viewCount: data.view_count ?? 0,
+        saveCount: data.save_count ?? 0,
+        createdAt: data.created_at ? data.created_at.substring(0, 10) : "2026-04-01",
+        previewImages: previewImgs,
+        links: (data.links || []).map((l: any) => ({
+          id: l.id,
+          drive_type: l.drive_type,
+          drive_name: l.drive_type === 'quark' ? '夸克网盘（极速推荐）' : '百度网盘（备用通道）',
+          file_size: l.file_size || data.file_size || '15.0 MB',
+          file_type: l.file_type || data.file_type || 'PDF',
+          resource_desc: l.resource_desc || (l.drive_type === 'quark' ? '手机APP转存免下载，原画质在线看视频与打印' : '电脑端备用转存'),
+          click_count: l.click_count ?? 0,
+          updated_at: l.updated_at ? l.updated_at.substring(0, 10) : (data.created_at ? data.created_at.substring(0, 10) : '2026-10-04'),
+          share_url: l.share_url,
+          extract_code: l.extract_code,
+          password_hint: l.password_hint || (l.extract_code ? `提取码：${l.extract_code}` : '无提取码'),
+          is_primary: l.is_primary
+        }))
+      };
+    }
+  }
+} catch (e) {
+  // 降级兜底
+}
+
+if (!resource) {
+  resource = {
+    id: "demo",
+    slug: slug || "demo",
+    title: "2026春季人教版三年级下册数学期末冲刺夺冠押题卷（含高清解析与手写步骤）",
+    subtitle: "名校名师联合精选必考压轴题，覆盖乘除法、面积计算、小数初步",
+    description: "本套试卷专为三年级下册期末复习研发，包含3套名校期末全真模拟密卷及1套名师压轴重点突破卷。试卷排版严格按照标准 A4 试卷规格设计，配有答题卡、手撕解析与解题思路大纲。全部题目均配有名师手写解答，适合家长为孩子打印冲刺满分使用。",
+    stage: "小学阶段",
+    grade: "三年级",
+    subject: "数学",
+    edition: "人教版统编教材",
+    fileType: "PDF 清晰可打印版",
+    fileSize: "12.4 MB",
+    pageCount: 28,
+    viewCount: 0,
+    saveCount: 0,
+    createdAt: "2026-03-28",
+    previewImages: [],
+    links: [
+      {
+        id: "demo-quark",
+        drive_type: "quark",
+        drive_name: "夸克网盘（极速推荐）",
+        desc: "手机APP转存免下载，在线高清直接查看与PDF打印",
+        file_size: "12.4 MB",
+        file_type: "PDF清晰可打印版",
+        resource_desc: "手机APP转存免下载，原画质在线看视频与打印",
+        click_count: 380,
+        updated_at: "2026-10-04",
+        share_url: "https://pan.quark.cn/s/demo_quark_share",
+        extract_code: "",
+        password_hint: "无提取码，一键转存",
+        is_primary: true
+      }
+    ]
+  };
+}
+---
+
+<Layout
+  title={`${resource.title} - 学霸资料库`}
+  description={resource.subtitle}
+  keywords={`${resource.grade}, ${resource.subject}, ${resource.edition}, 期末试卷, 试卷下载`}
+>
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <!-- 面包屑导航 -->
+    <nav class="flex items-center space-x-2 text-xs text-slate-500">
+      <a href="/" class="hover:text-blue-600">首页</a>
+      <span>/</span>
+      <a href="/?stage=primary" class="hover:text-blue-600">{resource.stage}</a>
+      <span>/</span>
+      <span class="text-slate-800 font-medium">{resource.grade} {resource.subject}</span>
+    </nav>
+
+    <!-- 资料头部概览 -->
+    <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="px-2.5 py-1 bg-blue-100 text-blue-700 font-bold text-xs rounded-lg">
+          {resource.grade}
+        </span>
+        <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg">
+          {resource.subject}
+        </span>
+        <span class="px-2.5 py-1 bg-slate-100 text-slate-700 font-medium text-xs rounded-lg">
+          {resource.edition}
+        </span>
+        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-medium text-xs rounded-lg">
+          官方完整版 · 纯净无水印
+        </span>
+      </div>
+
+      <div class="space-y-2">
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 leading-snug">
+          {resource.title}
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-500">
+          {resource.subtitle}
+        </p>
+      </div>
+
+      <!-- 页面通用属性：保留收录时间、体量与页面浏览量，彻底移除与各网盘重复的规格与总转存 -->
+      <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100 text-xs text-slate-500">
+        <div class="flex flex-wrap items-center gap-4">
+          <span class="flex items-center space-x-1">
+            <span>📅 收录时间：</span>
+            <strong class="text-slate-700 font-medium">{resource.createdAt}</strong>
+          </span>
+          <span class="text-slate-300">•</span>
+          <span class="flex items-center space-x-1">
+            <span>📖 内容体量：</span>
+            <strong class="text-slate-700 font-medium">共 {resource.pageCount} 页/讲</strong>
+          </span>
+          <span class="text-slate-300">•</span>
+          <span class="flex items-center space-x-1">
+            <span>🏷️ 课程归属：</span>
+            <strong class="text-slate-700 font-medium">{resource.stage} · {resource.grade}</strong>
+          </span>
+        </div>
+
+        <div class="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/60">
+          <span class="text-slate-400">👁️ 页面浏览量</span>
+          <span class="font-bold text-slate-800 font-mono">{resource.viewCount} 次</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 网盘转存下载专区（核心转化区域：显示真实明文地址 + 一键复制 + 转存） -->
+    <div class="bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-3xl p-6 sm:p-8 border-2 border-blue-200/80 shadow-md space-y-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 flex items-center space-x-2">
+            <span>📥 高清网盘下载与转存</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">
+            提供直达公开网盘链接与地址复制，手机端转存支持免下载直接原画播放或打印
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4">
+        {resource.links.map((link: any) => (
+          <div class={`p-5 sm:p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-5 border transition-all ${
+            link.is_primary 
+              ? 'bg-white border-blue-300 shadow-md ring-1 ring-blue-100' 
+              : 'bg-white/90 border-slate-200 shadow-sm'
+          }`}>
+            <div class="space-y-3 flex-1 min-w-0">
+              <!-- 网盘头部标签与独立指标 -->
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-bold text-slate-900 text-sm">{link.drive_name}</span>
+                {link.is_primary && (
+                  <span class="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-md shadow-xs">
+                    主推极速通道
+                  </span>
+                )}
+                {link.extract_code && (
+                  <span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-medium rounded-md">
+                    提取码: <strong class="font-mono">{link.extract_code}</strong>
+                  </span>
+                )}
+                <span class="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-[11px] font-semibold rounded-md border border-blue-100">
+                  📦 实际大小: {link.file_size}
+                </span>
+                <span class="px-2.5 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-medium rounded-md">
+                  📄 格式: {link.file_type}
+                </span>
+                <span class="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[11px] font-medium rounded-md border border-emerald-100">
+                  ⚡ <span id={`link-count-${link.id}`}>{link.click_count}</span> 人转存
+                </span>
+                <span class="text-[11px] text-slate-400">
+                  🕒 更新于 {link.updated_at}
+                </span>
+              </div>
+
+              <!-- 网盘专属说明 -->
+              <p class="text-xs text-slate-600 font-medium">
+                {link.resource_desc || link.desc}
+              </p>
+
+              <!-- 明文网盘地址显示栏与复制按钮 -->
+              <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 max-w-2xl">
+                <span class="text-[11px] text-slate-400 font-medium flex-shrink-0">网盘地址:</span>
+                <span class="text-xs text-slate-700 font-mono truncate select-all flex-1" title={link.share_url}>
+                  {link.share_url}
+                </span>
+                <button
+                  type="button"
+                  class="btn-copy-url px-2.5 py-1 text-[11px] font-medium bg-white text-slate-700 border border-slate-200 hover:border-blue-400 hover:text-blue-600 rounded-lg transition flex items-center space-x-1 flex-shrink-0 cursor-pointer"
+                  data-url={link.share_url}
+                  data-code={link.extract_code || ''}
+                  data-slug={resource.slug}
+                  data-link-id={link.id || ''}
+                >
+                  <span>📋 复制链接</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 右侧直达操作按钮 -->
+            <div class="flex items-center space-x-3 flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+              <a
+                href={link.share_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class={`btn-track-save px-6 py-3.5 rounded-xl font-bold transition text-xs flex items-center space-x-1.5 ${
+                  link.is_primary
+                    ? 'btn-save-quark text-white shadow-md'
+                    : 'bg-slate-800 hover:bg-slate-900 text-white'
+                }`}
+                data-slug={resource.slug}
+                data-link-id={link.id || ''}
+              >
+                <span>🚀 立即转存下载 ➔</span>
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- 资料规格与包含清单（替代冗余的假实拍图，纯净高转化） -->
+    <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
+      <div class="border-b border-slate-100 pb-4">
+        <h2 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+          <span>📦 资料规格与包含清单</span>
+        </h2>
+        <p class="text-xs text-slate-500 mt-1">
+          本站所有资源均经整理校对，去除了冗余广告水印，保留最纯粹的学习备考内容
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+          <div class="font-bold text-slate-800 flex items-center space-x-1.5">
+            <span>🎯 适配目标</span>
+          </div>
+          <p class="text-slate-600">{resource.stage} · {resource.grade} · {resource.subject} ({resource.edition})</p>
+        </div>
+
+        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+          <div class="font-bold text-slate-800 flex items-center space-x-1.5">
+            <span>📖 教学配套</span>
+          </div>
+          <p class="text-slate-600">全套真题/讲义 + 名师手写解析与解题思路大纲</p>
+        </div>
+
+        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+          <div class="font-bold text-slate-800 flex items-center space-x-1.5">
+            <span>✨ 版面与播放</span>
+          </div>
+          <p class="text-slate-600">官方无水印排版，手机端原画倍速播放，支持 A4 打印即练</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 仅当后端配置了真实预览图时才展示（避免假图失真） -->
+    {resource.previewImages && resource.previewImages.length > 0 && (
+      <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+        <div class="border-b border-slate-100 pb-4">
+          <h2 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+            <span>📄 真实内页预览</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">
+            资料真实样张预览
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {resource.previewImages.map((img: any) => (
+            <div class="space-y-2">
+              <div class="aspect-[3/4] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-sm group">
+                <img
+                  src={img.url}
+                  alt={img.title}
+                  class="w-full h-full object-cover group-hover:scale-102 transition"
+                  loading="lazy"
+                />
+              </div>
+              <p class="text-xs text-slate-600 text-center font-medium">
+                {img.title}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- 资料详细说明 -->
+    <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4 text-xs sm:text-sm text-slate-600 leading-relaxed">
+      <h3 class="font-bold text-slate-800 text-base">学习备考与使用建议</h3>
+      <p>{resource.description}</p>
+      <div class="p-4 bg-amber-50 rounded-2xl border border-amber-200/60 text-xs text-amber-800 space-y-1">
+        <div class="font-bold">转存与使用小贴士：</div>
+        <div>1. 建议先点击“立即转存”保存到自己的夸克网盘，避免后续分享链接被和谐或过期；</div>
+        <div>2. 手机端使用夸克 APP 可直接在线倍速观看视频或无损预览 PDF 文档；</div>
+        <div>3. 如需纸质答题，手机通过局域网连接家用 Wi-Fi 打印机即可一键打印标准 A4 试卷。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 轻量复制反馈 Toast -->
+  <div id="copy-toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 bg-slate-900/90 backdrop-blur-md text-white text-xs font-semibold rounded-2xl shadow-xl transition-all duration-300 opacity-0 pointer-events-none translate-y-3">
+    📋 链接已成功复制到剪贴板！
+  </div>
+
+  <!-- 客户端交互脚本：复制链接与实时上报转存统计 -->
+  <script is:inline>
+    function showToast(text) {
+      const toast = document.getElementById('copy-toast');
+      if (!toast) return;
+      toast.innerText = text;
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-3');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-3');
+      }, 2000);
+    }
+
+    function recordSaveClick(slug, linkId) {
+      if (!slug) return;
+      var host = window.location.hostname || '127.0.0.1';
+      var apiUrl = 'http://' + host + ':8080/api/v1/public/resources/' + encodeURIComponent(slug) + '/track-save';
+      if (linkId) {
+        apiUrl += '?link_id=' + encodeURIComponent(linkId);
+      }
+
+      fetch(apiUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' }
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(json) {
+          if (json && json.data) {
+            if (typeof json.data.save_count === 'number') {
+              var el = document.getElementById('save-count-display');
+              if (el) el.innerText = String(json.data.save_count);
+            }
+            if (linkId && typeof json.data.link_click === 'number') {
+              var linkEl = document.getElementById('link-count-' + linkId);
+              if (linkEl) linkEl.innerText = String(json.data.link_click);
+            }
+          }
+        })
+        .catch(function(err) {
+          console.warn('Track save error:', err);
+        });
+    }
+
+    // 绑定复制按钮
+    document.querySelectorAll('.btn-copy-url').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const url = btn.getAttribute('data-url');
+        const code = btn.getAttribute('data-code');
+        const slug = btn.getAttribute('data-slug');
+        const linkId = btn.getAttribute('data-link-id');
+        if (!url) return;
+
+        let copyText = url;
+        if (code) {
+          copyText += ' 提取码: ' + code;
+        }
+
+        navigator.clipboard.writeText(copyText).then(() => {
+          showToast('📋 网盘链接已复制到剪贴板！');
+          recordSaveClick(slug, linkId);
+        }).catch(() => {
+          prompt('请手动长按复制网盘链接：', copyText);
+        });
+      });
+    });
+
+    // 绑定转存按钮，点击时实时累加计数
+    document.querySelectorAll('.btn-track-save').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const slug = btn.getAttribute('data-slug');
+        const linkId = btn.getAttribute('data-link-id');
+        recordSaveClick(slug, linkId);
+      });
+    });
+  </script>
+</Layout>

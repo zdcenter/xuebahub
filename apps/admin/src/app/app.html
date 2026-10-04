@@ -1,0 +1,565 @@
+<div class="admin-layout">
+  <!-- 浮动轻量 Toast 提示 -->
+  @if (toastMessage()) {
+    <div class="toast-popup" [class.error]="toastType() === 'error'">
+      {{ toastMessage() }}
+    </div>
+  }
+
+  <!-- 侧边导航栏 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">📚</div>
+      <div class="brand-text">
+        <h2>学霸资料库后台</h2>
+        <span>Go + PG 实时驱动</span>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <button 
+        [class.active]="currentTab() === 'list'" 
+        (click)="switchTab('list')">
+        <span class="icon">📋</span> 资料管理库 ({{ resources().length }})
+      </button>
+      <button 
+        [class.active]="currentTab() === 'add'" 
+        (click)="switchTab('add')">
+        <span class="icon">➕</span> 上架试卷/微课视频
+      </button>
+      <button 
+        [class.active]="currentTab() === 'stats'" 
+        (click)="switchTab('stats')">
+        <span class="icon">📈</span> 网盘转存数据分析
+      </button>
+      <button 
+        [class.active]="currentTab() === 'crawler'" 
+        (click)="switchTab('crawler')">
+        <span class="icon">🕷️</span> 全网资源聚合监控
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="admin-badge">
+        <span class="status-dot"></span>
+        <span>PostgreSQL & Go API 已联通</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 主体工作区 -->
+  <main class="main-content">
+    <header class="topbar">
+      <div class="title-area">
+        <h1>
+          @if (currentTab() === 'list') { 📚 资料库管理 (实时数据库) }
+          @if (currentTab() === 'add') { ✍️ 录入并发布新试卷/视频 }
+          @if (currentTab() === 'stats') { 📊 推广收益与转化分析 }
+          @if (currentTab() === 'crawler') { 🔍 全网资源并发抓取与巡检 }
+        </h1>
+        <p class="subtitle">针对中小学同步教辅、期末押题、奥数培优与微课视频</p>
+      </div>
+      <div class="quick-stats">
+        <span class="badge quark">夸克主推转化率: 高</span>
+        <button class="btn btn-sm btn-secondary" (click)="loadResources()">🔄 刷新数据</button>
+      </div>
+    </header>
+
+    <div class="content-body">
+      <!-- 1. 资料列表视图 -->
+      @if (currentTab() === 'list') {
+        <div class="card table-card">
+          <div class="card-header">
+            <h3>PostgreSQL 数据库在库资料 (共 {{ resources().length }} 套)</h3>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn" style="background: #f1f5f9; color: #475569;" (click)="loadResources()">🔄 刷新数据</button>
+              <button class="btn btn-primary" (click)="switchTab('add')">+ 发布新资料</button>
+            </div>
+          </div>
+
+          @if (loading()) {
+            <div style="padding: 40px; text-align: center; color: #64748b;">正在从 Go 后端拉取实时数据...</div>
+          } @else {
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>资料标题 / 规格</th>
+                  <th>学段 / 年级</th>
+                  <th>学科 / 版本</th>
+                  <th>文件格式</th>
+                  <th>转存 / 浏览</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (res of resources(); track res.id) {
+                  <tr>
+                    <td>
+                      <div class="res-title-cell">
+                        <a [href]="'http://localhost:4321/resource/' + res.slug" target="_blank" class="res-title-link" title="点击在前台新窗口打开预览">
+                          <strong>{{ res.title }}</strong>
+                          <span class="external-icon">↗</span>
+                        </a>
+                        <span class="slug">Slug: {{ res.slug }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="tag stage">{{ res.stage }}</span>
+                      <span class="tag grade">{{ res.grade }}</span>
+                    </td>
+                    <td>
+                      <span class="tag subject">{{ res.subject }}</span>
+                      <span class="text-muted">{{ res.edition }}</span>
+                    </td>
+                    <td>
+                      <div class="spec-cell">
+                        <span>{{ res.file_type || 'PDF' }}</span>
+                        <small>{{ res.file_size }} · {{ res.page_count }}页</small>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="count-cell">
+                        <span class="save-num">⚡ 总 {{ res.save_count || 0 }} 次转存</span>
+                        <div class="link-breakdown" style="font-size: 11px; margin-top: 4px; display: flex; flex-direction: column; gap: 2px;">
+                          @for (l of res.links; track l.id || l.drive_type) {
+                            <span [style.color]="l.drive_type === 'quark' ? '#2563eb' : '#64748b'">
+                              {{ l.drive_type === 'quark' ? '⚡ 夸克' : '📦 百度' }}: {{ l.file_size || '15 MB' }} · <strong>{{ l.click_count || 0 }} 转存</strong>
+                            </span>
+                          }
+                        </div>
+                        <small style="color: #94a3b8; display: block; margin-top: 2px;">{{ res.view_count || 0 }} 浏览</small>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="status-pill" [class.active]="res.is_published">
+                        {{ res.is_published ? '展示中' : '已下架' }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="btn-group">
+                        <button class="btn btn-sm btn-edit" (click)="openEdit(res)">✏️ 修改</button>
+                        <button class="btn btn-sm" (click)="togglePublish(res)">
+                          {{ res.is_published ? '下架' : '上架' }}
+                        </button>
+                        <button class="btn btn-sm btn-danger" (click)="deleteResource(res.id)">删除</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      }
+
+      <!-- 2. 上架试卷/微课表单 -->
+      @if (currentTab() === 'add') {
+        <div class="card form-card">
+          <div class="card-header">
+            <h3>录入并发布试卷 / 视频微课</h3>
+            <span class="text-muted">（提交后自动写入 PostgreSQL 数据库，前台 Astro 页面立即同步）</span>
+          </div>
+
+          <form (ngSubmit)="saveNewResource()" class="form-grid">
+            <div class="form-group full-width">
+              <label>资料完整标题 <span class="required">*</span></label>
+              <input 
+                type="text" 
+                [(ngModel)]="newResource.title" 
+                name="title" 
+                placeholder="例如：2026春季人教版四年级下册数学期末夺冠押题卷（含手写解析步骤+视频）" 
+                required 
+              />
+            </div>
+
+            <!-- 1. 所属学段 (智能联动触发源) -->
+            <div class="form-group">
+              <label>所属学段 <span class="required">*</span></label>
+              <select [(ngModel)]="newResource.stage" name="stage" (change)="onStageChange('new')">
+                @for (stage of stageKeys; track stage) {
+                  <option [value]="stage">{{ stage }}</option>
+                }
+              </select>
+            </div>
+
+            <!-- 2. 年级/分类 (可精细可通用) -->
+            <div class="form-group">
+              <label>年级 / 适用范围 <span class="tip-text">（可选精细年级，也可选通用）</span></label>
+              <select [(ngModel)]="newResource.grade" name="grade">
+                @for (g of getStageConfig(newResource.stage).grades; track g) {
+                  <option [value]="g">{{ g }}</option>
+                }
+              </select>
+              <div class="pill-group">
+                @for (g of getStageConfig(newResource.stage).grades; track g) {
+                  <span 
+                    class="pill-tag" 
+                    [class.selected]="newResource.grade === g"
+                    (click)="newResource.grade = g">
+                    {{ g }}
+                  </span>
+                }
+              </div>
+            </div>
+
+            <!-- 3. 学科名称 (自动列出语数英/考证专项，支持点选) -->
+            <div class="form-group">
+              <label>学科名称 <span class="tip-text">（快捷选择或直接修改）</span></label>
+              <select [(ngModel)]="newResource.subject" name="subject">
+                @for (s of getStageConfig(newResource.stage).subjects; track s) {
+                  <option [value]="s">{{ s }}</option>
+                }
+              </select>
+              <div class="pill-group">
+                @for (s of getStageConfig(newResource.stage).subjects; track s) {
+                  <span 
+                    class="pill-tag" 
+                    [class.selected]="newResource.subject === s"
+                    (click)="newResource.subject = s">
+                    {{ s }}
+                  </span>
+                }
+              </div>
+            </div>
+
+            <!-- 4. 教材版本 (人教/外研/北师大/通用版) -->
+            <div class="form-group">
+              <label>教材版本 <span class="tip-text">（不选则默认为通用版本）</span></label>
+              <select [(ngModel)]="newResource.edition" name="edition">
+                @for (e of getStageConfig(newResource.stage).editions; track e) {
+                  <option [value]="e">{{ e }}</option>
+                }
+              </select>
+              <div class="pill-group">
+                @for (e of getStageConfig(newResource.stage).editions; track e) {
+                  <span 
+                    class="pill-tag" 
+                    [class.selected]="newResource.edition === e"
+                    (click)="newResource.edition = e">
+                    {{ e }}
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>包含视频精讲课程？</label>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                <input type="checkbox" [(ngModel)]="newResource.has_video" name="has_video" id="has_video" style="width: auto;" />
+                <label for="has_video" style="margin-bottom: 0; cursor: pointer;">是，包含名师压轴精讲 MP4 视频（强化夸克手机端播放拉新）</label>
+              </div>
+            </div>
+
+            <!-- 网盘链接推广配置 -->
+            <div class="form-group full-width netdisk-config">
+              <h4>🔗 网盘分发配置（夸克推广拉新与百度备用）</h4>
+              <div class="netdisk-grid">
+                <div class="netdisk-item primary">
+                  <div class="netdisk-title">⚡ 夸克网盘链接（主推高佣金通道）<span class="required">*</span></div>
+                  <div class="input-with-btn">
+                    <input 
+                      type="url" 
+                      [(ngModel)]="newResource.quarkUrl" 
+                      (blur)="autoDetectNetdiskInfo('new')"
+                      name="quarkUrl" 
+                      placeholder="https://pan.quark.cn/s/xxxxxxxx" 
+                      required 
+                    />
+                    <button 
+                      type="button" 
+                      class="btn-detect" 
+                      [disabled]="parsingNetdisk()"
+                      (click)="autoDetectNetdiskInfo('new')">
+                      {{ parsingNetdisk() ? '正在探测...' : '⚡ 自动读取大小与格式' }}
+                    </button>
+                  </div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                    <div>
+                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">夸克文件大小</label>
+                      <input type="text" [(ngModel)]="newResource.quarkFileSize" name="quarkFileSize" placeholder="如 1.39 GB" />
+                    </div>
+                    <div>
+                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">夸克文件格式</label>
+                      <input type="text" [(ngModel)]="newResource.quarkFileType" name="quarkFileType" placeholder="如 高清视频课" />
+                    </div>
+                  </div>
+                  <input type="text" [(ngModel)]="newResource.quarkDesc" name="quarkDesc" placeholder="夸克内容特色说明（如：包含25集全套超清视频录播课）" style="margin-top: 6px;" />
+                </div>
+
+                <div class="netdisk-item">
+                  <div class="netdisk-title">📦 百度网盘链接（备用）</div>
+                  <div class="input-with-btn">
+                    <input 
+                      type="url" 
+                      [(ngModel)]="newResource.baiduUrl" 
+                      (blur)="autoDetectBaiduInfo('new')"
+                      name="baiduUrl" 
+                      placeholder="https://pan.baidu.com/s/xxxxxxxx" 
+                    />
+                    <button 
+                      type="button" 
+                      class="btn-detect" 
+                      [disabled]="parsingBaidu()"
+                      (click)="autoDetectBaiduInfo('new')">
+                      {{ parsingBaidu() ? '正在探测...' : '⚡ 自动读取大小与格式' }}
+                    </button>
+                  </div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
+                    <div>
+                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度提取码</label>
+                      <input 
+                        type="text" 
+                        [(ngModel)]="newResource.baiduCode" 
+                        name="baiduCode" 
+                        placeholder="提取码 (如有)" 
+                      />
+                    </div>
+                    <div>
+                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度文件大小</label>
+                      <input type="text" [(ngModel)]="newResource.baiduFileSize" name="baiduFileSize" placeholder="如 15.0 MB" />
+                    </div>
+                    <div>
+                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度文件格式</label>
+                      <input type="text" [(ngModel)]="newResource.baiduFileType" name="baiduFileType" placeholder="如 PDF" />
+                    </div>
+                  </div>
+                  <input type="text" [(ngModel)]="newResource.baiduDesc" name="baiduDesc" placeholder="百度内容说明（如：PDF清晰打印版+手写解析）" style="margin-top: 6px;" />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions full-width">
+              <button type="button" class="btn btn-secondary" (click)="switchTab('list')">取消</button>
+              <button type="submit" class="btn btn-primary">立即发布到数据库 ➔</button>
+            </div>
+          </form>
+        </div>
+      }
+
+      <!-- 3. 转存收益与漏斗统计 -->
+      @if (currentTab() === 'stats') {
+        <div class="stats-overview">
+          <div class="metric-card">
+            <span class="metric-label">总计转存次数</span>
+            <span class="metric-value">1,700 <small>次</small></span>
+            <span class="metric-trend text-success">↑ 较昨日提升 23%</span>
+          </div>
+
+          <div class="metric-card">
+            <span class="metric-label">夸克网盘转存占比</span>
+            <span class="metric-value text-blue">89.4%</span>
+            <span class="metric-sub">高效拉新沉淀主力</span>
+          </div>
+
+          <div class="metric-card">
+            <span class="metric-label">热门多媒体</span>
+            <span class="metric-value">压轴函数视频课</span>
+            <span class="metric-sub">视频转化拉新提升 3.2 倍</span>
+          </div>
+        </div>
+      }
+
+      <!-- 4. 全网资源采集监控 -->
+      @if (currentTab() === 'crawler') {
+        <div class="card">
+          <div class="card-header">
+            <h3>Go 协程多源搜索聚合监控</h3>
+            <span class="badge text-success">Go Fiber 引擎运行中 (协程池健康)</span>
+          </div>
+          <div style="padding: 24px; color: #64748b; line-height: 1.8;">
+            <p>基于 Go Fiber v3 的并发聚合模块已就绪，当前可并发处理以下通道：</p>
+            <ul>
+              <li>✅ 夸克网盘公开资源通道（支持并发解析）</li>
+              <li>✅ 名校真题与微课视频镜像源（多协程心跳探活）</li>
+              <li>✅ 自动敏感词与版权黑名单阻断（保障国内合规）</li>
+            </ul>
+          </div>
+        </div>
+      }
+    </div>
+  </main>
+
+  <!-- 5. 资料编辑模态弹窗 (Modal) -->
+  @if (isEditModalOpen()) {
+    <div class="modal-backdrop" (click)="closeEdit()">
+      <div class="modal-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>✏️ 编辑修改资料信息</h3>
+          <button class="modal-close-btn" (click)="closeEdit()">✕</button>
+        </div>
+
+        <form (ngSubmit)="saveEdit()" class="form-grid modal-body">
+          <div class="form-group full-width">
+            <label>资料完整标题 <span class="required">*</span></label>
+            <input 
+              type="text" 
+              [(ngModel)]="editForm.title" 
+              name="edit_title" 
+              required 
+            />
+          </div>
+
+          <!-- 1. 所属学段 -->
+          <div class="form-group">
+            <label>所属学段 <span class="required">*</span></label>
+            <select [(ngModel)]="editForm.stage" name="edit_stage" (change)="onStageChange('edit')">
+              @for (stage of stageKeys; track stage) {
+                <option [value]="stage">{{ stage }}</option>
+              }
+            </select>
+          </div>
+
+          <!-- 2. 年级/分类 (可精细可通用) -->
+          <div class="form-group">
+            <label>年级 / 适用范围 <span class="tip-text">（可选精细年级，也可选通用）</span></label>
+            <select [(ngModel)]="editForm.grade" name="edit_grade">
+              @for (g of getStageConfig(editForm.stage).grades; track g) {
+                <option [value]="g">{{ g }}</option>
+              }
+            </select>
+            <div class="pill-group">
+              @for (g of getStageConfig(editForm.stage).grades; track g) {
+                <span 
+                  class="pill-tag" 
+                  [class.selected]="editForm.grade === g"
+                  (click)="editForm.grade = g">
+                  {{ g }}
+                </span>
+              }
+            </div>
+          </div>
+
+          <!-- 3. 学科名称 -->
+          <div class="form-group">
+            <label>学科名称 <span class="tip-text">（快捷选择或直接修改）</span></label>
+            <select [(ngModel)]="editForm.subject" name="edit_subject">
+              @for (s of getStageConfig(editForm.stage).subjects; track s) {
+                <option [value]="s">{{ s }}</option>
+              }
+            </select>
+            <div class="pill-group">
+              @for (s of getStageConfig(editForm.stage).subjects; track s) {
+                <span 
+                  class="pill-tag" 
+                  [class.selected]="editForm.subject === s"
+                  (click)="editForm.subject = s">
+                  {{ s }}
+                </span>
+              }
+            </div>
+          </div>
+
+          <!-- 4. 教材版本 -->
+          <div class="form-group">
+            <label>教材版本 <span class="tip-text">（不选则默认为通用版本）</span></label>
+            <select [(ngModel)]="editForm.edition" name="edit_edition">
+              @for (e of getStageConfig(editForm.stage).editions; track e) {
+                <option [value]="e">{{ e }}</option>
+              }
+            </select>
+            <div class="pill-group">
+              @for (e of getStageConfig(editForm.stage).editions; track e) {
+                <span 
+                  class="pill-tag" 
+                  [class.selected]="editForm.edition === e"
+                  (click)="editForm.edition = e">
+                  {{ e }}
+                </span>
+              }
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>包含视频精讲课程？</label>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+              <input type="checkbox" [(ngModel)]="editForm.has_video" name="edit_has_video" id="edit_has_video" style="width: auto;" />
+              <label for="edit_has_video" style="margin-bottom: 0; cursor: pointer;">是，包含名师压轴精讲 MP4 视频</label>
+            </div>
+          </div>
+
+          <div class="form-group full-width netdisk-config">
+            <h4>🔗 网盘分发配置</h4>
+            <div class="netdisk-grid">
+              <div class="netdisk-item primary">
+                <div class="netdisk-title">⚡ 夸克网盘链接（主推）<span class="required">*</span></div>
+                <div class="input-with-btn">
+                  <input 
+                    type="url" 
+                    [(ngModel)]="editForm.quarkUrl" 
+                    (blur)="autoDetectNetdiskInfo('edit')"
+                    name="edit_quarkUrl" 
+                    required 
+                  />
+                  <button 
+                    type="button" 
+                    class="btn-detect" 
+                    [disabled]="parsingNetdisk()"
+                    (click)="autoDetectNetdiskInfo('edit')">
+                    {{ parsingNetdisk() ? '正在探测...' : '⚡ 自动读取大小与格式' }}
+                  </button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+                  <div>
+                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">夸克文件大小</label>
+                    <input type="text" [(ngModel)]="editForm.quarkFileSize" name="edit_quarkFileSize" />
+                  </div>
+                  <div>
+                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">夸克文件格式</label>
+                    <input type="text" [(ngModel)]="editForm.quarkFileType" name="edit_quarkFileType" />
+                  </div>
+                </div>
+                <input type="text" [(ngModel)]="editForm.quarkDesc" name="edit_quarkDesc" placeholder="夸克内容特色说明" style="margin-top: 6px;" />
+              </div>
+
+              <div class="netdisk-item">
+                <div class="netdisk-title">📦 百度网盘链接（备用）</div>
+                <div class="input-with-btn">
+                  <input 
+                    type="url" 
+                    [(ngModel)]="editForm.baiduUrl" 
+                    (blur)="autoDetectBaiduInfo('edit')"
+                    name="edit_baiduUrl" 
+                    placeholder="https://pan.baidu.com/s/xxxxxxxx"
+                  />
+                  <button 
+                    type="button" 
+                    class="btn-detect" 
+                    [disabled]="parsingBaidu()"
+                    (click)="autoDetectBaiduInfo('edit')">
+                    {{ parsingBaidu() ? '正在探测...' : '⚡ 自动读取大小与格式' }}
+                  </button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
+                  <div>
+                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度提取码</label>
+                    <input 
+                      type="text" 
+                      [(ngModel)]="editForm.baiduCode" 
+                      name="edit_baiduCode" 
+                      placeholder="提取码 (如有)" 
+                    />
+                  </div>
+                  <div>
+                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度文件大小</label>
+                    <input type="text" [(ngModel)]="editForm.baiduFileSize" name="edit_baiduFileSize" />
+                  </div>
+                  <div>
+                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度文件格式</label>
+                    <input type="text" [(ngModel)]="editForm.baiduFileType" name="edit_baiduFileType" />
+                  </div>
+                </div>
+                <input type="text" [(ngModel)]="editForm.baiduDesc" name="edit_baiduDesc" placeholder="百度内容说明" style="margin-top: 6px;" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions full-width">
+            <button type="button" class="btn btn-secondary" (click)="closeEdit()">取消</button>
+            <button type="submit" class="btn btn-primary">保存修改 ➔</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>
