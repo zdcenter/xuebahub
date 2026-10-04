@@ -189,9 +189,14 @@ body {
   font-weight: 700;
 }
 
-/* 表格 */
+.table-card {
+  overflow-x: auto;
+}
+
+/* 表格全局 */
 .data-table {
   width: 100%;
+  min-width: 980px;
   border-collapse: collapse;
   text-align: left;
   font-size: 13px;
@@ -199,35 +204,57 @@ body {
 
 .data-table th {
   background: #f8fafc;
-  color: #64748b;
+  color: #475569;
   font-weight: 600;
-  padding: 12px 20px;
+  font-size: 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 
 .data-table td {
-  padding: 16px 20px;
+  padding: 14px 16px;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
+}
+
+.data-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* 1. 标题与访问路径（清晰两行） */
+.res-title-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.title-row {
+  line-height: 1.4;
 }
 
 .res-title-link {
   text-decoration: none;
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 4px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.res-title-link strong {
-  display: block;
+.res-title-link .title-text {
+  font-size: 13.5px;
+  font-weight: 700;
   color: #0f172a;
-  font-size: 14px;
+  word-break: break-word;
   transition: color 0.15s ease;
 }
 
-.res-title-link:hover strong {
+.res-title-link:hover .title-text {
   color: #2563eb;
   text-decoration: underline;
 }
@@ -243,10 +270,48 @@ body {
   transform: translate(2px, -2px);
 }
 
-.res-title-cell .slug {
+.url-row {
+  display: flex;
+  align-items: center;
+}
+
+.slug-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
-  color: #94a3b8;
-  margin-top: 2px;
+  color: #64748b;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slug-pill:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
+}
+
+.slug-icon {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* 2. 学段 / 年级 */
+.stage-grade-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .tag {
@@ -255,31 +320,210 @@ body {
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 500;
-  margin-right: 4px;
+  white-space: nowrap;
 }
 
 .tag.stage { background: #eff6ff; color: #1d4ed8; }
 .tag.grade { background: #f0fdf4; color: #15803d; }
 .tag.subject { background: #f5f3ff; color: #6d28d9; }
 
-.spec-cell span { display: block; font-weight: 600; }
-.spec-cell small { color: #94a3b8; }
+/* 3. 学科 / 版本 */
+.subject-edition-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  white-space: nowrap;
+}
 
-.count-cell .save-num { font-weight: 700; color: #2563eb; display: block; }
-.count-cell small { color: #94a3b8; }
+.edition-badge {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
-.status-pill {
+/* 4. 文件规格 */
+.spec-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.format-tag {
   display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.format-tag.video-tag {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.spec-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+/* 5. 转存 / 浏览（宽体精细看板） */
+.stats-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 175px;
+}
+
+.stats-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.stats-top .save-total {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.stats-top .save-total strong {
+  font-size: 13px;
+}
+
+.stats-top .view-total {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.link-breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.drive-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
   padding: 3px 8px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  white-space: nowrap;
+}
+
+.drive-pill.quark {
+  background: #eff6ff;
+  border-color: #dbeafe;
+  color: #1e40af;
+}
+
+.drive-pill.baidu {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+.drive-pill .drive-label {
+  font-weight: 600;
+}
+
+.drive-pill .drive-size {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.drive-pill .drive-divider {
+  opacity: 0.4;
+}
+
+.drive-pill .drive-count strong {
+  font-weight: 700;
+}
+
+/* 6. 状态药丸 */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
   border-radius: 999px;
   font-size: 11px;
+  font-weight: 600;
   background: #f1f5f9;
   color: #64748b;
+  white-space: nowrap;
 }
 
 .status-pill.active {
   background: #dcfce7;
   color: #15803d;
+}
+
+.status-dot-inline {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
+  display: inline-block;
+}
+
+.status-dot-inline.active {
+  background: #16a34a;
+}
+
+/* 7. 操作按钮组 */
+.action-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.btn-action {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-action:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.btn-action.edit:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #2563eb;
+}
+
+.btn-action.toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.btn-action.danger:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
 }
 
 /* 表单 */

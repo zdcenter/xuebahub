@@ -81,12 +81,21 @@
             <div style="padding: 40px; text-align: center; color: #64748b;">正在从 Go 后端拉取实时数据...</div>
           } @else {
             <table class="data-table">
+              <colgroup>
+                <col style="width: 30%; min-width: 270px;" />
+                <col style="width: 12%; min-width: 105px;" />
+                <col style="width: 12%; min-width: 110px;" />
+                <col style="width: 11%; min-width: 100px;" />
+                <col style="width: 20%; min-width: 185px;" />
+                <col style="width: 7%; min-width: 70px;" />
+                <col style="width: 8%; min-width: 105px;" />
+              </colgroup>
               <thead>
                 <tr>
-                  <th>资料标题 / 规格</th>
+                  <th>资料标题 / 访问路径</th>
                   <th>学段 / 年级</th>
                   <th>学科 / 版本</th>
-                  <th>文件格式</th>
+                  <th>文件规格</th>
                   <th>转存 / 浏览</th>
                   <th>状态</th>
                   <th>操作</th>
@@ -97,52 +106,71 @@
                   <tr>
                     <td>
                       <div class="res-title-cell">
-                        <a [href]="'http://localhost:4321/resource/' + res.slug" target="_blank" class="res-title-link" title="点击在前台新窗口打开预览">
-                          <strong>{{ res.title }}</strong>
-                          <span class="external-icon">↗</span>
-                        </a>
-                        <span class="slug">Slug: {{ res.slug }}</span>
+                        <div class="title-row">
+                          <a [href]="'http://localhost:4321/resource/' + res.slug" target="_blank" class="res-title-link" title="点击在前台新窗口打开预览">
+                            <span class="title-text">{{ res.title }}</span>
+                            <span class="external-icon">↗</span>
+                          </a>
+                        </div>
+                        <div class="url-row">
+                          <a [href]="'http://localhost:4321/resource/' + res.slug" target="_blank" class="slug-pill" title="点击访问前台页面">
+                            <span class="slug-icon">🔗</span>
+                            <span class="slug-text">/resource/{{ res.slug }}</span>
+                          </a>
+                        </div>
                       </div>
                     </td>
                     <td>
-                      <span class="tag stage">{{ res.stage }}</span>
-                      <span class="tag grade">{{ res.grade }}</span>
+                      <div class="stage-grade-cell">
+                        <span class="tag stage">{{ res.stage }}</span>
+                        <span class="tag grade">{{ res.grade }}</span>
+                      </div>
                     </td>
                     <td>
-                      <span class="tag subject">{{ res.subject }}</span>
-                      <span class="text-muted">{{ res.edition }}</span>
+                      <div class="subject-edition-cell">
+                        <span class="tag subject">{{ res.subject }}</span>
+                        <span class="edition-badge">{{ res.edition }}</span>
+                      </div>
                     </td>
                     <td>
                       <div class="spec-cell">
-                        <span>{{ res.file_type || 'PDF' }}</span>
-                        <small>{{ res.file_size }} · {{ res.page_count }}页</small>
+                        <span class="format-tag" [class.video-tag]="res.file_type?.includes('视频') || res.file_type?.includes('MP4')">
+                          {{ res.file_type || 'PDF' }}
+                        </span>
+                        <span class="spec-sub">{{ res.file_size }} · {{ res.page_count }}页</span>
                       </div>
                     </td>
                     <td>
-                      <div class="count-cell">
-                        <span class="save-num">⚡ 总 {{ res.save_count || 0 }} 次转存</span>
-                        <div class="link-breakdown" style="font-size: 11px; margin-top: 4px; display: flex; flex-direction: column; gap: 2px;">
+                      <div class="stats-cell">
+                        <div class="stats-top">
+                          <span class="save-total">⚡ 累计 <strong>{{ res.save_count || 0 }}</strong> 转存</span>
+                          <span class="view-total">{{ res.view_count || 0 }} 浏览</span>
+                        </div>
+                        <div class="link-breakdown-list">
                           @for (l of res.links; track l.id || l.drive_type) {
-                            <span [style.color]="l.drive_type === 'quark' ? '#2563eb' : '#64748b'">
-                              {{ l.drive_type === 'quark' ? '⚡ 夸克' : '📦 百度' }}: {{ l.file_size || '15 MB' }} · <strong>{{ l.click_count || 0 }} 转存</strong>
-                            </span>
+                            <div class="drive-pill" [class.quark]="l.drive_type === 'quark'" [class.baidu]="l.drive_type === 'baidu'">
+                              <span class="drive-label">{{ l.drive_type === 'quark' ? '⚡ 夸克' : '📦 百度' }}</span>
+                              <span class="drive-size">{{ l.file_size || '15 MB' }}</span>
+                              <span class="drive-divider">·</span>
+                              <span class="drive-count"><strong>{{ l.click_count || 0 }}</strong> 转存</span>
+                            </div>
                           }
                         </div>
-                        <small style="color: #94a3b8; display: block; margin-top: 2px;">{{ res.view_count || 0 }} 浏览</small>
                       </div>
                     </td>
                     <td>
                       <span class="status-pill" [class.active]="res.is_published">
+                        <span class="status-dot-inline" [class.active]="res.is_published"></span>
                         {{ res.is_published ? '展示中' : '已下架' }}
                       </span>
                     </td>
                     <td>
-                      <div class="btn-group">
-                        <button class="btn btn-sm btn-edit" (click)="openEdit(res)">✏️ 修改</button>
-                        <button class="btn btn-sm" (click)="togglePublish(res)">
+                      <div class="action-btn-group">
+                        <button class="btn-action edit" (click)="openEdit(res)" title="修改资料">✏️ 修改</button>
+                        <button class="btn-action toggle" (click)="togglePublish(res)" title="切换上下架状态">
                           {{ res.is_published ? '下架' : '上架' }}
                         </button>
-                        <button class="btn btn-sm btn-danger" (click)="deleteResource(res.id)">删除</button>
+                        <button class="btn-action danger" (click)="deleteResource(res.id)" title="删除资料">🗑️</button>
                       </div>
                     </td>
                   </tr>
