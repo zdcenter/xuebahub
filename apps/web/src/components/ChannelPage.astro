@@ -1,0 +1,447 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ResourceCard from '../components/ResourceCard.astro';
+
+interface ChannelItem {
+  slug: string;
+  name: string;
+  icon: string;
+  description: string;
+}
+
+interface Props {
+  channelSlug?: string;
+}
+
+const { channelSlug = 'all' } = Astro.props;
+
+let channelsList: ChannelItem[] = [];
+let resourcesList: any[] = [];
+
+const url = new URL(Astro.request.url);
+const stage = url.searchParams.get('stage') || '';
+const q = url.searchParams.get('q') || '';
+
+let isApiConnected = false;
+
+// 1. 获取所有公开上线的频道 (动态支持后台上下线)
+try {
+  const chRes = await fetch('http://127.0.0.1:8080/api/v1/public/channels', { signal: AbortSignal.timeout(2000) });
+  if (chRes.ok) {
+    const chJson = await chRes.json();
+    const rawList = Array.isArray(chJson.data) ? chJson.data : (chJson.data?.items || []);
+    channelsList = rawList.map((c: any) => ({
+      slug: c.slug,
+      name: c.name,
+      icon: c.icon,
+      description: c.description
+    }));
+    isApiConnected = true;
+  }
+} catch (e) {
+  console.warn("Fetch channels from Go API failed", e);
+}
+
+// 仅在后端 API 离线连接失败时，使用本地静态备用频道
+if (!isApiConnected && channelsList.length === 0) {
+  channelsList = [
+    { slug: 'edu', name: '刚需教辅学习', icon: '📚', description: '中小学同步名校密卷、期末押题、奥数培优与教资考公真题' },
+    { slug: 'tools', name: '实用工具素材', icon: '🎨', description: 'PPT精选模板、免抠设计素材、自媒体剪辑音效包与实用代码' },
+    { slug: 'games', name: '怀旧单机合集', icon: '🎮', description: '经典单机整合、模拟器怀旧游戏全家桶与MOD模组包' }
+  ];
+}
+
+// 校验当前频道是否合法（如果后台已将该频道隐藏或下线，访问时直接 302 重定向到首页）
+const isAll = channelSlug === 'all' || !channelSlug;
+const activeChannel = channelsList.find(c => c.slug === channelSlug);
+if (!isAll && isApiConnected && !activeChannel) {
+  return Astro.redirect('/', 302);
+}
+
+// 2. 从 Go Fiber API 动态拉取实时数据 (根据频道与关键词过滤)
+try {
+  let fetchUrl = 'http://127.0.0.1:8080/api/v1/public/resources?limit=24';
+  if (!isAll) {
+    fetchUrl += `&channel=${encodeURIComponent(channelSlug)}`;
+  }
+  if (stage && stage !== 'all') {
+    fetchUrl += `&stage=${encodeURIComponent(stage)}`;
+  }
+  if (q) {
+    fetchUrl += `&q=${encodeURIComponent(q)}`;
+  }
+
+  const response = await fetch(fetchUrl, { signal: AbortSignal.timeout(2000) });
+  if (response.ok) {
+    const json = await response.json();
+    resourcesList = (json.data?.items || []).map((item: any) => ({
+      slug: item.slug,
+      channelSlug: item.channel_slug || 'edu',
+      title: item.title,
+      subtitle: item.subtitle,
+      stage: item.stage,
+      grade: item.grade,
+      subject: item.subject,
+      edition: item.edition,
+      region: item.region || '',
+      school: item.school || '',
+      coverImage: item.cover_image || "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=600&auto=format&fit=crop&q=80",
+      fileType: item.file_type || "PDF",
+      fileSize: item.file_size || "15 MB",
+      pageCount: item.page_count || 24,
+      viewCount: item.view_count || 0,
+      saveCount: item.save_count || 0,
+      isRecommended: item.is_recommended,
+      links: (item.links || []).map((l: any) => ({
+        drive_type: l.drive_type,
+        share_url: l.share_url,
+        extract_code: l.extract_code,
+        password_hint: l.password_hint,
+        is_primary: l.is_primary
+      }))
+    }));
+  }
+} catch (e) {
+  console.warn("Fetch from Go API failed, using fallback data", e);
+}
+
+// 仅在后端 API 离线连接失败时，使用兜底备用数据（保证离线与SSG构建绝对安全）
+if (!isApiConnected && resourcesList.length === 0) {
+  const allFallbacks = [
+    {
+      slug: "2026-senior-math-function-video-special",
+      channelSlug: "edu",
+      title: "2026高考数学压轴导数与函数极值满分突破（含120分钟名师手撕解题高清视频课）",
+      subtitle: "高中拔高提分必备，包含5套名校压轴题及手写规范作答步骤PDF + 高清精讲视频",
+      stage: "高中专区",
+      grade: "高三",
+      subject: "数学",
+      edition: "新高考通用",
+      coverImage: "https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=600&auto=format&fit=crop&q=80",
+      fileType: "PDF+MP4视频",
+      fileSize: "240 MB",
+      pageCount: 32,
+      viewCount: 1680,
+      saveCount: 520,
+      isRecommended: true,
+      links: [
+        { drive_type: "quark", share_url: "https://pan.quark.cn/s/demo_quark_senior_video", is_primary: true }
+      ]
+    },
+    {
+      slug: "2026-spring-grade3-math-final-exam",
+      channelSlug: "edu",
+      title: "2026春季人教版三年级下册数学期末冲刺夺冠押题卷（含高清解析与手写步骤）",
+      subtitle: "名校名师联合精选必考压轴题，覆盖乘除法、面积计算、小数初步",
+      stage: "primary",
+      grade: "三年级",
+      subject: "数学",
+      edition: "人教版",
+      coverImage: "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=600&auto=format&fit=crop&q=80",
+      fileType: "PDF",
+      fileSize: "12.4 MB",
+      pageCount: 28,
+      viewCount: 1520,
+      saveCount: 468,
+      isRecommended: true,
+      links: [
+        { drive_type: "quark", share_url: "https://pan.quark.cn/s/demo_quark_share", is_primary: true }
+      ]
+    },
+    {
+      slug: "2026-ppt-business-report-templates-pack",
+      channelSlug: "tools",
+      title: "2026精选商务述职与毕业答辩动态PPT模板整合包（超500套+含图表配色方案）",
+      subtitle: "开箱即用高逼格排版，职场述职、毕业答辩、项目申报与商业计划书必备",
+      stage: "通用",
+      grade: "生产力工具",
+      subject: "PPT模板",
+      edition: "Office/WPS通用",
+      coverImage: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=600&auto=format&fit=crop&q=80",
+      fileType: "PPTX/ZIP压缩包",
+      fileSize: "2.4 GB",
+      pageCount: 500,
+      viewCount: 3410,
+      saveCount: 1280,
+      isRecommended: true,
+      links: [
+        { drive_type: "quark", share_url: "https://pan.quark.cn/s/demo_quark_tools_ppt", is_primary: true }
+      ]
+    },
+    {
+      slug: "arcade-retro-games-500-in-1-simulator",
+      channelSlug: "games",
+      title: "经典怀旧街机/FC红白机500合1整合包（含全套模拟器+即开即玩即存档）",
+      subtitle: "拳皇、街霸、合金弹头、恐龙快打、魂斗罗经典全收录，电脑与手机双端通用",
+      stage: "通用",
+      grade: "模拟器游戏",
+      subject: "街机/FC",
+      edition: "免安装免解压直接运行",
+      coverImage: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80",
+      fileType: "ZIP绿色整合包",
+      fileSize: "1.85 GB",
+      pageCount: 500,
+      viewCount: 4890,
+      saveCount: 1850,
+      isRecommended: true,
+      links: [
+        { drive_type: "quark", share_url: "https://pan.quark.cn/s/demo_quark_games_arcade", is_primary: true }
+      ]
+    }
+  ];
+
+  if (!isAll) {
+    resourcesList = allFallbacks.filter(item => item.channelSlug === channelSlug);
+  } else {
+    resourcesList = allFallbacks;
+  }
+}
+
+// 针对不同频道的专业 SEO TDK 深度定制
+let seoTitle = "学霸资源库 - 中小学同步教辅、实用工具素材与经典怀旧单机整合";
+let seoDesc = "严选中小学人教版同步期末密卷、实用职场PPT模板、音效素材与经典怀旧单机游戏整合包，高速一键转存。";
+let seoKeywords = "中小学试卷下载,期末冲刺卷,PPT模板下载,自媒体音效包,怀旧单机游戏,街机模拟器合集,夸克网盘转存";
+let heroTitle = "中小学名校期末密卷 & 实用素材游戏整合库";
+let heroSubtitle = "严选人教版同步压轴真题、实用生产力工具模版与怀旧单机游戏整合包，一键极速转存。";
+let heroBadge = "✨ 2026 全域资源 · 极速转存 · 持续更新";
+let searchPlaceholder = "输入关键词搜索全域资源，如：三年级数学期末、PPT模板、街机合集...";
+
+if (channelSlug === 'edu') {
+  seoTitle = "中小学名校期末密卷与成人考证真题库 - 学霸教辅专区";
+  seoDesc = "免费提供小学、初中、高中名校期末冲刺卷、人教版同步押题密卷、奥数思维拓展及教师资格证/考公考研核心笔记，A4高清打印。";
+  seoKeywords = "期末冲刺卷,中小学试卷下载,人教版同步教辅,小学奥数,教师资格证真题,高考压轴数学,夸克网盘学习资料";
+  heroTitle = "中小学名校期末密卷 & 成人考证真题库";
+  heroSubtitle = "严选人教版/北师大版同步压轴真题与教师资格/考公冲刺笔记，配高清手写步骤与思维导图，一键极速转存。";
+  heroBadge = "📚 刚需教辅 · A4高清排版 · 名校真题解析";
+  searchPlaceholder = "输入科目、年级或考试关键词，如：三年级数学期末、教资科二、申论...";
+} else if (channelSlug === 'tools') {
+  seoTitle = "实用生产力工具与精选设计音效素材库 - 学霸素材专区";
+  seoDesc = "精选职场商务述职PPT模板、平面设计免抠PNG素材、自媒体剪辑无版权BGM音效包与Python办公自动化实用脚本代码包，即下即用。";
+  seoKeywords = "PPT模板免费下载,述职报告PPT,免抠素材PNG,自媒体音效包,BGM背景音乐,办公自动化脚本";
+  heroTitle = "实用生产力工具 & 精选设计音效素材库";
+  heroSubtitle = "精选职场高逼格PPT模板、免抠设计素材、自媒体剪辑无版权BGM音效包与Python办公自动化实用代码包。";
+  heroBadge = "🎨 实用素材 · 开箱即用 · 提升办公创作效率";
+  searchPlaceholder = "输入素材关键词，如：述职PPT、自媒体音效、免抠素材、自动化脚本...";
+} else if (channelSlug === 'games') {
+  seoTitle = "经典怀旧单机游戏与开源模拟器整合包 - 学霸怀旧游戏专区";
+  seoDesc = "全套经典街机500合1、FC红白机全集、PS2单机经典整合、热门游戏高画质MOD模组绿色免安装版，电脑手机双端随下随玩。";
+  seoKeywords = "怀旧游戏下载,街机模拟器合集,FC红白机500合1,PS2模拟器单机,游戏MOD整合包,免安装单机游戏";
+  heroTitle = "经典怀旧单机游戏 & 开源整合免安装包";
+  heroSubtitle = "精选经典街机/FC/PS2模拟器全家桶、热门单机经典整合版与高画质MOD模组包，随下随玩。";
+  heroBadge = "🎮 怀旧游戏 · 纯净整合 · 零门槛即开即玩";
+  searchPlaceholder = "输入游戏或模拟器关键词，如：街机500合1、FC魂斗罗、PS2模拟器、MOD整合...";
+} else if (activeChannel) {
+  seoTitle = `${activeChannel.name} - 学霸资源库`;
+  seoDesc = activeChannel.description || seoDesc;
+  heroTitle = activeChannel.name;
+  heroSubtitle = activeChannel.description || heroSubtitle;
+  heroBadge = `${activeChannel.icon} 精选业务频道 · 高速转存`;
+}
+
+// 学段与年级分类列表（教辅与全域时展示）
+const stages = [
+  { id: "all", name: "全部阶段" },
+  { id: "primary", name: "小学阶段 (1-6年级)" },
+  { id: "junior", name: "初中中考冲刺" },
+  { id: "senior", name: "高中高考专项" },
+  { id: "cert", name: "教师资格证" },
+  { id: "exam", name: "考公考研专区" }
+];
+
+// 计算当前页面基础路径（用于搜索与过滤拼接）
+const basePath = isAll ? '/' : `/${channelSlug}`;
+---
+
+<Layout 
+  title={seoTitle} 
+  description={seoDesc} 
+  keywords={seoKeywords}
+  canonicalUrl={`${url.origin}${basePath}`}>
+  
+  <!-- 头部 Hero 区域：聚焦刚需、直达搜索 -->
+  <section class="bg-gradient-to-b from-blue-50/80 via-white to-slate-50 pt-10 pb-8 border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
+      <div class="inline-flex items-center space-x-2 px-3 py-1 bg-blue-100/70 text-blue-700 rounded-full text-xs font-semibold tracking-wide">
+        <span>{heroBadge}</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
+        {heroTitle}
+      </h1>
+      <p class="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed">
+        {heroSubtitle}
+      </p>
+
+      <!-- 全局即时搜索条 (直达干净静态路径) -->
+      <div id="search-box" class="max-w-2xl mx-auto pt-2">
+        <form action={basePath} method="GET" class="relative flex items-center">
+          <input
+            type="text"
+            name="q"
+            value={q}
+            placeholder={searchPlaceholder}
+            class="w-full pl-12 pr-28 py-3.5 bg-white rounded-2xl border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none shadow-sm text-sm transition"
+          />
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400 absolute left-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <button
+            type="submit"
+            class="absolute right-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition"
+          >
+            快速搜索
+          </button>
+        </form>
+
+        <!-- 热门搜索推荐词 (生成干净目录链接) -->
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-3 text-xs text-slate-500">
+          <span class="font-medium text-slate-400">热搜推荐:</span>
+          {channelSlug === 'tools' ? (
+            <>
+              <a href="/tools?q=PPT" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">述职PPT模板</a>
+              <a href="/tools?q=音效" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">剪辑音效BGM</a>
+              <a href="/tools?q=免抠素材" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">电商免抠素材</a>
+            </>
+          ) : channelSlug === 'games' ? (
+            <>
+              <a href="/games?q=街机" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">街机500合1</a>
+              <a href="/games?q=模拟器" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">全能模拟器</a>
+              <a href="/games?q=FC" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">FC经典全集</a>
+            </>
+          ) : (
+            <>
+              <a href="/edu?stage=primary&q=小升初" class="hover:text-red-600 bg-red-50 text-red-700 font-bold px-2 py-0.5 rounded border border-red-200">🎯 小升初择校密卷</a>
+              <a href="/edu?q=三年级数学" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">三年级数学下册</a>
+              <a href="/edu?q=期末冲刺" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">期末押题密卷</a>
+              <a href="/edu?q=教师资格证" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">教资综合素质</a>
+              {channelsList.some(c => c.slug === 'tools') && (
+                <a href="/tools?q=PPT" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">商务PPT模板</a>
+              )}
+              {channelsList.some(c => c.slug === 'games') && (
+                <a href="/games?q=街机" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">怀旧街机合集</a>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 核心资料流与筛选 -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <!-- 1. 业务顶级频道导航条 (标准 SEO 静态目录结构) -->
+    <div class="flex items-center space-x-2.5 overflow-x-auto pb-3 border-b border-slate-200 no-scrollbar">
+      <span class="text-xs font-bold text-slate-400 whitespace-nowrap flex items-center gap-1">
+        <span>🏷️</span> 频道:
+      </span>
+      <a
+        href="/"
+        class={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+          isAll
+            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+            : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+        }`}
+      >
+        <span>🌐</span>
+        <span>全域资源</span>
+      </a>
+      {channelsList.map((ch) => {
+        const cleanName = ch.name.replace(/^[\s\p{Emoji}\uFE0F]+/u, '').trim();
+        return (
+          <a
+            href={`/${ch.slug}`}
+            class={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+              channelSlug === ch.slug
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <span>{ch.icon}</span>
+            <span>{cleanName}</span>
+          </a>
+        );
+      })}
+    </div>
+
+    <!-- 2. 教辅学段子分类 (当处于教辅或全域频道时展示) -->
+    {(channelSlug === 'edu' || isAll) && (
+      <div class="flex items-center space-x-2 overflow-x-auto pb-2 no-scrollbar">
+        <span class="text-xs font-medium text-slate-400 whitespace-nowrap">学段筛选:</span>
+        {stages.map((st) => (
+          <a
+            href={isAll ? `/?stage=${st.id}` : `/${channelSlug}?stage=${st.id}`}
+            class={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              (stage === st.id || (!stage && st.id === 'all'))
+                ? 'bg-slate-800 text-white font-semibold'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            {st.name}
+          </a>
+        ))}
+      </div>
+    )}
+
+    <!-- 3. 资源目录总控信息条 (增强专业站权威质感) -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1 text-xs">
+      <div class="flex items-center space-x-2 font-medium text-slate-700">
+        <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+        <span>在库收录资源：<strong class="text-blue-700 font-bold">{resourcesList.length}</strong> 套优质资源</span>
+        <span class="text-slate-300">|</span>
+        <span class="text-slate-500">按转存热度与权威版本排序</span>
+      </div>
+
+      <div class="flex items-center space-x-3 text-slate-500 text-[11px]">
+        <span class="flex items-center gap-1">
+          <span class="text-emerald-500 font-bold">✓</span> 夸克网盘原画极速转存
+        </span>
+        <span class="hidden md:inline-flex items-center gap-1">
+          <span class="text-blue-500 font-bold">✓</span> 每日自动化巡检存活
+        </span>
+        <span class="flex items-center gap-1">
+          <span class="text-amber-500 font-bold">✓</span> 100% 免解压密码
+        </span>
+      </div>
+    </div>
+
+    <!-- 4. 高信息密度专业资源条目流 (无冗余图片，全信息高密度呈现) -->
+    {resourcesList.length === 0 ? (
+      <div class="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 space-y-4 shadow-sm">
+        <div class="text-5xl">🔍</div>
+        <h3 class="text-lg font-bold text-slate-800">暂未找到符合条件的资源</h3>
+        <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+          该频道资源正在紧锣密鼓上架中，您可以切换其他频道浏览，或加入备考群联系管理员优先上架。
+        </p>
+        <a href="/" class="inline-block px-5 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-md">
+          返回浏览全部资源 ➔
+        </a>
+      </div>
+    ) : (
+      <div class="space-y-3">
+        {resourcesList.map((res) => (
+          <ResourceCard {...res} />
+        ))}
+      </div>
+    )}
+
+    <!-- 微信备考群 & 防走失沉淀卡片（私域引流利器） -->
+    <div class="mt-12 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-600/10">
+      <div class="space-y-2 text-center md:text-left">
+        <div class="inline-block px-3 py-1 bg-white/10 rounded-full text-xs font-semibold backdrop-blur-md">
+          🔔 官方资源与备考交流社群
+        </div>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight">
+          获取最新一手名校期末密卷、实用工具素材与经典单机整合
+        </h2>
+        <p class="text-xs sm:text-sm text-blue-100 max-w-xl">
+          每日更新一手期末真题、学霸手撕笔记、PPT实用模版包与经典游戏，网盘链接每日自动巡检防失效。
+        </p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center gap-3">
+        <div class="px-5 py-3 bg-white text-blue-700 rounded-2xl font-bold text-xs sm:text-sm shadow-md text-center">
+          微信扫码加入「学霸资料聚合交流群」
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>

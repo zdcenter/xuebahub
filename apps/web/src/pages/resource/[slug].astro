@@ -26,11 +26,13 @@ try {
         slug: data.slug || slug,
         title: data.title,
         subtitle: data.subtitle,
-        description: data.description || data.title,
+        description: data.description || '',
         stage: data.stage,
         grade: data.grade,
         subject: data.subject,
         edition: data.edition,
+        region: data.region || '',
+        school: data.school || '',
         fileType: data.file_type || "PDF",
         fileSize: data.file_size || "15 MB",
         pageCount: data.page_count || 20,
@@ -50,7 +52,9 @@ try {
           share_url: l.share_url,
           extract_code: l.extract_code,
           password_hint: l.password_hint || (l.extract_code ? `提取码：${l.extract_code}` : '无提取码'),
-          is_primary: l.is_primary
+          is_primary: l.is_primary,
+          status: l.status || 'active',
+          invalid_reason: l.invalid_reason || ''
         }))
       };
     }
@@ -125,6 +129,18 @@ if (!resource) {
         <span class="px-2.5 py-1 bg-slate-100 text-slate-700 font-medium text-xs rounded-lg">
           {resource.edition}
         </span>
+        {resource.school && (
+          <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-lg flex items-center gap-1">
+            <span>🏫</span>
+            <span>{resource.school}</span>
+          </span>
+        )}
+        {resource.region && !resource.school && (
+          <span class="px-2.5 py-1 bg-sky-50 text-sky-700 border border-sky-200 font-medium text-xs rounded-lg flex items-center gap-1">
+            <span>📍</span>
+            <span>{resource.region}</span>
+          </span>
+        )}
         <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-medium text-xs rounded-lg">
           官方完整版 · 纯净无水印
         </span>
@@ -178,18 +194,30 @@ if (!resource) {
         </div>
       </div>
 
+      <!-- 全局网盘健康警示横幅 -->
+      {resource.links.some((l: any) => l.status === 'invalid') && (
+        <div class="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-xs">
+          <div class="flex items-center space-x-2">
+            <span class="text-base flex-shrink-0">⚠️</span>
+            <span><strong>通道状态提示：</strong>检测到本资料部分网盘已失效，站长已安排补链。推荐优先选择标记为<strong>【✅ 正常存活】</strong>的可用网盘极速转存！</span>
+          </div>
+        </div>
+      )}
+
       <div class="grid grid-cols-1 gap-4">
         {resource.links.map((link: any) => (
           <div class={`p-5 sm:p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-5 border transition-all ${
-            link.is_primary 
-              ? 'bg-white border-blue-300 shadow-md ring-1 ring-blue-100' 
-              : 'bg-white/90 border-slate-200 shadow-sm'
+            link.status === 'invalid'
+              ? 'bg-rose-50/40 border-rose-200'
+              : link.is_primary 
+                ? 'bg-white border-blue-300 shadow-md ring-1 ring-blue-100' 
+                : 'bg-white/90 border-slate-200 shadow-sm'
           }`}>
             <div class="space-y-3 flex-1 min-w-0">
               <!-- 网盘头部标签与独立指标 -->
               <div class="flex flex-wrap items-center gap-2">
                 <span class="font-bold text-slate-900 text-sm">{link.drive_name}</span>
-                {link.is_primary && (
+                {link.is_primary && link.status !== 'invalid' && (
                   <span class="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-md shadow-xs">
                     主推极速通道
                   </span>
@@ -197,6 +225,19 @@ if (!resource) {
                 {link.extract_code && (
                   <span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-medium rounded-md">
                     提取码: <strong class="font-mono">{link.extract_code}</strong>
+                  </span>
+                )}
+                {link.status === 'invalid' ? (
+                  <span class="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-bold rounded-md border border-rose-200 flex items-center space-x-1" title={link.invalid_reason || '网盘页面返回404或分享取消'}>
+                    <span>❌ 链接失效 (补链中)</span>
+                  </span>
+                ) : link.status === 'reported' ? (
+                  <span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-medium rounded-md border border-amber-200">
+                    ⚠️ 待核验
+                  </span>
+                ) : (
+                  <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md border border-emerald-200">
+                    ✅ 正常存活
                   </span>
                 )}
                 <span class="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-[11px] font-semibold rounded-md border border-blue-100">
@@ -215,7 +256,9 @@ if (!resource) {
 
               <!-- 网盘专属说明 -->
               <p class="text-xs text-slate-600 font-medium">
-                {link.resource_desc || link.desc}
+                {link.status === 'invalid' 
+                  ? `【失效提醒】${link.invalid_reason || '该网盘分享已被取消或清理'}，请使用备用通道转存。` 
+                  : (link.resource_desc || link.desc)}
               </p>
 
               <!-- 明文网盘地址显示栏与复制按钮 -->
@@ -234,65 +277,63 @@ if (!resource) {
                 >
                   <span>📋 复制链接</span>
                 </button>
+                <button
+                  type="button"
+                  class="btn-report-link px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition flex items-center space-x-1 flex-shrink-0 cursor-pointer"
+                  data-link-id={link.id || ''}
+                  title="如果网盘分享已被删除或无法访问，点此通知站长补链"
+                >
+                  <span>⚠️ 失效报错</span>
+                </button>
               </div>
             </div>
 
             <!-- 右侧直达操作按钮 -->
             <div class="flex items-center space-x-3 flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-              <a
-                href={link.share_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class={`btn-track-save px-6 py-3.5 rounded-xl font-bold transition text-xs flex items-center space-x-1.5 ${
-                  link.is_primary
-                    ? 'btn-save-quark text-white shadow-md'
-                    : 'bg-slate-800 hover:bg-slate-900 text-white'
-                }`}
-                data-slug={resource.slug}
-                data-link-id={link.id || ''}
-              >
-                <span>🚀 立即转存下载 ➔</span>
-              </a>
+              {link.status === 'invalid' ? (
+                <button
+                  type="button"
+                  class="px-5 py-3.5 rounded-xl font-bold text-xs bg-rose-100/80 text-rose-700 border border-rose-200 cursor-not-allowed flex items-center space-x-1"
+                  title="该网盘正在等待补链，请使用其他备用网盘"
+                  disabled
+                >
+                  <span>❌ 该通道失效 · 补链中</span>
+                </button>
+              ) : (
+                <a
+                  href={link.share_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class={`btn-track-save px-6 py-3.5 rounded-xl font-bold transition text-xs flex items-center space-x-1.5 ${
+                    link.is_primary
+                      ? 'btn-save-quark text-white shadow-md'
+                      : 'bg-slate-800 hover:bg-slate-900 text-white'
+                  }`}
+                  data-slug={resource.slug}
+                  data-link-id={link.id || ''}
+                >
+                  <span>🚀 立即转存下载 ➔</span>
+                </a>
+              )}
             </div>
           </div>
         ))}
       </div>
     </div>
 
-    <!-- 资料规格与包含清单（替代冗余的假实拍图，纯净高转化） -->
-    <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
-      <div class="border-b border-slate-100 pb-4">
-        <h2 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
-          <span>📦 资料规格与包含清单</span>
-        </h2>
-        <p class="text-xs text-slate-500 mt-1">
-          本站所有资源均经整理校对，去除了冗余广告水印，保留最纯粹的学习备考内容
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-          <div class="font-bold text-slate-800 flex items-center space-x-1.5">
-            <span>🎯 适配目标</span>
-          </div>
-          <p class="text-slate-600">{resource.stage} · {resource.grade} · {resource.subject} ({resource.edition})</p>
+    <!-- 资源详细介绍与说明（仅当填写了真实说明时才显示，无内容则彻底隐藏） -->
+    {resource.description && resource.description.trim().length > 0 && resource.description !== resource.title && (
+      <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+        <div class="border-b border-slate-100 pb-3">
+          <h2 class="text-base sm:text-lg font-bold text-slate-900 flex items-center space-x-2">
+            <span>📝 内容介绍与使用说明</span>
+          </h2>
         </div>
-
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-          <div class="font-bold text-slate-800 flex items-center space-x-1.5">
-            <span>📖 教学配套</span>
-          </div>
-          <p class="text-slate-600">全套真题/讲义 + 名师手写解析与解题思路大纲</p>
-        </div>
-
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-          <div class="font-bold text-slate-800 flex items-center space-x-1.5">
-            <span>✨ 版面与播放</span>
-          </div>
-          <p class="text-slate-600">官方无水印排版，手机端原画倍速播放，支持 A4 打印即练</p>
+        <div class="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+          {resource.description}
         </div>
       </div>
-    </div>
+    )}
 
     <!-- 仅当后端配置了真实预览图时才展示（避免假图失真） -->
     {resource.previewImages && resource.previewImages.length > 0 && (
@@ -418,6 +459,47 @@ if (!resource) {
         const slug = btn.getAttribute('data-slug');
         const linkId = btn.getAttribute('data-link-id');
         recordSaveClick(slug, linkId);
+      });
+    });
+
+    // 绑定网盘失效报错按钮
+    document.querySelectorAll('.btn-report-link').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const linkId = btn.getAttribute('data-link-id');
+        if (!linkId || linkId.startsWith('demo')) {
+          showToast('⚠️ 示例链接暂不支持报错反馈');
+          return;
+        }
+        const reportedKey = 'reported_link_' + linkId;
+        if (localStorage.getItem(reportedKey)) {
+          showToast('ℹ️ 您已提交过该链接的失效反馈，管理员正在核实处理！');
+          return;
+        }
+
+        if (!confirm('确定该网盘链接已失效、被取消或无法打开？我们将安排管理员复核补链。')) {
+          return;
+        }
+
+        btn.setAttribute('disabled', 'true');
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+        fetch(`http://127.0.0.1:8080/api/v1/public/links/${linkId}/report`, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: '前台用户一键报错' })
+        })
+          .then(res => res.json())
+          .then(data => {
+            localStorage.setItem(reportedKey, 'true');
+            showToast('✅ 报错已提交！感谢反馈，我们将尽快修复或补充备用盘');
+            btn.innerHTML = '<span>✅ 已反馈</span>';
+          })
+          .catch(err => {
+            showToast('网络繁忙，请稍后再试');
+            btn.removeAttribute('disabled');
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+          });
       });
     });
   </script>

@@ -12,15 +12,18 @@ import (
 	"netdisk/api/internal/database"
 	"netdisk/api/internal/model"
 	"netdisk/api/internal/service"
+	"strings"
 )
 
 type ResourceHandler struct {
-	parser *service.NetdiskParserService
+	parser  *service.NetdiskParserService
+	checker *service.NetdiskCheckerService
 }
 
-func NewResourceHandler(parser *service.NetdiskParserService) *ResourceHandler {
+func NewResourceHandler(parser *service.NetdiskParserService, checker *service.NetdiskCheckerService) *ResourceHandler {
 	return &ResourceHandler{
-		parser: parser,
+		parser:  parser,
+		checker: checker,
 	}
 }
 
@@ -40,11 +43,17 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 		pageSize = 12
 	}
 
+	channel := c.Query("channel")
+
 	query := database.DB.Model(&model.Resource{}).
 		Where("is_published = ?", true).
+		Where("channel_slug IN (SELECT slug FROM channels WHERE is_active = true)").
 		Preload("Links")
 
-	if stage != "" {
+	if channel != "" && channel != "all" {
+		query = query.Where("channel_slug = ?", channel)
+	}
+	if stage != "" && stage != "all" {
 		query = query.Where("stage = ?", stage)
 	}
 	if grade != "" {
@@ -53,8 +62,16 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 	if subject != "" {
 		query = query.Where("subject = ?", subject)
 	}
+	school := c.Query("school")
+	if school != "" {
+		query = query.Where("school ILIKE ?", "%"+school+"%")
+	}
+	region := c.Query("region")
+	if region != "" {
+		query = query.Where("region ILIKE ?", "%"+region+"%")
+	}
 	if keyword != "" {
-		query = query.Where("title ILIKE ? OR subtitle ILIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+		query = query.Where("title ILIKE ? OR subtitle ILIKE ? OR school ILIKE ? OR region ILIKE ?", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 	}
 
 	var total int64
@@ -195,9 +212,16 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 	if res.Slug == "" {
 		res.Slug = fmt.Sprintf("res-%d", time.Now().UnixNano())
 	}
+	if res.ChannelSlug == "" {
+		res.ChannelSlug = "edu"
+	}
 
 	if err := database.DB.Create(&res).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "创建失败: " + err.Error()})
+	}
+
+	if res.Region != "" && res.School != "" {
+		go EnsureRegionAndSchool(database.DB, res.Region, res.School, res.Stage)
 	}
 
 	return c.JSON(fiber.Map{
@@ -207,17 +231,23 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 	})
 }
 
-// AdminListResources 后台所有资源列表
+// AdminListResources 后台所有资源列表（支持按频道过滤）
 func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
+	channel := c.Query("channel")
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	pageSize, _ := strconv.Atoi(c.Query("limit", "50"))
 
+	query := database.DB.Model(&model.Resource{})
+	if channel != "" && channel != "all" {
+		query = query.Where("channel_slug = ?", channel)
+	}
+
 	var total int64
-	database.DB.Model(&model.Resource{}).Count(&total)
+	query.Count(&total)
 
 	var list []model.Resource
 	offset := (page - 1) * pageSize
-	database.DB.Preload("Links").Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&list)
+	query.Preload("Links").Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&list)
 
 	return c.JSON(fiber.Map{
 		"code": 200,
@@ -247,6 +277,9 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 	}
 
 	// 更新主要基础字段
+	if req.ChannelSlug != "" {
+		existing.ChannelSlug = req.ChannelSlug
+	}
 	existing.Title = req.Title
 	existing.Subtitle = req.Subtitle
 	existing.Description = req.Description
@@ -254,6 +287,8 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 	existing.Grade = req.Grade
 	existing.Subject = req.Subject
 	existing.Edition = req.Edition
+	existing.Region = req.Region
+	existing.School = req.School
 	existing.FileType = req.FileType
 	existing.FileSize = req.FileSize
 	existing.PageCount = req.PageCount
@@ -289,6 +324,10 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 
 	if err := database.DB.Save(&existing).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "更新失败: " + err.Error()})
+	}
+
+	if existing.Region != "" && existing.School != "" {
+		go EnsureRegionAndSchool(database.DB, existing.Region, existing.School, existing.Stage)
 	}
 
 	return c.JSON(fiber.Map{
@@ -366,3 +405,153 @@ func (h *ResourceHandler) AdminParseNetdisk(c fiber.Ctx) error {
 		"data": result,
 	})
 }
+
+// ReportLink 前台用户提交网盘失效报错
+func (h *ResourceHandler) ReportLink(c fiber.Ctx) error {
+	linkIDStr := c.Params("id")
+	linkUUID, err := uuid.Parse(linkIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效链接ID"})
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.Bind().JSON(&req)
+
+	clientIP := c.IP()
+	updated, err := h.checker.UserReportLink(linkUUID, clientIP, req.Reason)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "网盘链接不存在"})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "已收到您的反馈，管理员将尽快复核并更新！",
+		"data": fiber.Map{
+			"link_id":      updated.ID,
+			"status":       updated.Status,
+			"report_count": updated.ReportCount,
+		},
+	})
+}
+
+// AdminCheckSingleLink 后台手动立即检测单个链接存活状态
+func (h *ResourceHandler) AdminCheckSingleLink(c fiber.Ctx) error {
+	linkIDStr := c.Params("id")
+	linkUUID, err := uuid.Parse(linkIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效链接ID"})
+	}
+
+	var link model.ResourceLink
+	if err := database.DB.First(&link, "id = ?", linkUUID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "网盘链接不存在"})
+	}
+
+	status, reason := h.checker.CheckSingleLink(&link)
+	now := time.Now()
+	link.LastCheckedAt = &now
+
+	if status == "active" {
+		link.Status = "active"
+		link.InvalidReason = ""
+		link.ReportCount = 0
+	} else {
+		link.Status = "invalid"
+		if link.ReportCount > 0 && link.InvalidReason != "" && !strings.Contains(link.InvalidReason, "巡检结果") {
+			link.InvalidReason = fmt.Sprintf("【用户报错】%s；【巡检结果】%s", link.InvalidReason, reason)
+		} else {
+			link.InvalidReason = reason
+		}
+	}
+	database.DB.Save(&link)
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "检测完成",
+		"data": fiber.Map{
+			"id":              link.ID,
+			"status":          link.Status,
+			"invalid_reason":  link.InvalidReason,
+			"last_checked_at": link.LastCheckedAt,
+		},
+	})
+}
+
+// AdminBatchCheckLinks 后台批量巡检网盘（受冷却机制保护，避免短时间内重复检测）
+func (h *ResourceHandler) AdminBatchCheckLinks(c fiber.Ctx) error {
+	var opts service.BatchCheckOptions
+	if err := c.Bind().JSON(&opts); err != nil {
+		// 允许使用默认配置
+		opts = service.BatchCheckOptions{
+			MinIntervalHours: 24,
+			Force:            false,
+		}
+	}
+
+	summary, err := h.checker.RunBatchCheck(opts)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code":    500,
+			"message": "批量检测执行失败: " + err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": fmt.Sprintf("批量巡检完成：检测 %d 个，正常 %d 个，失效 %d 个，因冷却跳过 %d 个", summary.CheckedCount, summary.ActiveCount, summary.InvalidCount, summary.SkippedCount),
+		"data":    summary,
+	})
+}
+
+// AdminUpdateLinkStatus 后台管理员手动修改链接状态与原因
+func (h *ResourceHandler) AdminUpdateLinkStatus(c fiber.Ctx) error {
+	linkIDStr := c.Params("id")
+	linkUUID, err := uuid.Parse(linkIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效链接ID"})
+	}
+
+	var req struct {
+		Status        string `json:"status"` // active, invalid, reported
+		InvalidReason string `json:"invalid_reason"`
+		ShareURL      string `json:"share_url"`
+		ExtractCode   string `json:"extract_code"`
+	}
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
+	}
+
+	var link model.ResourceLink
+	if err := database.DB.First(&link, "id = ?", linkUUID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "网盘链接不存在"})
+	}
+
+	if req.Status != "" {
+		link.Status = req.Status
+		if req.Status == "active" {
+			link.ReportCount = 0
+		}
+	}
+	if req.InvalidReason != "" {
+		link.InvalidReason = req.InvalidReason
+	}
+	if req.ShareURL != "" {
+		link.ShareURL = req.ShareURL
+	}
+	if req.ExtractCode != "" {
+		link.ExtractCode = req.ExtractCode
+	}
+
+	now := time.Now()
+	link.LastCheckedAt = &now
+	database.DB.Save(&link)
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "链接状态更新成功",
+		"data":    link,
+	})
+}
+

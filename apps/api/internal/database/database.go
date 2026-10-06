@@ -26,10 +26,12 @@ func Init(dsn string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(
 		&model.AdminUser{},
 		&model.Category{},
+		&model.Channel{},
 		&model.Resource{},
 		&model.ResourceLink{},
 		&model.SearchLog{},
 		&model.CrawledResource{},
+		&model.NetdiskAccount{},
 	); err != nil {
 		log.Printf("AutoMigrate error: %v", err)
 	}
@@ -40,6 +42,45 @@ func Init(dsn string) (*gorm.DB, error) {
 }
 
 func seedInitialData(db *gorm.DB) {
+	// 0. 初始化核心频道 (教辅 / 工具素材 / 怀旧单机游戏)
+	var chanCount int64
+	db.Model(&model.Channel{}).Count(&chanCount)
+	if chanCount == 0 {
+		channels := []model.Channel{
+			{
+				Slug:        "edu",
+				Name:        "📚 刚需教辅与学习资料",
+				Icon:        "📚",
+				Description: "中小学同步教辅（人教版/期末冲刺/名校密卷）、奥数思维拓展、教师资格证、考公考研等刚需备考资源",
+				SortOrder:   1,
+				IsActive:    true,
+			},
+			{
+				Slug:        "tools",
+				Name:        "🎨 实用生产力工具与素材",
+				Icon:        "🎨",
+				Description: "精选职场PPT模版、平面设计免抠PNG素材、自媒体剪辑音效/BGM包、Python/办公自动化实用代码包",
+				SortOrder:   2,
+				IsActive:    true,
+			},
+			{
+				Slug:        "games",
+				Name:        "🎮 复古经典小游戏与整合包",
+				Icon:        "🎮",
+				Description: "经典街机FC模拟器合集、PS2单机经典整合、精选MOD模组免安装绿色整合包",
+				SortOrder:   3,
+				IsActive:    true,
+			},
+		}
+		for _, ch := range channels {
+			db.Where("slug = ?", ch.Slug).FirstOrCreate(&ch)
+		}
+		log.Println("Seeded initial channels: edu, tools, games")
+	}
+
+	// 补齐存量资源的 channel_slug (默认为 edu)
+	db.Model(&model.Resource{}).Where("channel_slug IS NULL OR channel_slug = ''").Update("channel_slug", "edu")
+
 	// 1. 初始化默认管理员 (账号: admin, 密码: admin123456)
 	var adminCount int64
 	db.Model(&model.AdminUser{}).Count(&adminCount)

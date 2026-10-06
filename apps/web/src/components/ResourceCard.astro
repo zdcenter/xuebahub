@@ -9,6 +9,7 @@ interface ResourceLink {
 
 interface Props {
   slug: string;
+  channelSlug?: string;
   title: string;
   subtitle?: string;
   stage: string;
@@ -22,18 +23,22 @@ interface Props {
   viewCount: number;
   saveCount: number;
   isRecommended?: boolean;
+  region?: string;
+  school?: string;
   links?: ResourceLink[];
 }
 
 const {
   slug,
+  channelSlug,
   title,
   subtitle,
   stage,
   grade,
   subject,
   edition,
-  coverImage = "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=600&auto=format&fit=crop&q=80",
+  region,
+  school,
   fileType = "PDF",
   fileSize = "12.5 MB",
   pageCount = 28,
@@ -43,108 +48,163 @@ const {
   links = []
 } = Astro.props;
 
-// 主推夸克链接
+const channelInfo: Record<string, { name: string; icon: string; bg: string; text: string; border: string }> = {
+  edu: { name: '教辅备考', icon: '📚', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+  tools: { name: '实用素材', icon: '🎨', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  games: { name: '怀旧单机', icon: '🎮', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' }
+};
+const currentCh = channelSlug ? channelInfo[channelSlug] : null;
+
+// 主推夸克链接与备用百度
 const primaryLink = links.find(l => l.drive_type === 'quark') || links[0] || {
   drive_type: 'quark',
   share_url: '#',
   is_primary: true
 };
+const hasBaidu = links.some(l => l.drive_type === 'baidu');
 ---
 
-<article class="paper-card rounded-2xl overflow-hidden flex flex-col group relative bg-white">
-  {isRecommended && (
-    <div class="absolute top-3 left-3 z-10 bg-amber-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center space-x-1">
-      <span>🔥 名师精选</span>
+<article class="resource-row-card bg-white rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all duration-200 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 group">
+  <!-- 左侧：类型图标徽标 + 中间信息密集流 -->
+  <div class="flex items-start space-x-3.5 sm:space-x-4 flex-1 min-w-0">
+    <!-- 专属类型特征徽章 (替代大面积缩略图) -->
+    <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/70 border border-slate-200 text-center shadow-xs group-hover:scale-105 group-hover:border-blue-300 transition-transform">
+      {fileType?.includes('PDF') ? (
+        <div class="flex flex-col items-center">
+          <span class="text-xl leading-none">📄</span>
+          <span class="text-[10px] font-mono font-bold mt-1 text-red-600">PDF</span>
+        </div>
+      ) : fileType?.includes('PPT') ? (
+        <div class="flex flex-col items-center">
+          <span class="text-xl leading-none">📑</span>
+          <span class="text-[10px] font-mono font-bold mt-1 text-amber-700">PPTX</span>
+        </div>
+      ) : fileType?.includes('视频') || fileType?.includes('MP4') ? (
+        <div class="flex flex-col items-center">
+          <span class="text-xl leading-none">🎬</span>
+          <span class="text-[10px] font-mono font-bold mt-1 text-blue-600">MP4</span>
+        </div>
+      ) : fileType?.includes('ZIP') ? (
+        <div class="flex flex-col items-center">
+          <span class="text-xl leading-none">📦</span>
+          <span class="text-[10px] font-mono font-bold mt-1 text-purple-700">ZIP</span>
+        </div>
+      ) : (
+        <div class="flex flex-col items-center">
+          <span class="text-xl leading-none">{currentCh ? currentCh.icon : '📁'}</span>
+          <span class="text-[10px] font-mono font-bold mt-1 text-slate-700">{fileType || 'DATA'}</span>
+        </div>
+      )}
     </div>
-  )}
 
-  {(fileType?.includes('视频') || fileType?.includes('MP4')) && (
-    <div class="absolute top-3 right-3 z-10 bg-red-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center space-x-1 animate-pulse">
-      <span>🎥 含高清视频</span>
-    </div>
-  )}
-
-  <div class="relative aspect-[16/10] overflow-hidden bg-slate-100 cursor-pointer">
-    <a href={`/resource/${slug}`}>
-      <img
-        src={coverImage}
-        alt={title}
-        class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-        loading="lazy"
-      />
-      <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80 group-hover:opacity-60 transition-opacity"></div>
-      
-      <!-- 试卷标签 -->
-      <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white">
-        <span class="bg-black/40 backdrop-blur-md px-2 py-0.5 rounded font-mono font-medium">
-          {pageCount} 页可打印 · {fileType}
-        </span>
-        <span class="bg-emerald-600/90 backdrop-blur-md px-2 py-0.5 rounded font-medium">
-          含参考答案
+    <!-- 资料详情本体 -->
+    <div class="flex-1 min-w-0 space-y-1.5">
+      <!-- 标签与状态流 -->
+      <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+        {currentCh && (
+          <span class={`px-2 py-0.5 ${currentCh.bg} ${currentCh.text} border ${currentCh.border} font-bold rounded-md flex items-center gap-1`}>
+            <span>{currentCh.icon}</span>
+            <span>{currentCh.name}</span>
+          </span>
+        )}
+        {grade && (
+          <span class="px-2 py-0.5 bg-slate-100 text-slate-700 font-medium rounded-md">
+            {grade}
+          </span>
+        )}
+        {subject && (
+          <span class="px-2 py-0.5 bg-blue-50 text-blue-700 font-medium rounded-md">
+            {subject}
+          </span>
+        )}
+        {edition && (
+          <span class="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-md border border-slate-200">
+            {edition}
+          </span>
+        )}
+        {school ? (
+          <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 font-medium rounded-md flex items-center gap-0.5">
+            <span>🏫</span>
+            <span>{school}</span>
+          </span>
+        ) : region ? (
+          <span class="px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 font-medium rounded-md flex items-center gap-0.5">
+            <span>📍</span>
+            <span>{region}</span>
+          </span>
+        ) : null}
+        {isRecommended && (
+          <span class="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 font-bold rounded-md flex items-center space-x-1">
+            <span>🔥 热门精选</span>
+          </span>
+        )}
+        {(fileType?.includes('视频') || fileType?.includes('MP4')) && (
+          <span class="px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 font-bold rounded-md flex items-center space-x-1 animate-pulse">
+            <span>🎥 含高清微课</span>
+          </span>
+        )}
+        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium rounded-md">
+          🟢 存活可用
         </span>
       </div>
-    </a>
-  </div>
 
-  <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
-    <!-- 分类与学科标签 -->
-    <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
-      {grade && (
-        <span class="px-2 py-0.5 bg-blue-50 text-blue-700 font-medium rounded-md">
-          {grade}
-        </span>
-      )}
-      {subject && (
-        <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 font-medium rounded-md">
-          {subject}
-        </span>
-      )}
-      {edition && (
-        <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md">
-          {edition}
-        </span>
-      )}
-    </div>
-
-    <!-- 资料标题 -->
-    <div>
-      <h3 class="font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 text-base leading-snug">
-        <a href={`/resource/${slug}`}>
+      <!-- 核心标题：直观、易读、可跳转 -->
+      <h3 class="text-base sm:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+        <a href={`/resource/${slug}`} class="hover:underline">
           {title}
         </a>
       </h3>
+
+      <!-- 描述特色副标题 -->
       {subtitle && (
-        <p class="text-xs text-slate-500 line-clamp-1 mt-1">
+        <p class="text-xs sm:text-sm text-slate-500 line-clamp-2 leading-relaxed">
           {subtitle}
         </p>
       )}
-    </div>
 
-    <!-- 转存数据统计与大小 -->
-    <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-      <div class="flex items-center space-x-3">
-        <span>大小：{fileSize}</span>
-        <span>•</span>
-        <span class="text-blue-600 font-medium">{saveCount} 人已转存</span>
+      <!-- 规格与社会认同数据 -->
+      <div class="flex flex-wrap items-center gap-3 sm:gap-4 pt-1 text-xs text-slate-400 font-mono">
+        <span class="text-slate-600 font-medium flex items-center gap-1">
+          <span>💾</span> 大小：<strong class="text-slate-700 font-semibold">{fileSize}</strong>
+        </span>
+        <span class="text-slate-600 font-medium flex items-center gap-1">
+          <span>📄</span> 规格：<strong class="text-slate-700 font-semibold">{pageCount > 100 ? `${pageCount}+ 套` : `${pageCount} 页可打印`}</strong>
+        </span>
+        <span class="hidden sm:inline-flex items-center gap-1">
+          <span>👁️</span> {viewCount} 次查阅
+        </span>
+        <span class="text-blue-600 font-semibold flex items-center gap-1">
+          <span>⚡</span> {saveCount} 人已极速转存
+        </span>
+        {hasBaidu && (
+          <span class="hidden md:inline-flex px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded text-[11px]">
+            📦 包含百度网盘备用
+          </span>
+        )}
       </div>
     </div>
+  </div>
 
-    <!-- 转存与详情行动区 -->
-    <div class="grid grid-cols-2 gap-2 pt-1">
-      <a
-        href={`/resource/${slug}`}
-        class="text-center py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
-      >
-        查看试卷试看
-      </a>
-      <a
-        href={primaryLink.share_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="btn-save-quark text-center py-2 px-3 text-xs font-bold text-white rounded-xl shadow-sm flex items-center justify-center space-x-1"
-      >
-        <span>⚡ 夸克极速转存</span>
-      </a>
-    </div>
+  <!-- 右侧：直达转化行动区 (桌面端垂直居中对齐，移动端全宽操作) -->
+  <div class="flex sm:flex-row lg:flex-col items-stretch lg:items-end justify-end gap-2 flex-shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+    <a
+      href={primaryLink.share_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="btn-save-quark flex-1 lg:flex-initial py-2.5 px-5 text-xs sm:text-sm font-bold text-white rounded-xl shadow-sm flex items-center justify-center space-x-1.5 hover:shadow-md transition-all whitespace-nowrap"
+      title="直接在新窗口打开夸克网盘极速转存"
+    >
+      <span>⚡ 夸克极速转存</span>
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+      </svg>
+    </a>
+
+    <a
+      href={`/resource/${slug}`}
+      class="py-2.5 px-4 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-xl transition text-center whitespace-nowrap"
+    >
+      试看详情 ➔
+    </a>
   </div>
 </article>

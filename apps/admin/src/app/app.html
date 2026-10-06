@@ -37,6 +37,26 @@
         (click)="switchTab('crawler')">
         <span class="icon">🕷️</span> 全网资源聚合监控
       </button>
+      <button 
+        [class.active]="currentTab() === 'accounts'" 
+        (click)="switchTab('accounts')">
+        <span class="icon">☁️</span> 网盘账号与转存换链
+      </button>
+      <button 
+        [class.active]="currentTab() === 'channels'" 
+        (click)="switchTab('channels')">
+        <span class="icon">🏷️</span> 网站顶级频道管理
+      </button>
+      <button 
+        [class.active]="currentTab() === 'navmenus'" 
+        (click)="switchTab('navmenus')">
+        <span class="icon">🧭</span> 网站多级导航配置 ({{ navMenus().length }})
+      </button>
+      <button 
+        [class.active]="currentTab() === 'schools'" 
+        (click)="switchTab('schools')">
+        <span class="icon">🏫</span> 地区与名校库 ({{ regions().length }})
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -56,8 +76,17 @@
           @if (currentTab() === 'add') { ✍️ 录入并发布新试卷/视频 }
           @if (currentTab() === 'stats') { 📊 推广收益与转化分析 }
           @if (currentTab() === 'crawler') { 🔍 全网资源并发抓取与巡检 }
+          @if (currentTab() === 'accounts') { ☁️ 网盘账号与全自动转存换链配置 }
+          @if (currentTab() === 'channels') { 🏷️ 网站顶级频道与业务线管理 }
+          @if (currentTab() === 'navmenus') { 🧭 网站前台多级导航与专区配置 }
+          @if (currentTab() === 'schools') { 🏫 重点名校与所属省市地区字典库 }
         </h1>
-        <p class="subtitle">针对中小学同步教辅、期末押题、奥数培优与微课视频</p>
+        <p class="subtitle">
+          @if (currentTab() === 'channels') { 动态管理教辅、生产力素材、怀旧单机游戏等顶级频道，支持一键上下线与排序 }
+          @else if (currentTab() === 'navmenus') { 自由配置前台顶部一级学段专区与下拉二级分类、高亮角标与跳转路由，全站实时同步 }
+          @else if (currentTab() === 'schools') { 预置全国及柳州本地重点中小学库，发资料时一键匹配，并支持随时自动入库新学校 }
+          @else { 覆盖刚需教辅、实用工具素材与经典单机整合包资源 }
+        </p>
       </div>
       <div class="quick-stats">
         <span class="badge quark">夸克主推转化率: 高</span>
@@ -69,12 +98,64 @@
       <!-- 1. 资料列表视图 -->
       @if (currentTab() === 'list') {
         <div class="card table-card">
-          <div class="card-header">
-            <h3>PostgreSQL 数据库在库资料 (共 {{ resources().length }} 套)</h3>
-            <div style="display: flex; gap: 8px;">
+          <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+              <h3 style="margin: 0;">PostgreSQL 数据库在库资料 (共 {{ resources().length }} 套)</h3>
+              <div class="filter-tab-pills">
+                <button 
+                  type="button"
+                  class="filter-tab-pill" 
+                  [class.active]="listFilter() === 'all'" 
+                  (click)="listFilter.set('all')">
+                  全部 ({{ resources().length }})
+                </button>
+                <button 
+                  type="button"
+                  class="filter-tab-pill danger" 
+                  [class.active]="listFilter() === 'invalid'" 
+                  (click)="listFilter.set('invalid')">
+                  🚨 仅看失效资料 ({{ invalidResourceCount() }})
+                </button>
+                <button 
+                  type="button"
+                  class="filter-tab-pill warning" 
+                  [class.active]="listFilter() === 'reported'" 
+                  (click)="listFilter.set('reported')">
+                  ⚠️ 仅看用户报错 ({{ reportedResourceCount() }})
+                </button>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="btn" style="background: #e0f2fe; color: #0284c7; font-weight: 600;" (click)="openBatchCheckModal()">
+                🛡️ 一键巡检链接 (防封限频)
+              </button>
               <button class="btn" style="background: #f1f5f9; color: #475569;" (click)="loadResources()">🔄 刷新数据</button>
               <button class="btn btn-primary" (click)="switchTab('add')">+ 发布新资料</button>
             </div>
+          </div>
+
+          <!-- 顶级业务频道切换条 -->
+          <div style="display: flex; gap: 8px; padding: 10px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 12px; font-weight: 600; color: #64748b; margin-right: 4px;">🏷️ 业务频道:</span>
+            <button 
+              type="button" 
+              class="filter-tab-pill" 
+              [class.active]="currentChannelFilter() === 'all'" 
+              (click)="filterByChannel('all')">
+              🌐 全部频道 ({{ resources().length }})
+            </button>
+            @for (ch of channels(); track ch.id) {
+              <button 
+                type="button" 
+                class="filter-tab-pill" 
+                [class.active]="currentChannelFilter() === ch.slug" 
+                (click)="filterByChannel(ch.slug)">
+                <span>{{ ch.icon }}</span> {{ ch.name }}
+                @if (!ch.is_active) {
+                  <span style="font-size: 10px; background: #fee2e2; color: #ef4444; padding: 1px 4px; border-radius: 4px; margin-left: 2px;">已隐</span>
+                }
+              </button>
+            }
           </div>
 
           @if (loading()) {
@@ -102,16 +183,30 @@
                 </tr>
               </thead>
               <tbody>
-                @for (res of resources(); track res.id) {
-                  <tr>
+                @for (res of filteredResources(); track res.id) {
+                  <tr [class.row-invalid]="hasInvalidLink(res)" [class.row-reported]="hasReportedLink(res)">
                     <td>
                       <div class="res-title-cell">
-                        <div class="title-row">
+                        <div class="title-row" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                          <span style="font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: #e0f2fe; color: #0369a1; white-space: nowrap;">
+                            {{ getChannelIcon(res.channel_slug) }} {{ getChannelName(res.channel_slug) }}
+                          </span>
                           <a [href]="'http://localhost:4321/resource/' + res.slug" target="_blank" class="res-title-link" title="点击在前台新窗口打开预览">
                             <span class="title-text">{{ res.title }}</span>
                             <span class="external-icon">↗</span>
                           </a>
                         </div>
+                        @if (hasInvalidLink(res)) {
+                          <div class="table-alert-pill danger">
+                            <span>🚨 存在失效网盘 · 急需补链</span>
+                            <button type="button" class="btn-text-patch" (click)="openEdit(res)">✏️ 立即补链</button>
+                          </div>
+                        } @else if (hasReportedLink(res)) {
+                          <div class="table-alert-pill warning">
+                            <span>⚠️ 存在用户报错反馈</span>
+                            <button type="button" class="btn-text-patch" (click)="openEdit(res)">🔍 核验修改</button>
+                          </div>
+                        }
                         <div class="url-row">
                           <a [href]="'http://localhost:4321/resource/' + res.slug" target="_blank" class="slug-pill" title="点击访问前台页面">
                             <span class="slug-icon">🔗</span>
@@ -148,11 +243,39 @@
                         </div>
                         <div class="link-breakdown-list">
                           @for (l of res.links; track l.id || l.drive_type) {
-                            <div class="drive-pill" [class.quark]="l.drive_type === 'quark'" [class.baidu]="l.drive_type === 'baidu'">
+                            <div class="drive-pill" 
+                              [class.quark]="l.drive_type === 'quark'" 
+                              [class.baidu]="l.drive_type === 'baidu'"
+                              [class.drive-pill-invalid]="l.status === 'invalid'"
+                              [class.drive-pill-reported]="l.status === 'reported'">
                               <span class="drive-label">{{ l.drive_type === 'quark' ? '⚡ 夸克' : '📦 百度' }}</span>
                               <span class="drive-size">{{ l.file_size || '15 MB' }}</span>
                               <span class="drive-divider">·</span>
                               <span class="drive-count"><strong>{{ l.click_count || 0 }}</strong> 转存</span>
+                              
+                              <!-- 醒目的状态微徽标 -->
+                              @if (l.status === 'invalid') {
+                                <span class="drive-badge-invalid" [title]="l.invalid_reason ? '失效原因: ' + l.invalid_reason : '链接已失效'">
+                                  ❌ 失效
+                                </span>
+                                <button type="button" class="btn-quick-patch" (click)="openEdit(res)" title="点击立即补链">✏️</button>
+                              } @else if (l.status === 'reported') {
+                                <span class="drive-badge-reported" [title]="'用户报错 ' + (l.report_count || 1) + ' 次: ' + (l.invalid_reason || '待核验')">
+                                  ⚠️ 报错({{ l.report_count || 1 }})
+                                </span>
+                              } @else if (l.status === 'active') {
+                                <span class="drive-badge-active" [title]="'正常存活' + (l.last_checked_at ? ' · 检测于 ' + l.last_checked_at.substring(0, 10) : '')">
+                                  ✅ 正常
+                                </span>
+                              } @else {
+                                <span class="drive-badge-uncheck" title="尚未执行巡检">
+                                  ⚪ 待检
+                                </span>
+                              }
+
+                              @if (l.id) {
+                                <button type="button" class="btn-check-icon" (click)="checkSingleLink(l)" title="立即探测链接有效性">🔍</button>
+                              }
                             </div>
                           }
                         </div>
@@ -199,6 +322,27 @@
                 placeholder="例如：2026春季人教版四年级下册数学期末夺冠押题卷（含手写解析步骤+视频）" 
                 required 
               />
+            </div>
+
+            <!-- 所属频道选择 -->
+            <div class="form-group full-width" style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <label style="font-weight: 600; color: #1e293b; margin-bottom: 8px; display: block;">🏷️ 所属业务顶级频道 <span class="required">*</span></label>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                @for (ch of channels(); track ch.id) {
+                  <label 
+                    style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; cursor: pointer; border: 1.5px solid;"
+                    [style.border-color]="newResource.channel_slug === ch.slug ? '#0284c7' : '#cbd5e1'"
+                    [style.background]="newResource.channel_slug === ch.slug ? '#e0f2fe' : '#ffffff'"
+                    [style.color]="newResource.channel_slug === ch.slug ? '#0369a1' : '#475569'">
+                    <input type="radio" [(ngModel)]="newResource.channel_slug" name="new_channel_slug" [value]="ch.slug" style="margin: 0; cursor: pointer;" />
+                    <span style="font-size: 16px;">{{ ch.icon }}</span>
+                    <span style="font-weight: 600;">{{ ch.name }}</span>
+                    @if (!ch.is_active) {
+                      <span style="font-size: 10px; background: #fee2e2; color: #ef4444; padding: 1px 4px; border-radius: 4px;">已隐</span>
+                    }
+                  </label>
+                }
+              </div>
             </div>
 
             <!-- 1. 所属学段 (智能联动触发源) -->
@@ -271,6 +415,97 @@
               </div>
             </div>
 
+            <!-- 5. 归属省市地区与重点名校 (智能字典联动，支持一键点选与自动入库) -->
+            <div class="form-group full-width" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <label style="font-weight: 700; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                  <span>🏫</span> 地区与重点名校联动选择
+                  <span class="tip-text">（点击下方标签一键填入，免除手动重复打字；输入新学校即可自动存库）</span>
+                </label>
+                <button type="button" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 3px 8px;" (click)="switchTab('schools')">
+                  ⚙️ 管理名校字典库
+                </button>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <!-- 地区选择 -->
+                <div>
+                  <label style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; display: block;">
+                    所属省市/地区
+                  </label>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="newResource.region" 
+                    name="region" 
+                    placeholder="例如：广西-柳州" 
+                    style="margin-bottom: 6px;"
+                  />
+                  <!-- 快捷地区标签 -->
+                  <div class="pill-group" style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
+                    @for (r of regions(); track r.id) {
+                      <span 
+                        class="pill-tag" 
+                        [class.selected]="newResource.region === r.name"
+                        (click)="selectRegion(r.name, 'new')">
+                        {{ r.name }}
+                      </span>
+                    }
+                  </div>
+                </div>
+
+                <!-- 名校选择 -->
+                <div>
+                  <label style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; display: block;">
+                    归属名校 / 命题单位
+                  </label>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="newResource.school" 
+                    name="school" 
+                    placeholder="点击下方学校，或直接输入新学校" 
+                    style="margin-bottom: 6px;"
+                  />
+
+                  <!-- 该地区的名校快捷点选 -->
+                  <div class="pill-group" style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; max-height: 120px; overflow-y: auto;">
+                    @for (s of getSchoolsForRegion(newResource.region); track s.id) {
+                      <span 
+                        class="pill-tag" 
+                        [class.selected]="newResource.school === s.name"
+                        (click)="selectSchool(s.name, 'new')"
+                        title="点击一键选用该学校">
+                        {{ s.name }}
+                      </span>
+                    }
+                    @if (getSchoolsForRegion(newResource.region).length === 0) {
+                      <span style="font-size: 11px; color: #94a3b8; font-style: italic;">
+                        {{ newResource.region ? '该地区暂无预设学校，在下方输入可快捷存库' : '请先在左侧选择所属地区' }}
+                      </span>
+                    }
+                  </div>
+
+                  <!-- 快捷新增新学校入库按钮 -->
+                  <div style="margin-top: 10px; display: flex; gap: 6px; align-items: center; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                    <input 
+                      type="text" 
+                      [ngModel]="quickNewSchoolName()" 
+                      (ngModelChange)="quickNewSchoolName.set($event)"
+                      name="quick_school_new" 
+                      placeholder="+ 输入新学校并存入本地区 (如: 柳州十八中)"
+                      style="font-size: 12px; padding: 4px 8px; flex: 1; border: 1px solid #e2e8f0;"
+                    />
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-primary" 
+                      style="font-size: 11px; padding: 4px 10px; white-space: nowrap;"
+                      (click)="addQuickSchool('new')">
+                      ➕ 存入字典
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="form-group">
               <label>包含视频精讲课程？</label>
               <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
@@ -285,21 +520,32 @@
               <div class="netdisk-grid">
                 <div class="netdisk-item primary">
                   <div class="netdisk-title">⚡ 夸克网盘链接（主推高佣金通道）<span class="required">*</span></div>
-                  <div class="input-with-btn">
+                  <div class="netdisk-url-box">
                     <input 
                       type="url" 
                       [(ngModel)]="newResource.quarkUrl" 
                       (blur)="autoDetectNetdiskInfo('new')"
                       name="quarkUrl" 
-                      placeholder="https://pan.quark.cn/s/xxxxxxxx" 
+                      placeholder="https://pan.quark.cn/s/xxxxxxxx (可贴他人分享)" 
+                      class="netdisk-url-input"
                       required 
                     />
+                  </div>
+                  <div class="netdisk-url-actions">
                     <button 
                       type="button" 
                       class="btn-detect" 
-                      [disabled]="parsingNetdisk()"
+                      [disabled]="parsingNetdisk() || transferringQuark()"
                       (click)="autoDetectNetdiskInfo('new')">
-                      {{ parsingNetdisk() ? '正在探测...' : '⚡ 自动读取大小与格式' }}
+                      {{ parsingNetdisk() ? '正在探测...' : '⚡ 仅探测规格' }}
+                    </button>
+                    <button 
+                      type="button" 
+                      class="btn-transfer" 
+                      [disabled]="transferringQuark() || parsingNetdisk()"
+                      (click)="autoTransferQuark('new')"
+                      title="自动转存到我的夸克网盘并生成全新专属分享链接">
+                      {{ transferringQuark() ? '🔄 正在转存换链...' : '🔄 一键转存为我的夸克链接' }}
                     </button>
                   </div>
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
@@ -317,38 +563,42 @@
 
                 <div class="netdisk-item">
                   <div class="netdisk-title">📦 百度网盘链接（备用）</div>
-                  <div class="input-with-btn">
+                  <div class="netdisk-url-box">
                     <input 
                       type="url" 
                       [(ngModel)]="newResource.baiduUrl" 
                       (blur)="autoDetectBaiduInfo('new')"
                       name="baiduUrl" 
                       placeholder="https://pan.baidu.com/s/xxxxxxxx" 
+                      class="netdisk-url-input"
                     />
+                  </div>
+                  <div class="netdisk-url-actions">
                     <button 
                       type="button" 
                       class="btn-detect" 
+                      style="width: 100%;"
                       [disabled]="parsingBaidu()"
                       (click)="autoDetectBaiduInfo('new')">
                       {{ parsingBaidu() ? '正在探测...' : '⚡ 自动读取大小与格式' }}
                     </button>
                   </div>
-                  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
+                  <div style="display: grid; grid-template-columns: 90px 1fr 1fr; gap: 8px; margin-top: 8px;">
                     <div>
-                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度提取码</label>
+                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px; white-space: nowrap;">百度提取码</label>
                       <input 
                         type="text" 
                         [(ngModel)]="newResource.baiduCode" 
                         name="baiduCode" 
-                        placeholder="提取码 (如有)" 
+                        placeholder="提取码" 
                       />
                     </div>
                     <div>
-                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度文件大小</label>
+                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px; white-space: nowrap;">百度文件大小</label>
                       <input type="text" [(ngModel)]="newResource.baiduFileSize" name="baiduFileSize" placeholder="如 15.0 MB" />
                     </div>
                     <div>
-                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度文件格式</label>
+                      <label style="font-size: 11px; color: #64748b; margin-bottom: 2px; white-space: nowrap;">百度文件格式</label>
                       <input type="text" [(ngModel)]="newResource.baiduFileType" name="baiduFileType" placeholder="如 PDF" />
                     </div>
                   </div>
@@ -405,6 +655,778 @@
           </div>
         </div>
       }
+
+      <!-- 5. 网盘账号与全自动转存换链配置 -->
+      @if (currentTab() === 'accounts') {
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <!-- 功能说明与佣金拉新指引横幅 -->
+          <div class="account-hero-banner">
+            <div class="hero-left">
+              <div class="hero-badge">⚡ 夸克推广拉新核心引擎</div>
+              <h2>全自动“洗链换链”：一键将外部资源转化为您的专属佣金分享</h2>
+              <p>在此配置您的夸克个人网盘 Cookie 凭据后，在发布或编辑资源时，只需粘贴他人分享链接并点击【一键转存为我的网盘链接】，后端将自动把文件秒级转存到您的个人网盘、并生成全新的专属永久公开分享链接（带您的官方拉新推广分成），全程无需人工下载上传！</p>
+            </div>
+            <div class="hero-stats">
+              <div class="hero-stat-item">
+                <span class="stat-num">{{ accounts().length }}</span>
+                <span class="stat-label">已配置网盘</span>
+              </div>
+              <div class="hero-stat-item">
+                <span class="stat-num" style="color: #10b981;">0 秒</span>
+                <span class="stat-label">人工下载耗时</span>
+              </div>
+              <div class="hero-stat-item">
+                <span class="stat-num" style="color: #38bdf8;">100%</span>
+                <span class="stat-label">佣金归属自身</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 双栏主体：左侧账号表单，右侧账号列表 -->
+          <div class="accounts-grid-layout">
+            <!-- 左侧：添加/编辑账号表单 -->
+            <div class="card account-form-card" id="account-config-card">
+              <div class="card-header">
+                <h3>{{ accountForm.id ? '✏️ 编辑网盘账号' : '➕ 配置网盘转存账号' }}</h3>
+                <div style="display: flex; gap: 8px;">
+                  @if (accountForm.id) {
+                    <button type="button" class="btn btn-sm btn-primary" (click)="startAddNewAccount()">➕ 新增其他账号</button>
+                    <button type="button" class="btn btn-sm btn-secondary" (click)="resetAccountForm()">清空表单</button>
+                  }
+                </div>
+              </div>
+              <form (ngSubmit)="saveAccountConfig()" class="account-form-body">
+                <div class="form-group">
+                  <label>网盘平台 <span class="required">*</span></label>
+                  <select [(ngModel)]="accountForm.drive_type" name="acc_drive_type">
+                    <option value="quark">⚡ 夸克网盘 (Quark) - 支持全自动洗链与转存</option>
+                    <option value="baidu" disabled>📦 百度网盘 (Baidu) - 规划中</option>
+                    <option value="aliyun" disabled>☁️ 阿里云盘 (Aliyun) - 规划中</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>账号标识备注 <span class="required">*</span></label>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="accountForm.account_name" 
+                    name="acc_name" 
+                    placeholder="如：站长主力夸克盘 / 2号推广备用盘" 
+                    required 
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>默认保存目标文件夹</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input 
+                      type="text" 
+                      [(ngModel)]="accountForm.target_folder_name" 
+                      name="acc_folder_name" 
+                      readonly 
+                      style="background: #f8fafc; font-weight: 600; flex: 1;" 
+                    />
+                    <input type="hidden" [(ngModel)]="accountForm.target_folder_fid" name="acc_folder_fid" />
+                    @if (accountForm.id) {
+                      <button type="button" class="btn btn-secondary btn-sm" (click)="openFolderPickerById(accountForm.id)">📁 浏览选择</button>
+                    }
+                  </div>
+                  <small style="color: #64748b; font-size: 11px; margin-top: 4px; display: block;">
+                    默认转存至根目录 <code>/</code>，您可点击【📁 浏览选择】或在右侧卡片中自由挑选/新建/删除网盘目录。
+                  </small>
+                </div>
+
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" [(ngModel)]="accountForm.is_default" name="acc_is_default" style="width: 16px; height: 16px;" />
+                    <span>设为系统默认转存网盘（洗链时优先选用）</span>
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label>网页端 Cookie 凭据 <span class="required">*</span></label>
+                    <span style="font-size: 11px; color: #0284c7; font-weight: 600;">{{ accountForm.id ? '（留空则保持原Cookie不变）' : '' }}</span>
+                  </div>
+                  <textarea 
+                    [(ngModel)]="accountForm.cookie" 
+                    name="acc_cookie" 
+                    rows="4" 
+                    placeholder="请粘贴网页端 pan.quark.cn 登录后的 Cookie 字符串..."
+                    style="font-family: monospace; font-size: 12px; resize: vertical;"
+                  ></textarea>
+                </div>
+
+                <!-- 贴心获取教程提示 -->
+                <div class="cookie-guide-box">
+                  <div class="guide-title">💡 30秒快速获取夸克 Cookie：</div>
+                  <ol>
+                    <li>电脑浏览器访问 <a href="https://pan.quark.cn" target="_blank">pan.quark.cn</a> 并正常登录您的账号；</li>
+                    <li>按 <b>F12</b> 打开开发者工具，切换到 <b>Network (网络)</b> 标签；</li>
+                    <li>刷新网页（F5），点击左侧任意一个网络请求；</li>
+                    <li>在右侧 <b>Headers -> Request Headers</b> 复制 <code>Cookie:</code> 后的全部内容，粘贴至上方输入框。</li>
+                  </ol>
+                </div>
+
+                <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
+                  <button type="submit" class="btn btn-primary" [disabled]="accountLoading()" style="padding: 10px 20px;">
+                    {{ accountLoading() ? '正在连通测试与保存...' : '💾 保存并立即验证连通性' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- 右侧：已配置账号卡片列表 -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="font-size: 15px; font-weight: 700; color: #0f172a;">已托管的网盘账号 ({{ accounts().length }})</h3>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn btn-sm btn-primary" (click)="startAddNewAccount()" style="font-weight: 600;">➕ 添加新网盘账号</button>
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="loadAccounts()">🔄 刷新状态</button>
+                </div>
+              </div>
+
+              @if (accounts().length === 0) {
+                <div class="card" style="padding: 40px 20px; text-align: center; color: #64748b;">
+                  <div style="font-size: 36px; margin-bottom: 8px;">☁️</div>
+                  <div style="font-size: 14px; font-weight: 600; color: #334155;">尚未添加任何网盘账号</div>
+                  <p style="font-size: 12px; margin-top: 4px;">在左侧添加您的夸克网盘账号后，即可激活一键全自动转存与换链功能。</p>
+                </div>
+              }
+
+              @for (acc of accounts(); track acc.id) {
+                <div class="card account-item-card" 
+                     [class.is-default]="acc.is_default" 
+                     [class.is-over-quota]="acc.is_over_quota"
+                     [style.cursor]="acc.is_default ? 'default' : 'pointer'"
+                     (click)="setDefaultAccount(acc, $event)">
+                  <div class="acc-card-header">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <div class="drive-icon-badge quark">⚡</div>
+                      <div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                          <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0;">{{ acc.account_name }}</h4>
+                          @if (acc.is_default) {
+                            <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-weight: 700;">🟢 默认激活中</span>
+                          } @else {
+                            <button type="button" class="btn btn-xs" style="background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer; padding: 2px 8px;" (click)="setDefaultAccount(acc, $event)">
+                              ⚪ 点击设为默认
+                            </button>
+                          }
+                        </div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                          平台: 夸克网盘 · 昵称: <b>{{ acc.nickname || '未同步' }}</b>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      @if (acc.status === 'valid') {
+                        @if (acc.is_over_quota) {
+                          <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px;">⚠️ 空间已超限</span>
+                        } @else {
+                          <span class="badge" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px;">🟢 连通正常</span>
+                        }
+                      } @else {
+                        <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px;">🔴 Cookie已失效</span>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="acc-metrics-grid">
+                    <div class="metric-cell">
+                      <span class="metric-label">网盘总空间</span>
+                      <span class="metric-val">{{ acc.total_capacity || '--' }}</span>
+                    </div>
+                    <div class="metric-cell">
+                      <span class="metric-label">{{ acc.is_over_quota ? '已用容量 (超限)' : '可用剩余容量' }}</span>
+                      <span class="metric-val" [style.color]="acc.is_over_quota ? '#dc2626' : '#059669'">
+                        {{ acc.is_over_quota ? (acc.used_capacity || '--') : (acc.free_capacity || '--') }}
+                      </span>
+                    </div>
+                    <div class="metric-cell">
+                      <span class="metric-label">默认转存目录</span>
+                      <span class="metric-val" style="font-family: monospace;">📁 {{ formatFolderPath(acc.target_folder_name) }}</span>
+                    </div>
+                    <div class="metric-cell">
+                      <span class="metric-label">上次验证</span>
+                      <span class="metric-val" style="font-size: 11px; color: #64748b;">
+                        {{ acc.last_verified_at ? (acc.last_verified_at | date:'MM-dd HH:mm') : '未验证' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  @if (acc.error_message) {
+                    <div style="margin-top: 10px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 6px 10px; font-size: 11px; color: #be123c;">
+                      ⚠️ {{ acc.error_message }}
+                    </div>
+                  }
+
+                  <div class="acc-card-footer">
+                    <div style="font-size: 11px; color: #94a3b8; font-family: monospace;">
+                      Cookie: {{ acc.cookie_masked }}
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                      @if (acc.is_default) {
+                        <button type="button" class="btn btn-sm" style="background: #10b981; color: #ffffff; border: 1px solid #059669; font-weight: 700; box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3); cursor: default;" (click)="$event.stopPropagation()" title="当前已是默认转存账号">
+                          ✅ 当前默认
+                        </button>
+                      } @else {
+                        <button type="button" class="btn btn-sm btn-secondary" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 600;" (click)="setDefaultAccount(acc, $event)" title="立即将此账号设为默认转存账号">
+                          ⭐ 设为默认
+                        </button>
+                      }
+                      <button type="button" class="btn btn-sm btn-secondary" (click)="verifyAccount(acc); $event.stopPropagation()" title="重新发送探测包验证Cookie是否可用并刷新容量">
+                        🔍 重新验证
+                      </button>
+                      <button type="button" class="btn btn-sm btn-secondary" (click)="openFolderPicker(acc); $event.stopPropagation()" title="选择个人网盘下的目标文件夹">
+                        📁 选择目录
+                      </button>
+                      <button type="button" class="btn btn-sm btn-secondary" (click)="editAccount(acc); $event.stopPropagation()">
+                        ✏️ 修改
+                      </button>
+                      <button type="button" class="btn btn-sm" style="color: #dc2626; border-color: #fca5a5;" (click)="deleteAccount(acc.id!); $event.stopPropagation()">
+                        🗑️ 删除
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- 独立测试转存与换链沙盒 -->
+          <div class="card" style="margin-top: 10px;">
+            <div class="card-header">
+              <h3>🧪 夸克链接独立在线转存与换链测试工具</h3>
+              <span class="badge quark">云端自动洗链沙盒</span>
+            </div>
+            <div style="padding: 20px;">
+              <p style="font-size: 13px; color: #64748b; margin-bottom: 14px;">
+                无需立即创建文章，输入任意他人的夸克分享链接（如群里或微信公众号看到的学习资料分享），点击即可在您的网盘中生成专属于您的全新分享链。
+              </p>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                <div style="flex: 1.5; min-width: 200px;">
+                  <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">使用转存网盘账号</label>
+                  <select 
+                    [(ngModel)]="testTransfer.account_id" 
+                    style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; font-size: 13px;">
+                    <option value="">⭐ 自动选用系统默认网盘账号</option>
+                    @for (acc of accounts(); track acc.id) {
+                      <option [value]="acc.id">{{ acc.account_name }} ({{ acc.nickname || '夸克' }}){{ acc.is_default ? ' [当前默认]' : '' }}</option>
+                    }
+                  </select>
+                </div>
+                <div style="flex: 2; min-width: 260px;">
+                  <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">他人夸克分享链接</label>
+                  <input 
+                    type="url" 
+                    [(ngModel)]="testTransfer.share_url" 
+                    placeholder="https://pan.quark.cn/s/xxxxxxxx" 
+                    style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px;"
+                  />
+                </div>
+                <div style="flex: 1; min-width: 120px;">
+                  <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">提取码（如有）</label>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="testTransfer.passcode" 
+                    placeholder="无提取码可留空" 
+                    style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px;"
+                  />
+                </div>
+                <div>
+                  <button 
+                    type="button" 
+                    class="btn btn-primary" 
+                    [disabled]="testingTransfer()" 
+                    (click)="runTestTransfer()" 
+                    style="padding: 10px 20px; font-weight: 600;">
+                    {{ testingTransfer() ? '🔄 正在云端转存并换链...' : '🚀 立即转存并生成我的分享链接' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- 测试转存换链结果 -->
+              @if (testTransfer.result) {
+                <div class="test-result-card">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #065f46;">
+                      🎉 转存换链成功！已归属到您的个人夸克网盘
+                    </div>
+                    <span class="badge" style="background: #d1fae5; color: #047857;">永久有效分享</span>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px;">
+                    <div style="background: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #a7f3d0;">
+                      <div style="font-size: 11px; color: #64748b;">识别资料名称</div>
+                      <div style="font-size: 13px; font-weight: 700; color: #1e293b;">{{ testTransfer.result.share_title || testTransfer.result.file_name }}</div>
+                    </div>
+                    <div style="background: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #a7f3d0;">
+                      <div style="font-size: 11px; color: #64748b;">真实文件大小</div>
+                      <div style="font-size: 13px; font-weight: 700; color: #2563eb;">{{ testTransfer.result.file_size }}</div>
+                    </div>
+                    <div style="background: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #a7f3d0;">
+                      <div style="font-size: 11px; color: #64748b;">文件格式属性</div>
+                      <div style="font-size: 13px; font-weight: 700; color: #059669;">{{ testTransfer.result.file_type }}</div>
+                    </div>
+                  </div>
+
+                  <div style="background: #ffffff; padding: 12px 14px; border-radius: 8px; border: 1px solid #a7f3d0; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="min-width: 0; flex: 1;">
+                      <div style="font-size: 11px; color: #64748b;">您的全新专属夸克推广分享链接：</div>
+                      <div style="font-size: 13px; font-weight: 700; color: #0f172a; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ testTransfer.result.new_share_url }}
+                      </div>
+                    </div>
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-primary" 
+                      (click)="showToast('已复制新分享链接至剪贴板')" 
+                      style="flex-shrink: 0; background: #059669; border-color: #059669;">
+                      📋 复制专属链接
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- 6. 顶级频道管理视图 (Channels Management) -->
+      @if (currentTab() === 'channels') {
+        <div class="card channel-manager-card">
+          <div class="card-header" style="flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+            <div>
+              <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span>🏷️</span> 网站顶级频道管理
+                <span style="font-size: 13px; font-weight: normal; color: #64748b;">(已配置 {{ channels().length }} 个业务大类)</span>
+              </h3>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">
+                动态扩展教辅、实用素材、经典怀旧游戏等业务线。支持一键隐藏与上线，隐藏后前台导航及下属资料均自动屏蔽。
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary" (click)="loadChannels()">🔄 刷新频道</button>
+              <button class="btn btn-primary" (click)="openCreateChannelModal()">➕ 新建频道</button>
+            </div>
+          </div>
+
+          <div style="padding: 24px;">
+            <!-- 频道卡片列表 -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px;">
+              @for (ch of channels(); track ch.id) {
+                <div 
+                  class="channel-card" 
+                  [style.border]="ch.is_active ? '1.5px solid #cbd5e1' : '1.5px dashed #fca5a5'"
+                  [style.background]="ch.is_active ? '#ffffff' : '#fef2f2'"
+                  style="border-radius: 12px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease;">
+                  
+                  <div>
+                    <!-- 频道头部：图标、名称、状态 -->
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px;">
+                      <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 32px; line-height: 1; background: #f1f5f9; padding: 8px; border-radius: 10px;">{{ ch.icon }}</span>
+                        <div>
+                          <div style="font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                            {{ ch.name }}
+                            <span style="font-size: 11px; font-family: monospace; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px;">
+                              slug: {{ ch.slug }}
+                            </span>
+                          </div>
+                          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                            排序权重: {{ ch.sort_order }} · {{ ch.is_active ? '公开展示' : '已屏蔽隐藏' }}
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 状态指示胶囊 -->
+                      <div>
+                        @if (ch.is_active) {
+                          <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: #dcfce7; color: #15803d; border: 1px solid #86efac;">
+                            🟢 已上线展示
+                          </span>
+                        } @else {
+                          <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;">
+                            ⚪ 已隐藏屏蔽
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- 频道说明 -->
+                    <p style="font-size: 13px; color: #475569; line-height: 1.5; margin: 0 0 16px 0; min-height: 38px;">
+                      {{ ch.description || '暂无业务描述' }}
+                    </p>
+
+                    <!-- 统计信息 -->
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; flex: 1;">
+                        <div style="font-size: 11px; color: #64748b;">该频道在库资料</div>
+                        <div style="font-size: 16px; font-weight: 700; color: #0284c7; margin-top: 2px;">
+                          {{ ch.resource_count || 0 }} <span style="font-size: 12px; font-weight: normal; color: #64748b;">份</span>
+                        </div>
+                      </div>
+                      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; flex: 1;">
+                        <div style="font-size: 11px; color: #64748b;">前台访问路径 (SEO友好)</div>
+                        <div style="font-size: 12px; font-family: monospace; font-weight: 600; color: #0284c7; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                          /{{ ch.slug }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 快捷操作区 -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 14px; gap: 8px;">
+                    <div>
+                      @if (ch.is_active) {
+                        <button 
+                          type="button" 
+                          class="btn btn-sm" 
+                          style="background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600; font-size: 12px; padding: 6px 12px;" 
+                          (click)="toggleChannelActive(ch, $event)"
+                          title="点击在前台隐藏此频道及其所有资料">
+                          🙈 一键隐藏
+                        </button>
+                      } @else {
+                        <button 
+                          type="button" 
+                          class="btn btn-sm" 
+                          style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-weight: 600; font-size: 12px; padding: 6px 12px;" 
+                          (click)="toggleChannelActive(ch, $event)"
+                          title="点击在前台重新上线展示此频道">
+                          👁️ 一键上线
+                        </button>
+                      }
+                    </div>
+
+                    <div style="display: flex; gap: 6px;">
+                      <button 
+                        type="button" 
+                        class="btn btn-sm btn-secondary" 
+                        style="font-size: 12px; padding: 6px 10px;" 
+                        (click)="openEditChannelModal(ch)">
+                        ✏️ 编辑配置
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-sm btn-icon-del" 
+                        style="padding: 6px 10px; font-size: 12px;" 
+                        (click)="deleteChannel(ch, $event)"
+                        title="删除该频道（要求无关联资料）">
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- 7. 网站多级导航与专区管理视图 (Nav Menus Management) -->
+      @if (currentTab() === 'navmenus') {
+        <div class="card channel-manager-card">
+          <div class="card-header" style="flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+            <div>
+              <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span>🧭</span> 网站前台多级导航与专区配置中心
+                <span style="font-size: 13px; font-weight: normal; color: #64748b;">(一级专区 {{ navMenus().length }} 个)</span>
+              </h3>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">
+                精细化配置前台顶部导航的一级菜单（小学、初中、高中、成人考证等）及鼠标悬停二级下拉分类。支持自定义跳转路由、热门高亮角标 (HOT/必刷)、一键显隐与排序。
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary" (click)="loadNavMenus()">🔄 刷新导航</button>
+              <button class="btn btn-primary" (click)="openCreateNavMenuModal()">➕ 新建一级专区</button>
+            </div>
+          </div>
+
+          <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+            @for (menu of navMenus(); track menu.id) {
+              <div 
+                style="background: #ffffff; border-radius: 12px; border: 1.5px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.03); overflow: hidden; transition: all 0.2s ease;">
+                
+                <!-- 一级菜单栏头部 -->
+                <div style="background: #f8fafc; padding: 14px 20px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 24px; line-height: 1;">{{ menu.icon }}</span>
+                    <div>
+                      <div style="font-size: 16px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        {{ menu.title }}
+                        @if (menu.badge_text) {
+                          <span style="font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #fee2e2; color: #ef4444;">
+                            {{ menu.badge_text }}
+                          </span>
+                        }
+                        @if (menu.is_special_highlight) {
+                          <span style="font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #fef3c7; color: #b45309;">
+                            ⭐ 特别推荐
+                          </span>
+                        }
+                      </div>
+                      <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                        跳转路径: <code style="color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;">{{ menu.link_url }}</code>
+                        · 排序权重: <strong>{{ menu.sort_order }}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    @if (menu.is_active) {
+                      <button 
+                        type="button" 
+                        class="btn btn-sm" 
+                        style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-weight: 600; font-size: 12px; padding: 5px 10px;"
+                        (click)="toggleNavMenuActive(menu, $event)"
+                        title="点击隐藏此菜单">
+                        🟢 展示中
+                      </button>
+                    } @else {
+                      <button 
+                        type="button" 
+                        class="btn btn-sm" 
+                        style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-weight: 600; font-size: 12px; padding: 5px 10px;"
+                        (click)="toggleNavMenuActive(menu, $event)"
+                        title="点击在前台恢复上线">
+                        ⚪ 已隐藏
+                      </button>
+                    }
+
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-secondary" 
+                      style="font-size: 12px; padding: 5px 10px;"
+                      (click)="openCreateNavMenuModal(menu.id)">
+                      ➕ 添加二级子菜单
+                    </button>
+
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-secondary" 
+                      style="font-size: 12px; padding: 5px 10px;"
+                      (click)="openEditNavMenuModal(menu)">
+                      ✏️ 编辑
+                    </button>
+
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-icon-del" 
+                      style="font-size: 12px; padding: 5px 8px;"
+                      (click)="deleteNavMenu(menu.id, menu.title, $event)"
+                      title="删除此一级菜单">
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 二级子菜单列表展示 -->
+                <div style="padding: 16px 20px;">
+                  @if (!menu.children || menu.children.length === 0) {
+                    <div style="font-size: 13px; color: #94a3b8; font-style: italic;">
+                      该一级专区暂无二级分类（点击上方【➕ 添加二级子菜单】可配置鼠标下拉二级菜单）
+                    </div>
+                  } @else {
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+                      @for (sub of menu.children; track sub.id) {
+                        <div 
+                          style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;"
+                          [style.opacity]="sub.is_active ? '1' : '0.6'">
+                          <div style="overflow: hidden;">
+                            <div style="font-size: 14px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 6px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
+                              <span>{{ sub.icon }}</span>
+                              <span>{{ sub.title }}</span>
+                              @if (sub.badge_text) {
+                                <span style="font-size: 10px; font-weight: bold; background: #fee2e2; color: #dc2626; padding: 1px 5px; border-radius: 4px;">
+                                  {{ sub.badge_text }}
+                                </span>
+                              }
+                            </div>
+                            <div style="font-size: 11px; color: #64748b; margin-top: 3px; font-family: monospace; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;" [title]="sub.link_url">
+                              {{ sub.link_url }}
+                            </div>
+                          </div>
+
+                          <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                            @if (sub.is_active) {
+                              <button 
+                                type="button" 
+                                class="btn btn-sm" 
+                                style="background: transparent; color: #059669; border: none; padding: 2px 4px; font-size: 12px;"
+                                (click)="toggleNavMenuActive(sub, $event)"
+                                title="点击隐藏">
+                                👁️
+                              </button>
+                            } @else {
+                              <button 
+                                type="button" 
+                                class="btn btn-sm" 
+                                style="background: transparent; color: #94a3b8; border: none; padding: 2px 4px; font-size: 12px;"
+                                (click)="toggleNavMenuActive(sub, $event)"
+                                title="点击显示">
+                                🙈
+                              </button>
+                            }
+                            <button 
+                              type="button" 
+                              class="btn btn-sm btn-secondary" 
+                              style="padding: 2px 6px; font-size: 11px;"
+                              (click)="openEditNavMenuModal(sub)"
+                              title="编辑此二级项">
+                              ✏️
+                            </button>
+                            <button 
+                              type="button" 
+                              class="btn btn-sm btn-icon-del" 
+                              style="padding: 2px 6px; font-size: 11px;"
+                              (click)="deleteNavMenu(sub.id, sub.title, $event)"
+                              title="删除此二级项">
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- 8. 重点名校与省市地区字典库管理视图 (Schools Management) -->
+      @if (currentTab() === 'schools') {
+        <div class="card channel-manager-card">
+          <div class="card-header" style="flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+            <div>
+              <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span>🏫</span> 重点名校与所属省市地区字典库
+                <span style="font-size: 13px; font-weight: normal; color: #64748b;">(已收录 {{ regions().length }} 个重点地区)</span>
+              </h3>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">
+                统一管理全国重点名校与柳州本地重点中小学。发布试卷资料时支持一键匹配点选，彻底解决手动敲字繁琐与别名命名混乱（如“柳铁一中”与“柳州铁一中”）导致的检索分裂问题。
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary" (click)="loadRegions()">🔄 刷新字典</button>
+            </div>
+          </div>
+
+          <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+            <!-- 快捷录入新名校条目栏 -->
+            <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 16px 20px;">
+              <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <span>➕</span> 快速录入新名校至字典库
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                <div style="flex: 1; min-width: 180px;">
+                  <label style="font-size: 11px; color: #64748b; display: block; margin-bottom: 4px;">所属省市/地区 (可直接选或输入新地区)</label>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="newResource.region" 
+                    name="mgr_region" 
+                    placeholder="例如：广西-柳州" 
+                    style="margin: 0;"
+                  />
+                </div>
+                <div style="flex: 2; min-width: 220px;">
+                  <label style="font-size: 11px; color: #64748b; display: block; margin-bottom: 4px;">学校全称 / 常用标准简称</label>
+                  <input 
+                    type="text" 
+                    [ngModel]="quickNewSchoolName()" 
+                    (ngModelChange)="quickNewSchoolName.set($event)"
+                    name="mgr_school" 
+                    placeholder="例如：柳州第十八中学 (柳州十八中)" 
+                    style="margin: 0;"
+                  />
+                </div>
+                <div style="min-width: 140px;">
+                  <label style="font-size: 11px; color: #64748b; display: block; margin-bottom: 4px;">适用学段</label>
+                  <select 
+                    [ngModel]="quickNewSchoolStage()" 
+                    (ngModelChange)="quickNewSchoolStage.set($event)"
+                    style="margin: 0;">
+                    <option value="junior">初中部</option>
+                    <option value="senior">高中部</option>
+                    <option value="all">初高中完全中学 / 综合</option>
+                  </select>
+                </div>
+                <div style="align-self: flex-end;">
+                  <button 
+                    type="button" 
+                    class="btn btn-primary" 
+                    style="height: 38px; display: flex; align-items: center; gap: 4px; padding: 0 18px;"
+                    (click)="addQuickSchool('new')">
+                    💾 确认录入
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 分地区名校卡片流 -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px;">
+              @for (r of regions(); track r.id) {
+                <div 
+                  style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between;">
+                  <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                      <div style="font-size: 16px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span>📍</span> {{ r.name }}
+                        @if (r.is_hot) {
+                          <span style="font-size: 10px; font-weight: 700; background: #fee2e2; color: #dc2626; padding: 1px 6px; border-radius: 10px;">HOT</span>
+                        }
+                      </div>
+                      <span style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 12px;">
+                        {{ r.schools?.length || 0 }} 所名校
+                      </span>
+                    </div>
+
+                    <!-- 学校标签列表 -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                      @for (s of r.schools; track s.id) {
+                        <div 
+                          style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                          <span style="color: #1e293b; font-weight: 500;">{{ s.name }}</span>
+                          @if (s.stage && s.stage !== 'all') {
+                            <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: #e0f2fe; color: #0284c7;">
+                              {{ s.stage === 'junior' ? '初中' : (s.stage === 'senior' ? '高中' : '小学') }}
+                            </span>
+                          }
+                          <button 
+                            type="button" 
+                            style="border: none; background: none; color: #94a3b8; cursor: pointer; padding: 0; font-size: 11px; line-height: 1;" 
+                            (click)="deleteSchool(s.id, s.name)"
+                            title="从库中删除该校">
+                            ✕
+                          </button>
+                        </div>
+                      }
+                      @if (!r.schools || r.schools.length === 0) {
+                        <span style="font-size: 12px; color: #94a3b8; font-style: italic;">暂无录入学校</span>
+                      }
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 14px; pt: 10px; border-top: 1px dashed #f1f5f9; display: flex; justify-content: flex-end;">
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-secondary" 
+                      style="font-size: 11px; padding: 2px 8px;"
+                      (click)="newResource.region = r.name; showToast('已将【' + r.name + '】选为当前操作地区')">
+                      选用此地区 ↳
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
     </div>
   </main>
 
@@ -426,6 +1448,27 @@
               name="edit_title" 
               required 
             />
+          </div>
+
+          <!-- 所属频道选择 -->
+          <div class="form-group full-width" style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <label style="font-weight: 600; color: #1e293b; margin-bottom: 8px; display: block;">🏷️ 所属业务顶级频道 <span class="required">*</span></label>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              @for (ch of channels(); track ch.id) {
+                <label 
+                  style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; cursor: pointer; border: 1.5px solid;"
+                  [style.border-color]="editForm.channel_slug === ch.slug ? '#0284c7' : '#cbd5e1'"
+                  [style.background]="editForm.channel_slug === ch.slug ? '#e0f2fe' : '#ffffff'"
+                  [style.color]="editForm.channel_slug === ch.slug ? '#0369a1' : '#475569'">
+                  <input type="radio" [(ngModel)]="editForm.channel_slug" name="edit_channel_slug" [value]="ch.slug" style="margin: 0; cursor: pointer;" />
+                  <span style="font-size: 16px;">{{ ch.icon }}</span>
+                  <span style="font-weight: 600;">{{ ch.name }}</span>
+                  @if (!ch.is_active) {
+                    <span style="font-size: 10px; background: #fee2e2; color: #ef4444; padding: 1px 4px; border-radius: 4px;">已隐</span>
+                  }
+                </label>
+              }
+            </div>
           </div>
 
           <!-- 1. 所属学段 -->
@@ -498,6 +1541,94 @@
             </div>
           </div>
 
+          <!-- 5. 归属省市地区与重点名校 (智能字典联动，支持一键点选与自动入库) -->
+          <div class="form-group full-width" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <label style="font-weight: 700; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                <span>🏫</span> 地区与重点名校联动选择
+                <span class="tip-text">（点击下方标签一键填入，免除手动重复打字；输入新学校即可自动存库）</span>
+              </label>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- 地区选择 -->
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; display: block;">
+                  所属省市/地区
+                </label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="editForm.region" 
+                  name="edit_region" 
+                  placeholder="例如：广西-柳州" 
+                  style="margin-bottom: 6px;"
+                />
+                <!-- 快捷地区标签 -->
+                <div class="pill-group" style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
+                  @for (r of regions(); track r.id) {
+                    <span 
+                      class="pill-tag" 
+                      [class.selected]="editForm.region === r.name"
+                      (click)="selectRegion(r.name, 'edit')">
+                      {{ r.name }}
+                    </span>
+                  }
+                </div>
+              </div>
+
+              <!-- 名校选择 -->
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; display: block;">
+                  归属名校 / 命题单位
+                </label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="editForm.school" 
+                  name="edit_school" 
+                  placeholder="点击下方学校，或直接输入新学校" 
+                  style="margin-bottom: 6px;"
+                />
+
+                <!-- 该地区的名校快捷点选 -->
+                <div class="pill-group" style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; max-height: 120px; overflow-y: auto;">
+                  @for (s of getSchoolsForRegion(editForm.region); track s.id) {
+                    <span 
+                      class="pill-tag" 
+                      [class.selected]="editForm.school === s.name"
+                      (click)="selectSchool(s.name, 'edit')"
+                      title="点击一键选用该学校">
+                      {{ s.name }}
+                    </span>
+                  }
+                  @if (getSchoolsForRegion(editForm.region).length === 0) {
+                    <span style="font-size: 11px; color: #94a3b8; font-style: italic;">
+                      {{ editForm.region ? '该地区暂无预设学校，在下方输入可快捷存库' : '请先在左侧选择所属地区' }}
+                    </span>
+                  }
+                </div>
+
+                <!-- 快捷新增新学校入库按钮 -->
+                <div style="margin-top: 10px; display: flex; gap: 6px; align-items: center; background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                  <input 
+                    type="text" 
+                    [ngModel]="quickNewSchoolName()" 
+                    (ngModelChange)="quickNewSchoolName.set($event)"
+                    name="quick_school_edit" 
+                    placeholder="+ 输入新学校并存入本地区 (如: 柳州十八中)"
+                    style="font-size: 12px; padding: 4px 8px; flex: 1; border: 1px solid #e2e8f0;"
+                  />
+                  <button 
+                    type="button" 
+                    class="btn btn-sm btn-primary" 
+                    style="font-size: 11px; padding: 4px 10px; white-space: nowrap;"
+                    (click)="addQuickSchool('edit')">
+                    ➕ 存入字典
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-group">
             <label>包含视频精讲课程？</label>
             <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
@@ -511,20 +1642,32 @@
             <div class="netdisk-grid">
               <div class="netdisk-item primary">
                 <div class="netdisk-title">⚡ 夸克网盘链接（主推）<span class="required">*</span></div>
-                <div class="input-with-btn">
+                <div class="netdisk-url-box">
                   <input 
                     type="url" 
                     [(ngModel)]="editForm.quarkUrl" 
                     (blur)="autoDetectNetdiskInfo('edit')"
                     name="edit_quarkUrl" 
+                    placeholder="https://pan.quark.cn/s/xxxxxxxx (可贴他人分享)" 
+                    class="netdisk-url-input"
                     required 
                   />
+                </div>
+                <div class="netdisk-url-actions">
                   <button 
                     type="button" 
                     class="btn-detect" 
-                    [disabled]="parsingNetdisk()"
+                    [disabled]="parsingNetdisk() || transferringQuark()"
                     (click)="autoDetectNetdiskInfo('edit')">
-                    {{ parsingNetdisk() ? '正在探测...' : '⚡ 自动读取大小与格式' }}
+                    {{ parsingNetdisk() ? '正在探测...' : '⚡ 仅探测规格' }}
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn-transfer" 
+                    [disabled]="transferringQuark() || parsingNetdisk()"
+                    (click)="autoTransferQuark('edit')"
+                    title="自动转存到我的夸克网盘并生成全新专属分享链接">
+                    {{ transferringQuark() ? '🔄 正在转存换链...' : '🔄 一键转存为我的夸克链接' }}
                   </button>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
@@ -542,38 +1685,42 @@
 
               <div class="netdisk-item">
                 <div class="netdisk-title">📦 百度网盘链接（备用）</div>
-                <div class="input-with-btn">
+                <div class="netdisk-url-box">
                   <input 
                     type="url" 
                     [(ngModel)]="editForm.baiduUrl" 
                     (blur)="autoDetectBaiduInfo('edit')"
                     name="edit_baiduUrl" 
                     placeholder="https://pan.baidu.com/s/xxxxxxxx"
+                    class="netdisk-url-input"
                   />
+                </div>
+                <div class="netdisk-url-actions">
                   <button 
                     type="button" 
                     class="btn-detect" 
+                    style="width: 100%;"
                     [disabled]="parsingBaidu()"
                     (click)="autoDetectBaiduInfo('edit')">
                     {{ parsingBaidu() ? '正在探测...' : '⚡ 自动读取大小与格式' }}
                   </button>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
+                <div style="display: grid; grid-template-columns: 90px 1fr 1fr; gap: 8px; margin-top: 8px;">
                   <div>
-                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度提取码</label>
+                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px; white-space: nowrap;">百度提取码</label>
                     <input 
                       type="text" 
                       [(ngModel)]="editForm.baiduCode" 
                       name="edit_baiduCode" 
-                      placeholder="提取码 (如有)" 
+                      placeholder="提取码" 
                     />
                   </div>
                   <div>
-                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度文件大小</label>
+                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px; white-space: nowrap;">百度文件大小</label>
                     <input type="text" [(ngModel)]="editForm.baiduFileSize" name="edit_baiduFileSize" />
                   </div>
                   <div>
-                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px;">百度文件格式</label>
+                    <label style="font-size: 11px; color: #64748b; margin-bottom: 2px; white-space: nowrap;">百度文件格式</label>
                     <input type="text" [(ngModel)]="editForm.baiduFileType" name="edit_baiduFileType" />
                   </div>
                 </div>
@@ -590,4 +1737,482 @@
       </div>
     </div>
   }
+
+  <!-- 3. 批量巡检与频率调控模态框 -->
+  @if (isBatchCheckModalOpen()) {
+    <div class="modal-backdrop" (click)="closeBatchCheckModal()">
+      <div class="modal-container" (click)="$event.stopPropagation()" style="max-width: 680px;">
+        <div class="modal-header">
+          <div>
+            <h3>🛡️ 网盘链接健康巡检与频率调控</h3>
+            <span class="text-muted">智能跳过冷却期内的链接，避免高频请求触发网盘风控封禁</span>
+          </div>
+          <button class="btn-close" (click)="closeBatchCheckModal()">✕</button>
+        </div>
+
+        <div style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+          <!-- 频率调控选项 -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+            <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+              <span>⏱️ 检测频率与冷却时间保护</span>
+            </h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">
+                  冷却时间 (小时)
+                </label>
+                <select [(ngModel)]="checkOptions.min_interval_hours" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
+                  <option [value]="24">24 小时 (建议：一天至多检测一次)</option>
+                  <option [value]="48">48 小时 (两天检测一次)</option>
+                  <option [value]="168">7 天 (每周巡检一次)</option>
+                  <option [value]="12">12 小时</option>
+                  <option [value]="1">1 小时 (高频测试)</option>
+                </select>
+                <span style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: block;">
+                  在此时间内刚检测过的链接将自动跳过，不耗费请求
+                </span>
+              </div>
+
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">
+                  巡检对象筛选
+                </label>
+                <select [(ngModel)]="checkOptions.status_filter" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
+                  <option value="">全部链接</option>
+                  <option value="reported">仅用户报错待核验 (优先推荐)</option>
+                  <option value="invalid">仅已知失效链接 (复测)</option>
+                  <option value="active">仅当前正常链接</option>
+                </select>
+                <span style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: block;">
+                  可优先重点核查前台用户举报报错的链接
+                </span>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-between; margin-top: 4px;">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; cursor: pointer;">
+                <input type="checkbox" [(ngModel)]="checkOptions.force" />
+                <span>忽略冷却时间（强制检测全部，仅在紧急排查时勾选）</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 执行按钮区 -->
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-secondary" (click)="closeBatchCheckModal()" [disabled]="batchCheckLoading()">关闭</button>
+            <button class="btn btn-primary" (click)="runBatchCheck()" [disabled]="batchCheckLoading()" style="min-width: 140px;">
+              {{ batchCheckLoading() ? '正在轻量巡检中...' : '🚀 开始执行巡检' }}
+            </button>
+          </div>
+
+          <!-- 巡检结果展示 -->
+          @if (batchCheckSummary()) {
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 16px;">
+              <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">📊 巡检执行报告</h4>
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center;">
+                <div style="background: #f1f5f9; padding: 12px 8px; border-radius: 8px;">
+                  <div style="font-size: 11px; color: #64748b;">实际检测</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #1e293b;">{{ batchCheckSummary().checked_count }}</div>
+                </div>
+                <div style="background: #ecfdf5; padding: 12px 8px; border-radius: 8px;">
+                  <div style="font-size: 11px; color: #059669;">正常存活</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #059669;">{{ batchCheckSummary().active_count }}</div>
+                </div>
+                <div style="background: #fef2f2; padding: 12px 8px; border-radius: 8px;">
+                  <div style="font-size: 11px; color: #dc2626;">发现失效</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #dc2626;">{{ batchCheckSummary().invalid_count }}</div>
+                </div>
+                <div style="background: #eff6ff; padding: 12px 8px; border-radius: 8px;">
+                  <div style="font-size: 11px; color: #2563eb;">冷却保护跳过</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #2563eb;">{{ batchCheckSummary().skipped_count }}</div>
+                </div>
+              </div>
+
+              <!-- 失效列表预警 -->
+              @if (batchCheckSummary().invalid_count > 0) {
+                <div style="margin-top: 16px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 10px; padding: 14px;">
+                  <div style="font-size: 13px; font-weight: 700; color: #be123c; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>⚠️ 本次巡检发现以下 {{ batchCheckSummary().invalid_count }} 条链接失效，请点击直接补链：</span>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto;">
+                    @for (item of batchCheckSummary().results; track item.link_id) {
+                      @if (item.status === 'invalid') {
+                        <div class="invalid-report-card">
+                          <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                              <span style="font-size: 12px; font-weight: 700; color: #1e293b;">📚 {{ item.resource_title || '未关联资料标题' }}</span>
+                              <span class="tag" style="background: #e0f2fe; color: #0369a1; font-size: 10px; padding: 1px 6px;">{{ item.drive_type === 'quark' ? '⚡ 夸克网盘' : '📦 百度网盘' }}</span>
+                            </div>
+                            <div style="font-size: 11px; color: #e11d48; font-weight: 600;">
+                              原因: {{ item.invalid_reason || '网盘页面返回404或分享已取消' }}
+                            </div>
+                            <div style="font-size: 10px; color: #64748b; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                              {{ item.share_url }}
+                            </div>
+                          </div>
+                          @if (item.resource_id) {
+                            <button type="button" class="btn btn-sm btn-primary" (click)="openEditById(item.resource_id)" style="flex-shrink: 0; padding: 6px 12px; font-size: 12px; background: #e11d48; border-color: #e11d48;">
+                              ✏️ 去补链
+                            </button>
+                          }
+                        </div>
+                      }
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- 6. 网盘目标目录选择与管理弹窗 (Folder Picker & Manager Modal) -->
+  @if (isFolderPickerOpen()) {
+    <div class="modal-backdrop" (click)="closeFolderPicker()">
+      <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 540px;">
+        <div class="modal-header">
+          <h3>📁 网盘目录选择与管理</h3>
+          <button class="modal-close-btn" (click)="closeFolderPicker()">✕</button>
+        </div>
+        <div style="padding: 16px 20px;">
+          <!-- 路径面包屑导航 -->
+          <div class="folder-breadcrumbs">
+            <span style="font-size: 11px; color: #64748b; font-weight: 600;">当前路径:</span>
+            @for (crumb of folderBreadcrumbs(); track crumb.fid; let i = $index; let isLast = $last) {
+              @if (!isLast) {
+                <span class="crumb-link" (click)="navigateBreadcrumb(i)">{{ crumb.name }}</span>
+                <span class="crumb-sep">/</span>
+              } @else {
+                <span class="crumb-current">{{ crumb.name }}</span>
+              }
+            }
+            <span style="margin-left: auto; font-family: monospace; font-size: 11px; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+              全路径: {{ getCurrentFullPath() }}
+            </span>
+          </div>
+
+          <!-- 工具栏：新建文件夹 & 设当前目录为目标 -->
+          <div class="folder-toolbar">
+            <div style="display: flex; gap: 8px; flex: 1;">
+              <input 
+                type="text" 
+                class="form-input" 
+                style="padding: 6px 10px; font-size: 12px; flex: 1;" 
+                placeholder="新建文件夹名称..." 
+                [ngModel]="newFolderName()" 
+                (ngModelChange)="newFolderName.set($event)"
+                (keyup.enter)="createFolderInPicker()"
+              />
+              <button 
+                type="button" 
+                class="btn btn-sm btn-primary" 
+                style="white-space: nowrap; font-size: 12px; padding: 6px 12px;" 
+                (click)="createFolderInPicker()" 
+                [disabled]="creatingFolder() || !newFolderName().trim()">
+                {{ creatingFolder() ? '创建中...' : '➕ 新建' }}
+              </button>
+            </div>
+            <button 
+              type="button" 
+              class="btn btn-sm btn-secondary" 
+              style="font-size: 11px; white-space: nowrap; padding: 6px 10px;" 
+              (click)="selectCurrentAsTarget()"
+              title="将当前所在路径直接作为默认转存目标">
+              🎯 选定当前路径 [ {{ getCurrentFullPath() }} ]
+            </button>
+          </div>
+
+          <!-- 文件夹列表区域 -->
+          <div class="folder-picker-scroll">
+            @if (folderPickerLoading()) {
+              <div style="text-align: center; padding: 30px 10px; color: #64748b; font-size: 12px;">
+                正在加载网盘文件夹列表...
+              </div>
+            } @else if (folderPickerList().length === 0) {
+              <div style="text-align: center; padding: 24px 10px; color: #94a3b8; font-size: 12px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                当前目录下暂无子文件夹，可点击上方【➕ 新建】直接创建！
+              </div>
+            } @else {
+              @for (folder of folderPickerList(); track folder.fid) {
+                <div class="folder-row-item">
+                  <div class="folder-name-col" (click)="enterFolder(folder)" title="点击进入此文件夹">
+                    <span style="font-size: 16px;">📁</span>
+                    <span class="folder-name-text">{{ folder.file_name }}</span>
+                    <span class="enter-hint">进入 ➔</span>
+                  </div>
+                  <div class="folder-actions-col">
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-primary" 
+                      style="font-size: 11px; padding: 4px 10px;" 
+                      (click)="selectFolder(folder)" 
+                      [title]="'选定为转存目标: ' + getFullPathForChild(folder.file_name)">
+                      🎯 选定
+                    </button>
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-icon-del" 
+                      (click)="deleteFolderInPicker(folder, $event)" 
+                      title="从夸克网盘中彻底删除该文件夹">
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- 7. 顶级频道新增/编辑模态弹窗 (Channel Modal) -->
+  @if (isChannelModalOpen()) {
+    <div class="modal-backdrop" (click)="closeChannelModal()">
+      <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 520px;">
+        <div class="modal-header">
+          <h3>{{ channelForm.id ? '✏️ 编辑频道' : '➕ 新建网站顶级频道' }}</h3>
+          <button class="modal-close-btn" (click)="closeChannelModal()">✕</button>
+        </div>
+
+        <form (ngSubmit)="saveChannel()" class="form-grid modal-body">
+          <div class="form-group full-width">
+            <label>频道展示名称 <span class="required">*</span></label>
+            <input 
+              type="text" 
+              [(ngModel)]="channelForm.name" 
+              name="ch_name" 
+              placeholder="例如：实用工具与设计素材" 
+              required 
+            />
+          </div>
+
+          <div class="form-group">
+            <label>URL 标识 (Slug) <span class="required">*</span> <span class="tip-text">（英文标识，如 tools）</span></label>
+            <input 
+              type="text" 
+              [(ngModel)]="channelForm.slug" 
+              name="ch_slug" 
+              placeholder="例如：tools 或 games" 
+              [disabled]="!!channelForm.id"
+              required 
+            />
+          </div>
+
+          <div class="form-group">
+            <label>频道图标 Emoji <span class="required">*</span></label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input 
+                type="text" 
+                [(ngModel)]="channelForm.icon" 
+                name="ch_icon" 
+                placeholder="例如：🎨 或 🎮" 
+                style="width: 70px; text-align: center; font-size: 20px;" 
+                required 
+              />
+              <div class="pill-group" style="margin-top: 0; display: flex; gap: 4px;">
+                <span class="pill-tag" (click)="channelForm.icon = '📚'">📚</span>
+                <span class="pill-tag" (click)="channelForm.icon = '🎨'">🎨</span>
+                <span class="pill-tag" (click)="channelForm.icon = '🎮'">🎮</span>
+                <span class="pill-tag" (click)="channelForm.icon = '⚙️'">⚙️</span>
+                <span class="pill-tag" (click)="channelForm.icon = '💡'">💡</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>排序权重 <span class="tip-text">（越小越前）</span></label>
+            <input 
+              type="number" 
+              [(ngModel)]="channelForm.sort_order" 
+              name="ch_sort_order" 
+              min="1" 
+              max="999" 
+            />
+          </div>
+
+          <div class="form-group">
+            <label>上线状态</label>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+              <input 
+                type="checkbox" 
+                [(ngModel)]="channelForm.is_active" 
+                name="ch_is_active" 
+                id="ch_is_active" 
+                style="width: auto; cursor: pointer;" 
+              />
+              <label for="ch_is_active" style="margin: 0; cursor: pointer; font-size: 13px;">
+                立即上线展示（取消则前台隐藏）
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>业务描述 / SEO 简介</label>
+            <textarea 
+              [(ngModel)]="channelForm.description" 
+              name="ch_desc" 
+              rows="3" 
+              placeholder="简述该频道主要包含哪些优质资源，便于用户和管理人员了解...">
+            </textarea>
+          </div>
+
+          <div class="modal-actions full-width" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+            <button type="button" class="btn btn-secondary" (click)="closeChannelModal()">取消</button>
+            <button type="submit" class="btn btn-primary" [disabled]="channelLoading()">
+              {{ channelLoading() ? '正在保存...' : '确认保存' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- 8. 多级导航菜单新增/编辑模态弹窗 (Nav Menu Modal) -->
+  @if (isNavMenuModalOpen()) {
+    <div class="modal-backdrop" (click)="closeNavMenuModal()">
+      <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 560px;">
+        <div class="modal-header">
+          <h3>{{ navMenuForm.id ? '✏️ 编辑导航专区/菜单' : (navMenuForm.parent_id ? '➕ 新增二级下拉菜单' : '➕ 新建前台一级专区') }}</h3>
+          <button class="modal-close-btn" (click)="closeNavMenuModal()">✕</button>
+        </div>
+
+        <form (ngSubmit)="saveNavMenu()" class="form-grid modal-body">
+          <!-- 上级菜单选择 -->
+          <div class="form-group full-width">
+            <label>归属层级 (Parent)</label>
+            <select [(ngModel)]="navMenuForm.parent_id" name="nav_parent_id">
+              <option value="">📌 作为顶部一级专区 (例如: 小学专区、初中专区)</option>
+              @for (pm of navMenus(); track pm.id) {
+                @if (pm.id !== navMenuForm.id) {
+                  <option [value]="pm.id">↳ 作为【{{ pm.title }}】的二级下拉分类</option>
+                }
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>菜单名称 <span class="required">*</span></label>
+            <input 
+              type="text" 
+              [(ngModel)]="navMenuForm.title" 
+              name="nav_title" 
+              placeholder="例如：小升初真题 / 小学奥数" 
+              required 
+            />
+          </div>
+
+          <div class="form-group">
+            <label>图标 Emoji <span class="required">*</span></label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input 
+                type="text" 
+                [(ngModel)]="navMenuForm.icon" 
+                name="nav_icon" 
+                placeholder="📚" 
+                style="width: 60px; text-align: center; font-size: 20px;" 
+                required 
+              />
+              <div class="pill-group" style="margin-top: 0; display: flex; gap: 4px;">
+                <span class="pill-tag" (click)="navMenuForm.icon = '🎒'">🎒</span>
+                <span class="pill-tag" (click)="navMenuForm.icon = '📐'">📐</span>
+                <span class="pill-tag" (click)="navMenuForm.icon = '🧪'">🧪</span>
+                <span class="pill-tag" (click)="navMenuForm.icon = '🎓'">🎓</span>
+                <span class="pill-tag" (click)="navMenuForm.icon = '🏆'">🏆</span>
+                <span class="pill-tag" (click)="navMenuForm.icon = '🔥'">🔥</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>点击跳转链接 (Link URL) <span class="required">*</span></label>
+            <input 
+              type="text" 
+              [(ngModel)]="navMenuForm.link_url" 
+              name="nav_link_url" 
+              placeholder="例如：/edu?stage=primary&q=小升初" 
+              required 
+            />
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+              <span style="font-size: 11px; color: #64748b; line-height: 22px;">快捷模板：</span>
+              <span class="pill-tag" (click)="navMenuForm.link_url = '/edu?stage=primary'">小学全部</span>
+              <span class="pill-tag" (click)="navMenuForm.link_url = '/edu?stage=primary&q=小升初'">小升初</span>
+              <span class="pill-tag" (click)="navMenuForm.link_url = '/edu?stage=primary&q=奥数'">小学奥数</span>
+              <span class="pill-tag" (click)="navMenuForm.link_url = '/edu?stage=junior'">初中全部</span>
+              <span class="pill-tag" (click)="navMenuForm.link_url = '/edu?stage=junior&q=中考'">中考真题</span>
+              <span class="pill-tag" (click)="navMenuForm.link_url = '/edu?stage=senior'">高中全部</span>
+              <span class="pill-tag" (click)="navMenuForm.link_url = '/edu?stage=senior&q=高考'">高考冲刺</span>
+              <span class="pill-tag" (click)="navMenuForm.link_url = '/edu?stage=cert'">教师资格证</span>
+              <span class="pill-tag" (click)="navMenuForm.link_url = '/edu?stage=exam&q=考公'">考公/考研</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>高亮角标文字 <span class="tip-text">（选填，如 HOT、爆款、必刷）</span></label>
+            <input 
+              type="text" 
+              [(ngModel)]="navMenuForm.badge_text" 
+              name="nav_badge" 
+              placeholder="HOT / 必刷 / 2026" 
+            />
+          </div>
+
+          <div class="form-group">
+            <label>排序权重 <span class="tip-text">（数字越小越靠前）</span></label>
+            <input 
+              type="number" 
+              [(ngModel)]="navMenuForm.sort_order" 
+              name="nav_sort_order" 
+              min="1" 
+              max="999" 
+            />
+          </div>
+
+          <div class="form-group full-width">
+            <label>状态设置</label>
+            <div style="display: flex; gap: 20px; align-items: center; margin-top: 6px;">
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px;">
+                <input 
+                  type="checkbox" 
+                  [(ngModel)]="navMenuForm.is_active" 
+                  name="nav_is_active" 
+                  style="width: auto; cursor: pointer;" 
+                />
+                在前台正常显示
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px;">
+                <input 
+                  type="checkbox" 
+                  [(ngModel)]="navMenuForm.is_special_highlight" 
+                  name="nav_highlight" 
+                  style="width: auto; cursor: pointer;" 
+                />
+                特别高亮标识 (橙红重点标注)
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>简短功能介绍 <span class="tip-text">（选填）</span></label>
+            <textarea 
+              [(ngModel)]="navMenuForm.description" 
+              name="nav_desc" 
+              rows="2" 
+              placeholder="简要说明该专区的主要定位和资源类型...">
+            </textarea>
+          </div>
+
+          <div class="modal-actions full-width" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+            <button type="button" class="btn btn-secondary" (click)="closeNavMenuModal()">取消</button>
+            <button type="submit" class="btn btn-primary" [disabled]="navMenuLoading()">
+              {{ navMenuLoading() ? '正在保存...' : '确认保存' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
 </div>
+
