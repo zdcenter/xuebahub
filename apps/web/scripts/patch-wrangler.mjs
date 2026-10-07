@@ -1,39 +1,62 @@
 /**
- * Patch the Astro-generated wrangler.json for Cloudflare Pages compatibility.
+ * Transform Astro's Workers-style build output into Cloudflare Pages format.
  *
- * @astrojs/cloudflare generates a Workers-style wrangler.json that contains
- * fields incompatible with Cloudflare Pages:
- *   1. "assets.binding": "ASSETS" — reserved name in Pages (auto-provided)
- *   2. "kv_namespaces" without "id" — Pages requires namespace IDs
- *   3. "images" binding — needs dashboard configuration
+ * @astrojs/cloudflare v14 generates Workers-style output:
+ *   dist/server/entry.mjs   (SSR worker)
+ *   dist/server/chunks/     (server chunks)
+ *   dist/client/            (static assets)
  *
- * This script removes those fields so the Pages deploy step can proceed.
- * The bindings still work at runtime because Pages auto-injects ASSETS,
- * and KV/Images can be configured via the Cloudflare dashboard.
+ * Cloudflare Pages expects:
+ *   dist/client/             (static assets root = pages_build_output_dir)
+ *   dist/client/_worker.js/  (SSR worker directory, auto-discovered by Pages)
+ *
+ * This script:
+ * 1. Removes .wrangler/deploy/config.json (prevents redirect to incompatible config)
+ * 2. Copies server code into dist/client/_worker.js/ directory
+ * 3. Creates an index.js entry point inside _worker.js/
  */
 
-import { readFileSync, writeFileSync } from 'fs';
+import { cpSync, mkdirSync, rmSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const configPath = join(__dirname, '..', 'dist', 'server', 'wrangler.json');
+const root = join(__dirname, '..');
+const distServer = join(root, 'dist', 'server');
+const distClient = join(root, 'dist', 'client');
+const workerDir = join(distClient, '_worker.js');
 
 try {
-  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  // 1. Remove redirect file so Pages uses our wrangler.toml directly
+  const deployConfig = join(root, '.wrangler', 'deploy', 'config.json');
+  if (existsSync(deployConfig)) {
+    rmSync(deployConfig);
+    console.log('  ✓ Removed .wrangler/deploy/config.json redirect');
+  }
 
-  // Remove ASSETS binding — reserved and auto-provided in Pages
-  delete config.assets;
+  // 2. Create _worker.js directory in client output
+  if (existsSync(workerDir)) {
+    rmSync(workerDir, { recursive: true });
+  }
+  mkdirSync(workerDir, { recursive: true });
 
-  // Remove KV namespaces without IDs (e.g. auto-generated SESSION binding)
-  config.kv_namespaces = (config.kv_namespaces || []).filter(ns => ns.id);
+  // 3. Copy server files (except wrangler.json) into _worker.js/
+  cpSync(join(distServer, 'chunks'), join(workerDir, 'chunks'), { recursive: true });
+  cpSync(join(distServer, 'entry.mjs'), join(workerDir, 'entry.mjs'));
+  if (existsSync(join(distServer, 'virtual_astro_middleware.mjs'))) {
+    cpSync(join(distServer, 'virtual_astro_middleware.mjs'), join(workerDir, 'virtual_astro_middleware.mjs'));
+  }
 
-  // Remove images binding (configure via Cloudflare dashboard instead)
-  delete config.images;
+  // 4. Create index.js entry that re-exports from entry.mjs
+  writeFileSync(
+    join(workerDir, 'index.js'),
+    `export { default } from './entry.mjs';\n`
+  );
 
-  writeFileSync(configPath, JSON.stringify(config));
-  console.log('✓ Patched dist/server/wrangler.json for Cloudflare Pages');
+  console.log('✓ Transformed build output for Cloudflare Pages');
+  console.log('  - Worker: dist/client/_worker.js/');
+  console.log('  - Assets: dist/client/');
 } catch (err) {
-  console.error('⚠ Failed to patch wrangler.json:', err.message);
+  console.error('⚠ Failed to transform build output:', err.message);
   process.exit(1);
 }
