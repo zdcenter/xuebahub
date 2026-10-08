@@ -1,5 +1,12 @@
 # 更新日志 (CHANGELOG.md)
 
+## [Unreleased] - 2026-10-08
+
+- **前台生产环境 API 动态路由与多端环境变量解耦 (🌐 Cloudflare Pages SSR 生产穿透·国内服务器连接规范)**:
+  - **废除硬编码 `127.0.0.1:8080`**: 统一抽离 `apps/web/src/lib/api.ts` 集中解析层，优先从 `PUBLIC_API_URL` 环境变量读取后端公网接口基地址，未配置时本地开发安全降级为 `http://127.0.0.1:8080`；
+  - **全站统一改造**: 全面重构 `ChannelPage.astro`、`Layout.astro`、`[channel].astro` 以及 `resource/[slug].astro`（含 SSR 服务端获取与客户端一键失效报错上报脚本），实现部署于 Cloudflare Pages 时可通过配置环境变量无缝连接国内服务器 Go API 与真实数据库；
+  - **避免 Fallback Mock 截断**: 解决 Cloudflare Pages 边缘节点请求本地 localhost 失败而被迫回退至 4 篇内置静态资料的问题。
+
 ## [Unreleased] - 2026-10-05
 
 - **重点省市地区与名校字典库独立架构与智能联动选择 (🏫 结构化落库·零重复敲字·一键点选入库·迁移自愈)**:

@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import ResourceCard from '../components/ResourceCard.astro';
+import { getApiBaseUrl } from '../lib/api';
 
 interface ChannelItem {
   slug: string;
@@ -24,9 +25,11 @@ const q = url.searchParams.get('q') || '';
 
 let isApiConnected = false;
 
+const apiBase = getApiBaseUrl();
+
 // 1. 获取所有公开上线的频道 (动态支持后台上下线)
 try {
-  const chRes = await fetch('http://127.0.0.1:8080/api/v1/public/channels', { signal: AbortSignal.timeout(2000) });
+  const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(2000) });
   if (chRes.ok) {
     const chJson = await chRes.json();
     const rawList = Array.isArray(chJson.data) ? chJson.data : (chJson.data?.items || []);
@@ -60,7 +63,7 @@ if (!isAll && isApiConnected && !activeChannel) {
 
 // 2. 从 Go Fiber API 动态拉取实时数据 (根据频道与关键词过滤)
 try {
-  let fetchUrl = 'http://127.0.0.1:8080/api/v1/public/resources?limit=24';
+  let fetchUrl = `${apiBase}/api/v1/public/resources?limit=24`;
   if (!isAll) {
     fetchUrl += `&channel=${encodeURIComponent(channelSlug)}`;
   }
