@@ -5,12 +5,11 @@ echo "=========================================================="
 echo " 正在启动 刚需教辅网盘推广全套系统 (开发环境)"
 echo "=========================================================="
 
-# 1. 检查 Docker PostgreSQL
-if command -v docker &> /dev/null; then
-  echo ">>> [1/3] 启动 PostgreSQL 容器..."
-  cd deploy && docker compose up -d && cd ..
+# 1. 检查物理机 PostgreSQL 服务
+if command -v pg_isready &> /dev/null && pg_isready -h localhost -p 5432 &> /dev/null; then
+  echo ">>> [1/3] 检测到物理机 PostgreSQL (localhost:5432) 服务运行中，正常连接。"
 else
-  echo ">>> 未检测到 docker，跳过自动拉起 PG 容器。"
+  echo ">>> 提示：请确保物理机 PostgreSQL 5432 服务已启动并创建了 netdisk_db 数据库。"
 fi
 
 echo ">>> 后续步骤指南："

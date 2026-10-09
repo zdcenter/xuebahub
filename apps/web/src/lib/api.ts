@@ -3,7 +3,7 @@
  * 
  * 优先级：
  * 1. 运行时环境变量 / 客户端环境变量 PUBLIC_API_URL
- * 2. 默认本地开发地址 http://127.0.0.1:8080
+ * 2. 默认本地开发地址 http://127.0.0.1:4001
  */
 export function getApiBaseUrl(): string {
   // Vite / Astro 编译期与运行时公开环境变量
@@ -16,5 +16,5 @@ export function getApiBaseUrl(): string {
     return process.env.PUBLIC_API_URL.replace(/\/$/, '');
   }
 
-  return 'http://127.0.0.1:8080';
+  return 'http://127.0.0.1:4001';
 }

@@ -109,7 +109,8 @@ export class App implements OnInit {
     baiduFileSize: '15.0 MB',
     baiduFileType: 'PDF',
     baiduDesc: '',
-    description: ''
+    description: '',
+    file_tree: [] as any[]
   };
 
   // 编辑表单数据绑定
@@ -139,7 +140,8 @@ export class App implements OnInit {
     baiduFileSize: '15.0 MB',
     baiduFileType: 'PDF',
     baiduDesc: '',
-    description: ''
+    description: '',
+    file_tree: [] as any[]
   };
 
   // 获取当前选中学段的可选项配置
@@ -169,9 +171,14 @@ export class App implements OnInit {
     this.resService.parseNetdisk(url, 'quark').subscribe({
       next: (info) => {
         this.parsingNetdisk.set(false);
-        if (info && info.file_size) {
-          form.quarkFileSize = info.file_size;
-          form.file_size = info.file_size;
+        if (info && info.success) {
+          if (info.file_size && info.file_size !== '0 B') {
+            form.quarkFileSize = info.file_size;
+            form.file_size = info.file_size;
+          } else if (!form.quarkFileSize || form.quarkFileSize === '0 B') {
+            form.quarkFileSize = '完整视频合集包';
+            form.file_size = '完整视频合集包';
+          }
           if (info.has_video) {
             form.has_video = true;
           }
@@ -185,12 +192,22 @@ export class App implements OnInit {
           if (!form.title && info.file_name) {
             form.title = info.file_name.replace(/\.[^/.]+$/, "");
           }
+          if (info.file_list && info.file_list.length > 0) {
+            (form as any).file_tree = info.file_list;
+          } else {
+            (form as any).file_tree = [];
+          }
           const timeTip = info.file_time ? ` · ${info.file_time}` : '';
-          this.showToast(`⚡ 夸克网盘专属规格: ${info.file_size} (${info.file_type || 'PDF'}${timeTip})`);
+          const countTip = (info.file_count || info.file_list?.length) ? ` · 内含 ${info.file_count || info.file_list?.length} 个真实文件` : '';
+          this.showToast(`⚡ 夸克网盘解析成功: ${info.file_size || ''} (${info.file_type || 'PDF'}${timeTip}${countTip})`);
+        } else {
+          (form as any).file_tree = [];
+          this.showToast(info?.message || '夸克网盘解析失败，未能读取到文件', 'error');
         }
       },
-      error: () => {
+      error: (err) => {
         this.parsingNetdisk.set(false);
+        this.showToast('请求网盘解析服务超时或网络繁忙，请重试', 'error');
       }
     });
   }
@@ -209,10 +226,12 @@ export class App implements OnInit {
     this.resService.parseNetdisk(url, 'baidu', code).subscribe({
       next: (info) => {
         this.parsingBaidu.set(false);
-        if (info && info.file_size) {
-          form.baiduFileSize = info.file_size;
-          if (!form.quarkFileSize || form.quarkFileSize === '15.0 MB') {
-            form.file_size = info.file_size;
+        if (info && info.success) {
+          if (info.file_size) {
+            form.baiduFileSize = info.file_size;
+            if (!form.quarkFileSize || form.quarkFileSize === '15.0 MB') {
+              form.file_size = info.file_size;
+            }
           }
           if (info.file_type) {
             form.baiduFileType = info.file_type;
@@ -223,15 +242,98 @@ export class App implements OnInit {
           if (!form.title && info.file_name) {
             form.title = info.file_name.replace(/\.[^/.]+$/, "");
           }
+          if (info.file_list && info.file_list.length > 0) {
+            (form as any).file_tree = info.file_list;
+          } else {
+            (form as any).file_tree = [];
+          }
           const timeTip = info.file_time ? ` · ${info.file_time}` : '';
-          this.showToast(`⚡ 百度网盘规格已提取: ${info.file_size} (${info.file_type || 'PDF'}${timeTip})`);
+          const countTip = (info.file_count || info.file_list?.length) ? ` · 内含 ${info.file_count || info.file_list?.length} 个真实文件` : '';
+          this.showToast(`⚡ 百度网盘解析成功: ${info.file_size || ''} (${info.file_type || 'PDF'}${timeTip}${countTip})`);
+        } else {
+          (form as any).file_tree = [];
+          this.showToast(info?.message || '百度网盘解析失败，未能提取到文件', 'error');
         }
       },
       error: () => {
         this.parsingBaidu.set(false);
-        this.showToast('解析百度网盘失败，请核对链接有效性', 'error');
+        this.showToast('解析百度网盘超时或网络繁忙，请重试', 'error');
       }
     });
+  }
+
+  // 📂 网盘目录树层级展开与格式图标辅助函数
+  toggleFolder(folder: any) {
+    folder.collapsed = !folder.collapsed;
+  }
+
+  getFileCount(list: any[]): number {
+    if (!list || !Array.isArray(list)) return 0;
+    let count = 0;
+    for (const item of list) {
+      if (item.is_dir && item.children && item.children.length > 0) {
+        count += item.children.length;
+      } else {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  getFileIcon(ext: string, isDir?: boolean): string {
+    if (isDir) return '📁';
+    const e = (ext || '').toUpperCase();
+    if (['MP4', 'MKV', 'AVI', 'MOV', 'FLV'].includes(e)) return '🎬';
+    if (['PDF'].includes(e)) return '📄';
+    if (['DOC', 'DOCX'].includes(e)) return '📝';
+    if (['PPT', 'PPTX'].includes(e)) return '📑';
+    if (['XLS', 'XLSX'].includes(e)) return '📊';
+    if (['ZIP', 'RAR', '7Z', 'TAR'].includes(e)) return '📦';
+    if (['MP3', 'WAV', 'FLAC', 'AAC'].includes(e)) return '🎵';
+    if (['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF'].includes(e)) return '🖼️';
+    return '📄';
+  }
+
+  getNormalizedTree(list: any[]): any[] {
+    if (!list || !Array.isArray(list)) return [];
+    if (list.some(it => it.children && it.children.length > 0)) {
+      return list;
+    }
+    const hasSlash = list.some(it => it.name && it.name.includes('/'));
+    if (!hasSlash) return list;
+
+    const folderMap = new Map<string, any>();
+    const rootItems: any[] = [];
+
+    for (const item of list) {
+      if (item.name && item.name.includes('/')) {
+        const parts = item.name.split('/');
+        const folderName = parts[0];
+        const fileName = parts.slice(1).join('/');
+        if (!folderMap.has(folderName)) {
+          folderMap.set(folderName, {
+            name: folderName,
+            is_dir: true,
+            ext: 'DIR',
+            size: '',
+            children: []
+          });
+        }
+        folderMap.get(folderName).children.push({
+          ...item,
+          name: fileName
+        });
+      } else {
+        rootItems.push(item);
+      }
+    }
+
+    const result = [...rootItems];
+    for (const folder of folderMap.values()) {
+      folder.size = `${folder.children.length} 个文件`;
+      result.push(folder);
+    }
+    return result;
   }
 
   // 🔄 自动洗链：一键将对方夸克链接转存到我的网盘并生成专属推广链接
@@ -312,6 +414,17 @@ export class App implements OnInit {
   currentPdirFid = signal<string>('0');
   currentFolderName = signal<string>('根目录');
   folderBreadcrumbs = signal<{ fid: string; name: string }[]>([{ fid: '0', name: '根目录' }]);
+
+  // 夸克网盘文件浏览器（从默认账号直接选取文件/目录生成免密公开分享）
+  isDrivePickerOpen = signal<boolean>(false);
+  drivePickerMode = signal<'new' | 'edit'>('new');
+  drivePickerAccountName = signal<string>('');
+  drivePickerList = signal<any[]>([]);
+  drivePickerLoading = signal<boolean>(false);
+  drivePickerCurrentFid = signal<string>('0');
+  drivePickerCurrentName = signal<string>('根目录');
+  drivePickerBreadcrumbs = signal<{ fid: string; name: string }[]>([{ fid: '0', name: '根目录' }]);
+  drivePickerSharingFid = signal<string | null>(null);
 
   loadAccounts() {
     this.accountLoading.set(true);
@@ -644,6 +757,115 @@ export class App implements OnInit {
     }
   }
 
+  // --- 夸克网盘文件浏览器与一键免密公开分享 ---
+  openDrivePicker(mode: 'new' | 'edit' = 'new') {
+    this.drivePickerMode.set(mode);
+    this.isDrivePickerOpen.set(true);
+    this.drivePickerCurrentFid.set('0');
+    this.drivePickerCurrentName.set('根目录');
+    this.drivePickerBreadcrumbs.set([{ fid: '0', name: '根目录' }]);
+    this.fetchDrivePickerFiles('0');
+  }
+
+  closeDrivePicker() {
+    this.isDrivePickerOpen.set(false);
+    this.drivePickerSharingFid.set(null);
+  }
+
+  fetchDrivePickerFiles(pdirFid: string = '0') {
+    this.drivePickerLoading.set(true);
+    this.resService.getDefaultAccountFiles(pdirFid).subscribe({
+      next: (res) => {
+        this.drivePickerLoading.set(false);
+        this.drivePickerList.set(res.items || []);
+        if (res.account_name) {
+          this.drivePickerAccountName.set(res.nickname ? `${res.account_name} (${res.nickname})` : res.account_name);
+        }
+      },
+      error: (err) => {
+        this.drivePickerLoading.set(false);
+        const msg = err.error?.message || err.message || '获取默认网盘文件失败';
+        this.showToast('获取网盘文件失败: ' + msg, 'error');
+      }
+    });
+  }
+
+  enterDrivePickerFolder(folder: { fid: string; file_name: string }) {
+    this.drivePickerCurrentFid.set(folder.fid);
+    this.drivePickerCurrentName.set(folder.file_name);
+    this.drivePickerBreadcrumbs.update(crumbs => [...crumbs, { fid: folder.fid, name: folder.file_name }]);
+    this.fetchDrivePickerFiles(folder.fid);
+  }
+
+  navigateDrivePickerBreadcrumb(index: number) {
+    const crumbs = this.drivePickerBreadcrumbs();
+    if (index >= crumbs.length) return;
+    const target = crumbs[index];
+    this.drivePickerCurrentFid.set(target.fid);
+    this.drivePickerCurrentName.set(target.name);
+    this.drivePickerBreadcrumbs.set(crumbs.slice(0, index + 1));
+    this.fetchDrivePickerFiles(target.fid);
+  }
+
+  createAndApplyShare(item: { fid: string; file_name: string; dir: boolean; format_size?: string }) {
+    if (this.drivePickerSharingFid()) return;
+    this.drivePickerSharingFid.set(item.fid);
+    this.showToast(`⚡ 正在为【${item.file_name}】生成永久免密公开分享链接...`);
+
+    this.resService.createShareFromDefaultAccount(item.fid, item.file_name).subscribe({
+      next: (res) => {
+        this.drivePickerSharingFid.set(null);
+        if (!res || !res.share_url) {
+          this.showToast('生成分享链接失败：未返回有效链接', 'error');
+          return;
+        }
+
+        const mode = this.drivePickerMode();
+        if (mode === 'new') {
+          this.newResource.quarkUrl = res.share_url;
+          if (!this.newResource.title) {
+            this.newResource.title = item.file_name;
+          }
+          if (item.format_size && item.format_size !== '0 B') {
+            this.newResource.quarkFileSize = item.format_size;
+          }
+          if (item.dir) {
+            this.newResource.quarkFileType = '合集/文件夹';
+          }
+        } else {
+          this.editForm.quarkUrl = res.share_url;
+          if (!this.editForm.title) {
+            this.editForm.title = item.file_name;
+          }
+          if (item.format_size && item.format_size !== '0 B') {
+            this.editForm.quarkFileSize = item.format_size;
+          }
+          if (item.dir) {
+            this.editForm.quarkFileType = '合集/文件夹';
+          }
+        }
+
+        this.showToast(`✅ 成功生成免密公开分享并填入表单！\n${res.share_url}`);
+        this.closeDrivePicker();
+      },
+      error: (err) => {
+        this.drivePickerSharingFid.set(null);
+        const msg = err.error?.message || err.message || '生成分享失败';
+        this.showToast('生成分享失败: ' + msg, 'error');
+      }
+    });
+  }
+
+  shareCurrentDriveFolder() {
+    const fid = this.drivePickerCurrentFid();
+    const name = this.drivePickerCurrentName();
+    if (!fid || fid === '0') {
+      this.showToast('网盘顶级根目录不支持直接分享，请进入具体资源文件夹进行分享', 'error');
+      return;
+    }
+    this.createAndApplyShare({ fid, file_name: name, dir: true });
+  }
+
   runTestTransfer() {
     const url = this.testTransfer.share_url?.trim();
     if (!url) {
@@ -709,7 +931,8 @@ export class App implements OnInit {
       baiduFileSize: baiduLink?.file_size || '15.0 MB',
       baiduFileType: baiduLink?.file_type || 'PDF',
       baiduDesc: baiduLink?.resource_desc || '',
-      description: item.description || ''
+      description: item.description || '',
+      file_tree: (item as any).file_tree || []
     };
     this.isEditModalOpen.set(true);
   }
@@ -752,6 +975,7 @@ export class App implements OnInit {
       file_type: this.editForm.has_video ? 'PDF+MP4视频' : this.editForm.file_type,
       file_size: this.editForm.quarkFileSize || this.editForm.baiduFileSize || this.editForm.file_size || '15.0 MB',
       page_count: Number(this.editForm.page_count) || 20,
+      file_tree: (this.editForm as any).file_tree || [],
       is_published: this.editForm.is_published,
       links: [
         {
@@ -972,6 +1196,7 @@ export class App implements OnInit {
       file_type: this.newResource.has_video ? 'PDF+MP4视频' : this.newResource.file_type,
       file_size: this.newResource.quarkFileSize || this.newResource.baiduFileSize || this.newResource.file_size || '15.0 MB',
       page_count: Number(this.newResource.page_count) || 20,
+      file_tree: (this.newResource as any).file_tree || [],
       is_published: true,
       is_recommended: true,
       links: [
@@ -1004,11 +1229,14 @@ export class App implements OnInit {
       next: () => {
         this.showToast('🎉 资料发布成功！已实时落库。');
         this.newResource.title = '';
+        this.newResource.subtitle = '';
+        this.newResource.description = '';
         this.newResource.region = (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_region') : null) || '广西-柳州';
         this.newResource.school = '';
         this.newResource.quarkUrl = '';
         this.newResource.baiduUrl = '';
         this.newResource.baiduCode = '';
+        (this.newResource as any).file_tree = [];
         this.loadResources();
         this.switchTab('list');
       },

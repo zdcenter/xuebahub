@@ -28,6 +28,25 @@ type QuarkFolderItem struct {
 	Dir      bool   `json:"dir"`
 }
 
+type QuarkFileItem struct {
+	FID        string `json:"fid"`
+	FileName   string `json:"file_name"`
+	Dir        bool   `json:"dir"`
+	Size       int64  `json:"size"`
+	SizeDesc   string `json:"size_desc"`
+	FormatType string `json:"format_type"`
+	ShareID    string `json:"share_id,omitempty"`
+	ShareURL   string `json:"share_url,omitempty"`
+	UpdatedAt  int64  `json:"updated_at,omitempty"`
+}
+
+type CreateShareResult struct {
+	ShareID     string `json:"share_id"`
+	ShareURL    string `json:"share_url"`
+	ExtractCode string `json:"extract_code"`
+	ShareTitle  string `json:"share_title"`
+}
+
 type TransferShareResult struct {
 	OriginalURL     string `json:"original_url"`
 	NewShareURL     string `json:"new_share_url"`
@@ -228,6 +247,188 @@ func (s *QuarkTransferService) ListFolders(cookie string, pdirFID string) ([]Qua
 		}
 	}
 	return folders, nil
+}
+
+// ListItems 列出指定目录下的全部文件夹和文件（供后台文件选择器浏览自身网盘）
+func (s *QuarkTransferService) ListItems(cookie string, pdirFID string) ([]QuarkFileItem, error) {
+	if pdirFID == "" {
+		pdirFID = "0"
+	}
+	reqURL := fmt.Sprintf("https://drive-pc.quark.cn/1/clouddrive/file/sort?pr=ucpro&fr=pc&pdir_fid=%s&_page=1&_size=200&_fetch_total=1&_fetch_sub_dirs=1&_sort=file_type:asc,file_name:asc&__dt=%d&__t=%d",
+		pdirFID, rand.Intn(9000)+1000, time.Now().UnixMilli())
+	req, err := s.newRequest("GET", reqURL, nil, cookie)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	var res struct {
+		Code int `json:"code"`
+		Data struct {
+			List []struct {
+				FID        string `json:"fid"`
+				FileName   string `json:"file_name"`
+				Dir        bool   `json:"dir"`
+				Size       int64  `json:"size"`
+				FormatType string `json:"format_type"`
+				ShareID    string `json:"share_id"`
+				UpdatedAt  int64  `json:"updated_at"`
+			} `json:"list"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(bodyBytes, &res); err != nil {
+		return nil, err
+	}
+
+	items := make([]QuarkFileItem, 0, len(res.Data.List))
+	for _, item := range res.Data.List {
+		sizeDesc := ""
+		if !item.Dir && item.Size > 0 {
+			sizeDesc = formatByteSize(item.Size)
+		}
+		shareURL := ""
+		if item.ShareID != "" {
+			shareURL = fmt.Sprintf("https://pan.quark.cn/s/%s", item.ShareID)
+		}
+		items = append(items, QuarkFileItem{
+			FID:        item.FID,
+			FileName:   item.FileName,
+			Dir:        item.Dir,
+			Size:       item.Size,
+			SizeDesc:   sizeDesc,
+			FormatType: item.FormatType,
+			ShareID:    item.ShareID,
+			ShareURL:   shareURL,
+			UpdatedAt:  item.UpdatedAt,
+		})
+	}
+	return items, nil
+}
+
+// CreateShareForFID 为网盘中的任意指定文件夹或文件创建永久公开无密码分享链接
+func (s *QuarkTransferService) CreateShareForFID(cookie string, fid string, title string) (*CreateShareResult, error) {
+	if fid == "" {
+		return nil, errors.New("文件或文件夹 FID 不能为空")
+	}
+	if strings.TrimSpace(title) == "" {
+		title = "学霸资源分享"
+	}
+
+	createShareURL := fmt.Sprintf("https://drive-pc.quark.cn/1/clouddrive/share?pr=ucpro&fr=pc&__dt=%d&__t=%d",
+		rand.Intn(9000)+1000, time.Now().UnixMilli())
+
+	createSharePayload := map[string]interface{}{
+		"fid_list":     []string{fid},
+		"title":        title,
+		"url_type":     1, // 1: 公开分享
+		"expired_type": 1, // 1: 永久有效
+		"expire_time":  0,
+	}
+
+	createReq, err := s.newRequest("POST", createShareURL, createSharePayload, cookie)
+	if err != nil {
+		return nil, fmt.Errorf("创建分享请求失败: %w", err)
+	}
+
+	createResp, err := s.client.Do(createReq)
+	if err != nil {
+		return nil, fmt.Errorf("请求创建分享超时: %w", err)
+	}
+	defer createResp.Body.Close()
+
+	createBody, _ := io.ReadAll(createResp.Body)
+	var createResult struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    struct {
+			TaskID  string `json:"task_id"`
+			ShareID string `json:"share_id"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(createBody, &createResult); err != nil {
+		return nil, errors.New("解析创建分享响应失败")
+	}
+
+	if createResult.Code != 0 {
+		return nil, fmt.Errorf("夸克创建分享失败: %s", createResult.Message)
+	}
+
+	shareID := createResult.Data.ShareID
+
+	// 若返回了 task_id 则轮询取 share_id
+	if shareID == "" && createResult.Data.TaskID != "" {
+		for i := 0; i < 8; i++ {
+			time.Sleep(600 * time.Millisecond)
+			shareTaskURL := fmt.Sprintf("https://drive-pc.quark.cn/1/clouddrive/task?pr=ucpro&fr=pc&task_id=%s&__dt=%d&__t=%d",
+				createResult.Data.TaskID, rand.Intn(9000)+1000, time.Now().UnixMilli())
+			sTaskReq, _ := s.newRequest("GET", shareTaskURL, nil, cookie)
+			if sTaskResp, stErr := s.client.Do(sTaskReq); stErr == nil {
+				stBody, _ := io.ReadAll(sTaskResp.Body)
+				sTaskResp.Body.Close()
+				var stRes struct {
+					Code int `json:"code"`
+					Data struct {
+						ShareID string `json:"share_id"`
+						Status  int    `json:"status"`
+					} `json:"data"`
+				}
+				if json.Unmarshal(stBody, &stRes) == nil && stRes.Data.ShareID != "" {
+					shareID = stRes.Data.ShareID
+					break
+				}
+			}
+		}
+	}
+
+	if shareID == "" {
+		return nil, errors.New("未能获取到生成的分享标识 share_id")
+	}
+
+	// 阶段 7：通过 share_id 获取最终可访问的 share_url 及 share_pwd (提取码)
+	pwdURL := fmt.Sprintf("https://drive-pc.quark.cn/1/clouddrive/share/password?pr=ucpro&fr=pc&__dt=%d&__t=%d",
+		rand.Intn(9000)+1000, time.Now().UnixMilli())
+
+	pwdPayload := map[string]string{
+		"share_id": shareID,
+	}
+
+	pwdReq, _ := s.newRequest("POST", pwdURL, pwdPayload, cookie)
+	var finalShareURL string
+	var finalExtractCode string
+
+	if pwdResp, pErr := s.client.Do(pwdReq); pErr == nil {
+		defer pwdResp.Body.Close()
+		pwdBody, _ := io.ReadAll(pwdResp.Body)
+		var pwdResult struct {
+			Code int `json:"code"`
+			Data struct {
+				ShareURL string `json:"share_url"`
+				SharePwd string `json:"share_pwd"`
+			} `json:"data"`
+		}
+		if json.Unmarshal(pwdBody, &pwdResult) == nil && pwdResult.Data.ShareURL != "" {
+			finalShareURL = pwdResult.Data.ShareURL
+			finalExtractCode = pwdResult.Data.SharePwd
+		}
+	}
+
+	if finalShareURL == "" {
+		finalShareURL = fmt.Sprintf("https://pan.quark.cn/s/%s", shareID)
+	}
+
+	return &CreateShareResult{
+		ShareID:     shareID,
+		ShareURL:    finalShareURL,
+		ExtractCode: finalExtractCode,
+		ShareTitle:  title,
+	}, nil
 }
 
 // CreateFolder 在指定父文件夹下创建新目录

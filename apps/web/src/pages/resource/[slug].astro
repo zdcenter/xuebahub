@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { getApiBaseUrl } from '../../lib/api';
+import QRCode from 'qrcode';
 
 const { slug } = Astro.params;
 const apiBase = getApiBaseUrl();
@@ -42,6 +43,7 @@ try {
         saveCount: data.save_count ?? 0,
         createdAt: data.created_at ? data.created_at.substring(0, 10) : "2026-04-01",
         previewImages: previewImgs,
+        fileTree: Array.isArray(data.file_tree) ? data.file_tree : [],
         links: (data.links || []).map((l: any) => ({
           id: l.id,
           drive_type: l.drive_type,
@@ -83,6 +85,7 @@ if (!resource) {
     saveCount: 0,
     createdAt: "2026-03-28",
     previewImages: [],
+    fileTree: [],
     links: [
       {
         id: "demo-quark",
@@ -102,10 +105,115 @@ if (!resource) {
     ]
   };
 }
+
+if (resource && Array.isArray(resource.links)) {
+  for (const link of resource.links) {
+    if (link.share_url) {
+      try {
+        link.qr_svg = await QRCode.toString(link.share_url, {
+          type: 'svg',
+          margin: 1,
+          width: 200,
+          color: {
+            dark: '#0f172a',
+            light: '#ffffff'
+          }
+        });
+      } catch (err) {
+        link.qr_svg = '';
+      }
+    }
+  }
+}
+
+function normalizeFileTree(list: any[]): any[] {
+  if (!list || !Array.isArray(list)) return [];
+  if (list.some((it: any) => it.children && it.children.length > 0)) {
+    return list;
+  }
+  const hasSlash = list.some((it: any) => it.name && it.name.includes('/'));
+  if (!hasSlash) return list;
+
+  const folderMap = new Map<string, any>();
+  const rootItems: any[] = [];
+
+  for (const item of list) {
+    if (item.name && item.name.includes('/')) {
+      const parts = item.name.split('/');
+      const folderName = parts[0];
+      const fileName = parts.slice(1).join('/');
+      if (!folderMap.has(folderName)) {
+        folderMap.set(folderName, {
+          name: folderName,
+          is_dir: true,
+          ext: 'DIR',
+          size: '',
+          children: []
+        });
+      }
+      folderMap.get(folderName).children.push({
+        ...item,
+        name: fileName
+      });
+    } else {
+      rootItems.push(item);
+    }
+  }
+
+  const result = [...rootItems];
+  for (const folder of folderMap.values()) {
+    folder.size = `${folder.children.length} 个文件`;
+    result.push(folder);
+  }
+  return result;
+}
+
+function countTotalFiles(list: any[]): number {
+  if (!list || !Array.isArray(list)) return 0;
+  let count = 0;
+  for (const item of list) {
+    if (item.is_dir && item.children && item.children.length > 0) {
+      count += item.children.length;
+    } else {
+      count++;
+    }
+  }
+  return count;
+}
+
+function getFileIcon(ext: string, isDir?: boolean): string {
+  if (isDir) return '📁';
+  const e = (ext || '').toUpperCase();
+  if (['MP4', 'MKV', 'AVI', 'MOV', 'FLV', 'TS'].includes(e)) return '🎬';
+  if (['PDF'].includes(e)) return '📄';
+  if (['DOC', 'DOCX', 'TXT', 'WPS'].includes(e)) return '📝';
+  if (['PPT', 'PPTX'].includes(e)) return '📑';
+  if (['XLS', 'XLSX', 'CSV'].includes(e)) return '📊';
+  if (['ZIP', 'RAR', '7Z', 'TAR', 'GZ'].includes(e)) return '📦';
+  if (['MP3', 'WAV', 'FLAC', 'AAC', 'M4A'].includes(e)) return '🎵';
+  if (['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF'].includes(e)) return '🖼️';
+  return '📄';
+}
+
+function getFileBadgeClass(ext: string): string {
+  const e = (ext || '').toUpperCase();
+  if (['MP4', 'MKV', 'AVI', 'MOV', 'FLV', 'TS'].includes(e)) return 'bg-purple-50 text-purple-700 border-purple-200';
+  if (['PDF'].includes(e)) return 'bg-rose-50 text-rose-700 border-rose-200';
+  if (['DOC', 'DOCX', 'TXT', 'WPS'].includes(e)) return 'bg-blue-50 text-blue-700 border-blue-200';
+  if (['PPT', 'PPTX'].includes(e)) return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (['XLS', 'XLSX', 'CSV'].includes(e)) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (['ZIP', 'RAR', '7Z', 'TAR'].includes(e)) return 'bg-orange-50 text-orange-700 border-orange-200';
+  if (['MP3', 'WAV', 'FLAC'].includes(e)) return 'bg-teal-50 text-teal-700 border-teal-200';
+  if (['JPG', 'JPEG', 'PNG', 'WEBP'].includes(e)) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+  return 'bg-slate-100 text-slate-600 border-slate-200';
+}
+
+const displayTree = normalizeFileTree(resource.fileTree);
+const totalFileCount = countTotalFiles(resource.fileTree);
 ---
 
 <Layout
-  title={`${resource.title} - 学霸资料库`}
+  title={`${resource.title} - 学霸网`}
   description={resource.subtitle}
   keywords={`${resource.grade}, ${resource.subject}, ${resource.edition}, 期末试卷, 试卷下载`}
 >
@@ -119,209 +227,296 @@ if (!resource) {
       <span class="text-slate-800 font-medium">{resource.grade} {resource.subject}</span>
     </nav>
 
-    <!-- 资料头部概览 -->
-    <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="px-2.5 py-1 bg-blue-100 text-blue-700 font-bold text-xs rounded-lg">
-          {resource.grade}
-        </span>
-        <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg">
-          {resource.subject}
-        </span>
-        <span class="px-2.5 py-1 bg-slate-100 text-slate-700 font-medium text-xs rounded-lg">
-          {resource.edition}
-        </span>
-        {resource.school && (
-          <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-lg flex items-center gap-1">
-            <span>🏫</span>
-            <span>{resource.school}</span>
-          </span>
+    <!-- 主体内容区：卡片式无缝结合 -->
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+      
+      <!-- 顶部：资料元信息 -->
+      <div class="p-5 sm:p-6 lg:p-8 border-b border-slate-100 bg-gradient-to-br from-white to-slate-50/50">
+        <div class="flex flex-wrap items-center gap-2 mb-6">
+          <span class="px-2.5 py-1 bg-blue-100 text-blue-700 font-bold text-xs rounded-lg">{resource.grade}</span>
+          <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg">{resource.subject}</span>
+          <span class="px-2.5 py-1 bg-slate-100 text-slate-700 font-medium text-xs rounded-lg">{resource.edition}</span>
+          {resource.school && (
+            <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-lg flex items-center gap-1">
+              <span>🏫</span><span>{resource.school}</span>
+            </span>
+          )}
+          {resource.region && !resource.school && (
+            <span class="px-2.5 py-1 bg-sky-50 text-sky-700 border border-sky-200 font-medium text-xs rounded-lg flex items-center gap-1">
+              <span>📍</span><span>{resource.region}</span>
+            </span>
+          )}
+          <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-medium text-xs rounded-lg">官方完整版 · 纯净无水印</span>
+        </div>
+
+        <div class="space-y-3">
+          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 leading-snug tracking-tight">
+            {resource.title}
+          </h1>
+          
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+            <div class="flex-1">
+              {resource.subtitle && (
+                <h2 class="text-sm sm:text-base font-medium text-slate-400/90 tracking-wide">
+                  {resource.subtitle}
+                </h2>
+              )}
+            </div>
+            
+            <div class="flex flex-wrap items-center sm:justify-end gap-3 sm:gap-4 text-xs text-slate-400">
+              <span class="flex items-center space-x-1.5">
+                <span>📅</span>
+                <span class="font-medium text-slate-500">{resource.createdAt}</span>
+              </span>
+              <span class="text-slate-200">•</span>
+              <span class="flex items-center space-x-1.5">
+                <span>📖</span>
+                <span class="font-medium text-slate-500">共 {resource.pageCount} 页/讲</span>
+              </span>
+              <span class="text-slate-200">•</span>
+              <span class="flex items-center space-x-1.5">
+                <span>👁️</span>
+                <span class="font-mono font-medium text-slate-500">{resource.viewCount} 次浏览</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 中部：网盘转存下载（一目了然的极简列表） -->
+      <div class="p-5 sm:p-6 lg:p-8 bg-slate-50/50">
+        <!-- 警示横幅 -->
+        {resource.links.some((l: any) => l.status === 'invalid') && (
+          <div class="mb-5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center text-xs text-amber-900">
+            <span class="text-base mr-2">⚠️</span>
+            <span>检测到部分网盘已失效，站长已安排补链。请优先选择标记为<strong>【✅ 正常存活】</strong>的可用网盘极速转存！</span>
+          </div>
         )}
-        {resource.region && !resource.school && (
-          <span class="px-2.5 py-1 bg-sky-50 text-sky-700 border border-sky-200 font-medium text-xs rounded-lg flex items-center gap-1">
-            <span>📍</span>
-            <span>{resource.region}</span>
-          </span>
-        )}
-        <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-medium text-xs rounded-lg">
-          官方完整版 · 纯净无水印
-        </span>
-      </div>
 
-      <div class="space-y-2">
-        <h1 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 leading-snug">
-          {resource.title}
-        </h1>
-        <p class="text-xs sm:text-sm text-slate-500">
-          {resource.subtitle}
-        </p>
-      </div>
+        <div class="grid grid-cols-1 gap-4">
+          {resource.links.map((link: any) => (
+            <div class={`flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all ${
+              link.status === 'invalid'
+                ? 'bg-rose-50/40 border-rose-200 opacity-80'
+                : link.is_primary 
+                  ? 'bg-white border-blue-300 shadow-sm ring-1 ring-blue-50' 
+                  : 'bg-white border-slate-200 shadow-sm hover:border-blue-200'
+            }`}>
+              <div class="flex items-center gap-4 flex-1 min-w-0">
+                <div class={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner border ${
+                  link.drive_name.includes('夸克') ? 'bg-blue-50 border-blue-100 text-blue-500' : 
+                  link.drive_name.includes('百度') ? 'bg-sky-50 border-sky-100 text-sky-500' : 
+                  'bg-indigo-50 border-indigo-100 text-indigo-500'
+                }`}>
+                  {link.drive_name.includes('夸克') ? '⚡' : link.drive_name.includes('百度') ? '☁️' : '📁'}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-slate-800 text-base truncate">{link.drive_name}</h3>
+                    {link.is_primary && link.status !== 'invalid' && (
+                      <span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold flex-shrink-0">主推极速</span>
+                    )}
+                    {link.status === 'invalid' && (
+                      <span class="bg-rose-100 text-rose-700 text-[10px] px-2 py-0.5 rounded-md font-bold border border-rose-200 flex-shrink-0">失效补链中</span>
+                    )}
+                  </div>
+                  <div class="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2">
+                    <span>{(!link.file_size || link.file_size === '0 B') ? ((resource.fileSize && resource.fileSize !== '0 B') ? resource.fileSize : '完整视频合集包') : link.file_size}</span>
+                    <span class="text-slate-300">•</span>
+                    <span>{link.file_type}</span>
+                    {link.extract_code && (
+                      <>
+                        <span class="text-slate-300">•</span>
+                        <span class="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-mono border border-amber-100">密码: {link.extract_code}</span>
+                      </>
+                    )}
+                    <span class="text-slate-300">•</span>
+                    <span class="flex items-center gap-1">⚡ <span id={`link-count-${link.id}`}>{link.click_count}</span> 人已转存</span>
+                  </div>
+                </div>
+              </div>
 
-      <!-- 页面通用属性：保留收录时间、体量与页面浏览量，彻底移除与各网盘重复的规格与总转存 -->
-      <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100 text-xs text-slate-500">
-        <div class="flex flex-wrap items-center gap-4">
-          <span class="flex items-center space-x-1">
-            <span>📅 收录时间：</span>
-            <strong class="text-slate-700 font-medium">{resource.createdAt}</strong>
-          </span>
-          <span class="text-slate-300">•</span>
-          <span class="flex items-center space-x-1">
-            <span>📖 内容体量：</span>
-            <strong class="text-slate-700 font-medium">共 {resource.pageCount} 页/讲</strong>
-          </span>
-          <span class="text-slate-300">•</span>
-          <span class="flex items-center space-x-1">
-            <span>🏷️ 课程归属：</span>
-            <strong class="text-slate-700 font-medium">{resource.stage} · {resource.grade}</strong>
-          </span>
+              <div class="flex flex-row items-center justify-end gap-3 w-full sm:w-auto mt-4 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 relative">
+                <!-- 电脑端悬浮放大二维码 -->
+                {link.qr_svg && link.status !== 'invalid' && (
+                  <div class="hidden md:flex items-center justify-center w-12 h-12 p-0.5 border border-slate-200 rounded-lg hover:scale-[4] transition-transform origin-right bg-white shadow-xs cursor-crosshair z-20 [&>svg]:w-full [&>svg]:h-full" set:html={link.qr_svg} title="鼠标悬浮放大，微信/网盘直接扫码保存"></div>
+                )}
+                
+                {link.status === 'invalid' ? (
+                  <button disabled class="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-400 cursor-not-allowed">
+                    暂不可用
+                  </button>
+                ) : (
+                  <a href={link.share_url} target="_blank" rel="noopener noreferrer" class={`btn-track-save w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-sm text-center transition flex-shrink-0 flex items-center justify-center space-x-1 ${link.is_primary ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' : 'bg-slate-800 hover:bg-slate-900 text-white shadow-sm'}`} data-slug={resource.slug} data-link-id={link.id || ''}>
+                    <span>立即转存下载</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-
-        <div class="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/60">
-          <span class="text-slate-400">👁️ 页面浏览量</span>
-          <span class="font-bold text-slate-800 font-mono">{resource.viewCount} 次</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 网盘转存下载专区（核心转化区域：显示真实明文地址 + 一键复制 + 转存） -->
-    <div class="bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-3xl p-6 sm:p-8 border-2 border-blue-200/80 shadow-md space-y-5">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg sm:text-xl font-bold text-slate-900 flex items-center space-x-2">
-            <span>📥 高清网盘下载与转存</span>
-          </h2>
-          <p class="text-xs text-slate-500 mt-1">
-            提供直达公开网盘链接与地址复制，手机端转存支持免下载直接原画播放或打印
-          </p>
-        </div>
       </div>
 
-      <!-- 全局网盘健康警示横幅 -->
-      {resource.links.some((l: any) => l.status === 'invalid') && (
-        <div class="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-xs">
-          <div class="flex items-center space-x-2">
-            <span class="text-base flex-shrink-0">⚠️</span>
-            <span><strong>通道状态提示：</strong>检测到本资料部分网盘已失效，站长已安排补链。推荐优先选择标记为<strong>【✅ 正常存活】</strong>的可用网盘极速转存！</span>
+      <!-- 底部：资源内含文件清单 -->
+      {resource.fileTree && resource.fileTree.length > 0 && (
+        <div class="p-5 sm:p-6 lg:p-8 border-t border-slate-100 space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center space-x-2">
+                <span class="p-1.5 bg-blue-100 text-blue-700 rounded-xl">📂</span>
+                <span>网盘内含文件清单与目录结构</span>
+                <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  真实层级 · 所见即所得
+                </span>
+              </h3>
+            </div>
+            
+            <div class="flex items-center space-x-2 text-xs font-semibold text-slate-600 bg-white/95 px-3.5 py-1.5 rounded-xl border border-blue-100 shadow-xs shrink-0">
+              <span>共 <strong class="text-blue-600 font-mono">{totalFileCount}</strong> 个文件</span>
+              <span class="text-slate-300">•</span>
+              <span>总计 <strong class="text-slate-800 font-mono">{(!resource.fileSize || resource.fileSize === '0 B') ? '完整视频合集包' : resource.fileSize}</strong></span>
+            </div>
+          </div>
+
+          <!-- 仿真实网盘/资源管理器 视窗面板 -->
+          <div class="rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+            <!-- 资源管理器工具栏 / 路径地址栏 -->
+            <div class="bg-slate-50 border-b border-slate-200/80 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div class="flex items-center space-x-2 text-slate-600 min-w-0 font-medium">
+                <span class="text-blue-600 font-bold flex items-center space-x-1 shrink-0">
+                  <span>📁</span>
+                  <span>根目录</span>
+                </span>
+                <span class="text-slate-300 shrink-0">/</span>
+                <span class="text-slate-500 truncate" title="全部已解析文件">全部文件 ({totalFileCount} 项)</span>
+              </div>
+              
+              <div class="flex items-center space-x-2 shrink-0">
+                <button
+                  type="button"
+                  id="btn-toggle-all-folders"
+                  class="text-[11px] font-medium text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50/60 border border-slate-200 px-2.5 py-1 rounded-lg transition-colors flex items-center space-x-1 cursor-pointer shadow-2xs"
+                >
+                  <span id="btn-toggle-all-icon">📂</span>
+                  <span id="btn-toggle-all-text">全部折叠 / 展开</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 资源管理器列名条 (类似 Windows/网盘 详情视图) -->
+            <div class="bg-slate-100/70 border-b border-slate-200/60 px-4 py-1.5 flex items-center justify-between text-[11px] font-medium text-slate-400 select-none">
+              <span class="flex-1 min-w-0 pl-1">文件名</span>
+              <span class="w-24 text-right pr-2 shrink-0">大小</span>
+            </div>
+
+            <!-- 树形文件列表体 -->
+            <div class="divide-y divide-slate-100 text-xs" id="file-tree-container">
+              {displayTree.map((node: any, idx: number) => {
+                if (node.is_dir) {
+                  const children = node.children || [];
+                  return (
+                    <div class="tree-dir-item group" data-dir-index={idx}>
+                      <!-- 文件夹行 (可点击折叠/展开) -->
+                      <div class="tree-dir-header flex items-center justify-between px-3.5 py-2.5 bg-slate-50/50 hover:bg-blue-50/40 cursor-pointer transition select-none">
+                        <div class="flex items-center space-x-2 min-w-0 flex-1">
+                          <span class="tree-caret w-4 text-[10px] text-slate-400 group-hover:text-blue-600 transition-transform duration-200 inline-block text-center select-none font-mono">
+                            ▼
+                          </span>
+                          <span class="text-base shrink-0">📁</span>
+                          <span class="font-bold text-slate-800 group-hover:text-blue-700 truncate text-xs sm:text-sm" title={node.name}>
+                            {node.name}
+                          </span>
+                        </div>
+                        <div class="flex items-center space-x-2 shrink-0 pl-2">
+                          <span class="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200/80 shadow-2xs">
+                            {node.size || `${children.length} 项`}
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- 文件夹嵌套子文件列表 (带专业树形连线与缩进) -->
+                      {children.length > 0 && (
+                        <div class="tree-dir-body bg-white py-1">
+                          <div class="ml-5 sm:ml-7 pl-3 sm:pl-4 border-l-2 border-slate-200/90 space-y-0.5 my-1">
+                            {children.map((child: any, cIdx: number) => {
+                              const cExt = (child.ext || (child.name ? child.name.split('.').pop() : '')).toUpperCase();
+                              const childIcon = getFileIcon(cExt, child.is_dir);
+                              const badgeClass = getFileBadgeClass(cExt);
+
+                              return (
+                                <div class="relative flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition group/file">
+                                  <!-- 树状分支拐角连线 -->
+                                  <span class="absolute -left-3 sm:-left-4 top-1/2 -mt-px w-2.5 sm:w-3.5 h-px bg-slate-200/90 pointer-events-none"></span>
+
+                                  <div class="flex items-center space-x-2 min-w-0 flex-1">
+                                    <span class="text-sm shrink-0">{childIcon}</span>
+                                    <span class="font-medium text-slate-700 group-hover/file:text-blue-600 truncate text-xs" title={child.name}>
+                                      {child.name}
+                                    </span>
+                                    {cExt && (
+                                      <span class={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 font-mono ${badgeClass}`}>
+                                        {cExt}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div class="w-24 text-right pr-2 shrink-0">
+                                    {child.size ? (
+                                      <span class="text-[11px] font-mono text-slate-400 group-hover/file:text-slate-600">
+                                        {child.size}
+                                      </span>
+                                    ) : (
+                                      <span class="text-[10px] text-slate-300">-</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // 根目录下直接存放的文件 (顶层文件)
+                const ext = (node.ext || (node.name ? node.name.split('.').pop() : '')).toUpperCase();
+                const fileIcon = getFileIcon(ext, node.is_dir);
+                const badgeClass = getFileBadgeClass(ext);
+
+                return (
+                  <div class="flex items-center justify-between px-3.5 py-2.5 hover:bg-blue-50/30 transition group/rootfile">
+                    <div class="flex items-center space-x-2 min-w-0 flex-1">
+                      <!-- 占位对齐图标 -->
+                      <span class="w-4 inline-block text-center text-slate-300 select-none text-[10px]">·</span>
+                      <span class="text-sm shrink-0">{fileIcon}</span>
+                      <span class="font-medium text-slate-800 group-hover/rootfile:text-blue-600 truncate text-xs sm:text-sm" title={node.name}>
+                        {node.name}
+                      </span>
+                      {ext && (
+                        <span class={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 font-mono ${badgeClass}`}>
+                          {ext}
+                        </span>
+                      )}
+                    </div>
+
+                    <div class="w-24 text-right pr-2 shrink-0">
+                      {node.size ? (
+                        <span class="text-[11px] font-mono text-slate-400 group-hover/rootfile:text-slate-600">
+                          {node.size}
+                        </span>
+                      ) : (
+                        <span class="text-[10px] text-slate-300">-</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
-
-      <div class="grid grid-cols-1 gap-4">
-        {resource.links.map((link: any) => (
-          <div class={`p-5 sm:p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-5 border transition-all ${
-            link.status === 'invalid'
-              ? 'bg-rose-50/40 border-rose-200'
-              : link.is_primary 
-                ? 'bg-white border-blue-300 shadow-md ring-1 ring-blue-100' 
-                : 'bg-white/90 border-slate-200 shadow-sm'
-          }`}>
-            <div class="space-y-3 flex-1 min-w-0">
-              <!-- 网盘头部标签与独立指标 -->
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-bold text-slate-900 text-sm">{link.drive_name}</span>
-                {link.is_primary && link.status !== 'invalid' && (
-                  <span class="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-md shadow-xs">
-                    主推极速通道
-                  </span>
-                )}
-                {link.extract_code && (
-                  <span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-medium rounded-md">
-                    提取码: <strong class="font-mono">{link.extract_code}</strong>
-                  </span>
-                )}
-                {link.status === 'invalid' ? (
-                  <span class="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-bold rounded-md border border-rose-200 flex items-center space-x-1" title={link.invalid_reason || '网盘页面返回404或分享取消'}>
-                    <span>❌ 链接失效 (补链中)</span>
-                  </span>
-                ) : link.status === 'reported' ? (
-                  <span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-medium rounded-md border border-amber-200">
-                    ⚠️ 待核验
-                  </span>
-                ) : (
-                  <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md border border-emerald-200">
-                    ✅ 正常存活
-                  </span>
-                )}
-                <span class="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-[11px] font-semibold rounded-md border border-blue-100">
-                  📦 实际大小: {link.file_size}
-                </span>
-                <span class="px-2.5 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-medium rounded-md">
-                  📄 格式: {link.file_type}
-                </span>
-                <span class="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[11px] font-medium rounded-md border border-emerald-100">
-                  ⚡ <span id={`link-count-${link.id}`}>{link.click_count}</span> 人转存
-                </span>
-                <span class="text-[11px] text-slate-400">
-                  🕒 更新于 {link.updated_at}
-                </span>
-              </div>
-
-              <!-- 网盘专属说明 -->
-              <p class="text-xs text-slate-600 font-medium">
-                {link.status === 'invalid' 
-                  ? `【失效提醒】${link.invalid_reason || '该网盘分享已被取消或清理'}，请使用备用通道转存。` 
-                  : (link.resource_desc || link.desc)}
-              </p>
-
-              <!-- 明文网盘地址显示栏与复制按钮 -->
-              <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 max-w-2xl">
-                <span class="text-[11px] text-slate-400 font-medium flex-shrink-0">网盘地址:</span>
-                <span class="text-xs text-slate-700 font-mono truncate select-all flex-1" title={link.share_url}>
-                  {link.share_url}
-                </span>
-                <button
-                  type="button"
-                  class="btn-copy-url px-2.5 py-1 text-[11px] font-medium bg-white text-slate-700 border border-slate-200 hover:border-blue-400 hover:text-blue-600 rounded-lg transition flex items-center space-x-1 flex-shrink-0 cursor-pointer"
-                  data-url={link.share_url}
-                  data-code={link.extract_code || ''}
-                  data-slug={resource.slug}
-                  data-link-id={link.id || ''}
-                >
-                  <span>📋 复制链接</span>
-                </button>
-                <button
-                  type="button"
-                  class="btn-report-link px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition flex items-center space-x-1 flex-shrink-0 cursor-pointer"
-                  data-link-id={link.id || ''}
-                  title="如果网盘分享已被删除或无法访问，点此通知站长补链"
-                >
-                  <span>⚠️ 失效报错</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- 右侧直达操作按钮 -->
-            <div class="flex items-center space-x-3 flex-shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-              {link.status === 'invalid' ? (
-                <button
-                  type="button"
-                  class="px-5 py-3.5 rounded-xl font-bold text-xs bg-rose-100/80 text-rose-700 border border-rose-200 cursor-not-allowed flex items-center space-x-1"
-                  title="该网盘正在等待补链，请使用其他备用网盘"
-                  disabled
-                >
-                  <span>❌ 该通道失效 · 补链中</span>
-                </button>
-              ) : (
-                <a
-                  href={link.share_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class={`btn-track-save px-6 py-3.5 rounded-xl font-bold transition text-xs flex items-center space-x-1.5 ${
-                    link.is_primary
-                      ? 'btn-save-quark text-white shadow-md'
-                      : 'bg-slate-800 hover:bg-slate-900 text-white'
-                  }`}
-                  data-slug={resource.slug}
-                  data-link-id={link.id || ''}
-                >
-                  <span>🚀 立即转存下载 ➔</span>
-                </a>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+  </div>
 
     <!-- 资源详细介绍与说明（仅当填写了真实说明时才显示，无内容则彻底隐藏） -->
     {resource.description && resource.description.trim().length > 0 && resource.description !== resource.title && (
@@ -369,17 +564,7 @@ if (!resource) {
       </div>
     )}
 
-    <!-- 资料详细说明 -->
-    <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4 text-xs sm:text-sm text-slate-600 leading-relaxed">
-      <h3 class="font-bold text-slate-800 text-base">学习备考与使用建议</h3>
-      <p>{resource.description}</p>
-      <div class="p-4 bg-amber-50 rounded-2xl border border-amber-200/60 text-xs text-amber-800 space-y-1">
-        <div class="font-bold">转存与使用小贴士：</div>
-        <div>1. 建议先点击“立即转存”保存到自己的夸克网盘，避免后续分享链接被和谐或过期；</div>
-        <div>2. 手机端使用夸克 APP 可直接在线倍速观看视频或无损预览 PDF 文档；</div>
-        <div>3. 如需纸质答题，手机通过局域网连接家用 Wi-Fi 打印机即可一键打印标准 A4 试卷。</div>
-      </div>
-    </div>
+
   </div>
 
   <!-- 轻量复制反馈 Toast -->
@@ -404,7 +589,9 @@ if (!resource) {
     function recordSaveClick(slug, linkId) {
       if (!slug) return;
       var host = window.location.hostname || '127.0.0.1';
-      var apiUrl = 'http://' + host + ':8080/api/v1/public/resources/' + encodeURIComponent(slug) + '/track-save';
+      var container = document.getElementById('resource-container');
+      var base = (container && container.getAttribute('data-api-base')) ? container.getAttribute('data-api-base') : ('http://' + host + ':4001');
+      var apiUrl = base + '/api/v1/public/resources/' + encodeURIComponent(slug) + '/track-save';
       if (linkId) {
         apiUrl += '?link_id=' + encodeURIComponent(linkId);
       }
@@ -464,6 +651,19 @@ if (!resource) {
       });
     });
 
+    // 绑定单一提取码复制按钮
+    document.querySelectorAll('.btn-copy-code').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const code = btn.getAttribute('data-code');
+        if (!code) return;
+        navigator.clipboard.writeText(code).then(() => {
+          showToast('📋 提取码已复制！');
+        }).catch(() => {
+          prompt('请手动复制提取码：', code);
+        });
+      });
+    });
+
     // 绑定网盘失效报错按钮
     document.querySelectorAll('.btn-report-link').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -506,5 +706,51 @@ if (!resource) {
           });
       });
     });
+
+    // 绑定资源管理器风格目录树折叠/展开交互
+    const dirHeaders = document.querySelectorAll('.tree-dir-header');
+    dirHeaders.forEach(header => {
+      header.addEventListener('click', () => {
+        const parent = header.closest('.tree-dir-item');
+        if (!parent) return;
+        const body = parent.querySelector('.tree-dir-body');
+        const caret = parent.querySelector('.tree-caret');
+        if (body) {
+          const isHidden = body.classList.contains('hidden');
+          if (isHidden) {
+            body.classList.remove('hidden');
+            if (caret) caret.textContent = '▼';
+          } else {
+            body.classList.add('hidden');
+            if (caret) caret.textContent = '▶';
+          }
+        }
+      });
+    });
+
+    // 绑定“全部展开 / 全部折叠”全局按钮
+    const toggleAllBtn = document.getElementById('btn-toggle-all-folders');
+    let allExpanded = true;
+    if (toggleAllBtn) {
+      toggleAllBtn.addEventListener('click', () => {
+        allExpanded = !allExpanded;
+        const allBodies = document.querySelectorAll('.tree-dir-body');
+        const allCarets = document.querySelectorAll('.tree-caret');
+        allBodies.forEach(b => {
+          if (allExpanded) {
+            b.classList.remove('hidden');
+          } else {
+            b.classList.add('hidden');
+          }
+        });
+        allCarets.forEach(c => {
+          c.textContent = allExpanded ? '▼' : '▶';
+        });
+        const toggleAllText = document.getElementById('btn-toggle-all-text');
+        if (toggleAllText) {
+          toggleAllText.textContent = allExpanded ? '全部折叠' : '全部展开';
+        }
+      });
+    }
   </script>
 </Layout>

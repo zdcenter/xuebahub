@@ -295,6 +295,9 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 	existing.CoverImage = req.CoverImage
 	existing.IsRecommended = req.IsRecommended
 	existing.IsPublished = req.IsPublished
+	if req.FileTree != nil {
+		existing.FileTree = req.FileTree
+	}
 
 	// 如果包含链接更新，保留原有网盘累计转存数
 	if len(req.Links) > 0 {

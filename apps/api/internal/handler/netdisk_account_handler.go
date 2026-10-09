@@ -469,3 +469,77 @@ func (h *NetdiskAccountHandler) AutoTransferAndShare(c fiber.Ctx) error {
 		"data":    result,
 	})
 }
+
+// ListDefaultAccountFiles 获取默认夸克网盘账号的文件与文件夹列表（支持按 pdir_fid 下钻）
+func (h *NetdiskAccountHandler) ListDefaultAccountFiles(c fiber.Ctx) error {
+	var account model.NetdiskAccount
+	// 查找默认账号
+	if err := database.DB.Where("is_default = true AND cookie != ''").First(&account).Error; err != nil {
+		if err := database.DB.Where("cookie != ''").Order("is_default desc, updated_at desc").First(&account).Error; err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"code":    400,
+				"message": "尚未配置夸克网盘账号或 Cookie 为空，请先在‘网盘账号管理’中配置个人夸克 Cookie 凭据",
+			})
+		}
+	}
+
+	pdirFID := c.Query("pdir_fid", "0")
+	items, err := h.transferSvc.ListItems(account.Cookie, pdirFID)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "读取网盘目录失败：" + err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"code": 200,
+		"data": fiber.Map{
+			"account_id":   account.ID,
+			"account_name": account.AccountName,
+			"nickname":     account.Nickname,
+			"pdir_fid":     pdirFID,
+			"items":        items,
+		},
+	})
+}
+
+type CreateShareRequest struct {
+	FID   string `json:"fid"`
+	Title string `json:"title"`
+}
+
+// CreateShareFromDefaultAccount 在默认夸克网盘账号中为指定文件/文件夹一键生成永久公开分享链接
+func (h *NetdiskAccountHandler) CreateShareFromDefaultAccount(c fiber.Ctx) error {
+	var req CreateShareRequest
+	if err := c.Bind().Body(&req); err != nil || strings.TrimSpace(req.FID) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "请指定要分享的文件或文件夹 fid",
+		})
+	}
+
+	var account model.NetdiskAccount
+	if err := database.DB.Where("is_default = true AND cookie != ''").First(&account).Error; err != nil {
+		if err := database.DB.Where("cookie != ''").Order("is_default desc, updated_at desc").First(&account).Error; err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"code":    400,
+				"message": "尚未配置有效的夸克网盘账号凭证",
+			})
+		}
+	}
+
+	result, err := h.transferSvc.CreateShareForFID(account.Cookie, req.FID, req.Title)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "创建分享链接失败：" + err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "分享创建成功！永久有效且无提取码",
+		"data":    result,
+	})
+}

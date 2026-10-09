@@ -11,7 +11,7 @@
     <div class="brand">
       <div class="brand-logo">📚</div>
       <div class="brand-text">
-        <h2>学霸资料库后台</h2>
+        <h2>学霸网后台管理</h2>
         <span>Go + PG 实时驱动</span>
       </div>
     </div>
@@ -319,8 +319,18 @@
                 type="text" 
                 [(ngModel)]="newResource.title" 
                 name="title" 
-                placeholder="例如：2026春季人教版四年级下册数学期末夺冠押题卷（含手写解析步骤+视频）" 
+                placeholder="例如：2026春季人教版四年级下册数学期末夺冠押题卷" 
                 required 
+              />
+            </div>
+
+            <div class="form-group full-width">
+              <label>SEO 优化副标题 <span class="text-muted" style="font-weight: normal; font-size: 12px; margin-left: 4px;">(用于强化搜索引擎收录与页面描述)</span></label>
+              <input 
+                type="text" 
+                [(ngModel)]="newResource.subtitle" 
+                name="subtitle" 
+                placeholder="例如：含高清名师精讲视频与手写版详尽解析" 
               />
             </div>
 
@@ -514,6 +524,11 @@
               </div>
             </div>
 
+            <div class="form-group full-width" style="grid-column: 1 / -1;">
+              <label>📝 内容介绍与使用说明</label>
+              <textarea [(ngModel)]="newResource.description" name="description" placeholder="如果不填，前端详情页将不展示说明模块。如果填写，将完全展示您输入的内容（支持回车换行）..." rows="4" style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 10px; font-size: 13px; resize: vertical; margin-top: 4px;"></textarea>
+            </div>
+
             <!-- 网盘链接推广配置 -->
             <div class="form-group full-width netdisk-config">
               <h4>🔗 网盘分发配置（夸克推广拉新与百度备用）</h4>
@@ -532,6 +547,13 @@
                     />
                   </div>
                   <div class="netdisk-url-actions">
+                    <button 
+                      type="button" 
+                      class="btn-pick-drive" 
+                      (click)="openDrivePicker('new')"
+                      title="打开我的夸克网盘目录结构，直接选择文件夹或文件一键生成永久免密分享链接">
+                      📂 从我的网盘中选取...
+                    </button>
                     <button 
                       type="button" 
                       class="btn-detect" 
@@ -559,6 +581,45 @@
                     </div>
                   </div>
                   <input type="text" [(ngModel)]="newResource.quarkDesc" name="quarkDesc" placeholder="夸克内容特色说明（如：包含25集全套超清视频录播课）" style="margin-top: 6px;" />
+                  @if (newResource.file_tree && newResource.file_tree.length > 0) {
+                    <div class="file-tree-preview-box">
+                      <div class="tree-header">
+                        <span class="tree-title">📂 网盘目录结构（共 {{ getFileCount(newResource.file_tree) }} 个文件）</span>
+                        <span class="tree-sub">已穿透抓取 · 真实层级</span>
+                      </div>
+                      <div class="tree-content-list">
+                        @for (node of getNormalizedTree(newResource.file_tree); track $index) {
+                          @if (node.is_dir) {
+                            <div class="tree-dir-node">
+                              <div class="dir-header" (click)="toggleFolder(node)">
+                                <span class="dir-toggle-icon">{{ node.collapsed ? '▶' : '▼' }}</span>
+                                <span class="dir-icon">📁</span>
+                                <span class="dir-name">{{ node.name }}</span>
+                                <span class="dir-meta-badge">{{ node.size || (node.children?.length + ' 个文件') }}</span>
+                              </div>
+                              @if (!node.collapsed && node.children && node.children.length > 0) {
+                                <div class="dir-children">
+                                  @for (child of node.children; track $index) {
+                                    <div class="tree-file-node">
+                                      <span class="file-icon">{{ getFileIcon(child.ext, child.is_dir) }}</span>
+                                      <span class="file-name" [title]="child.name">{{ child.name }}</span>
+                                      <span class="file-size">{{ child.size }}</span>
+                                    </div>
+                                  }
+                                </div>
+                              }
+                            </div>
+                          } @else {
+                            <div class="tree-file-node root-file">
+                              <span class="file-icon">{{ getFileIcon(node.ext, node.is_dir) }}</span>
+                              <span class="file-name" [title]="node.name">{{ node.name }}</span>
+                              <span class="file-size">{{ node.size }}</span>
+                            </div>
+                          }
+                        }
+                      </div>
+                    </div>
+                  }
                 </div>
 
                 <div class="netdisk-item">
@@ -1450,6 +1511,15 @@
             />
           </div>
 
+          <div class="form-group full-width">
+            <label>SEO 优化副标题 <span class="text-muted" style="font-weight: normal; font-size: 12px; margin-left: 4px;">(用于强化搜索引擎收录与页面描述)</span></label>
+            <input 
+              type="text" 
+              [(ngModel)]="editForm.subtitle" 
+              name="edit_subtitle" 
+            />
+          </div>
+
           <!-- 所属频道选择 -->
           <div class="form-group full-width" style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
             <label style="font-weight: 600; color: #1e293b; margin-bottom: 8px; display: block;">🏷️ 所属业务顶级频道 <span class="required">*</span></label>
@@ -1637,6 +1707,11 @@
             </div>
           </div>
 
+          <div class="form-group full-width" style="grid-column: 1 / -1;">
+            <label>📝 内容介绍与使用说明</label>
+            <textarea [(ngModel)]="editForm.description" name="edit_description" placeholder="如果不填，前端详情页将不展示说明模块。如果填写，将完全展示您输入的内容（支持回车换行）..." rows="4" style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 10px; font-size: 13px; resize: vertical; margin-top: 4px;"></textarea>
+          </div>
+
           <div class="form-group full-width netdisk-config">
             <h4>🔗 网盘分发配置</h4>
             <div class="netdisk-grid">
@@ -1654,6 +1729,13 @@
                   />
                 </div>
                 <div class="netdisk-url-actions">
+                  <button 
+                    type="button" 
+                    class="btn-pick-drive" 
+                    (click)="openDrivePicker('edit')"
+                    title="打开我的夸克网盘目录结构，直接选择文件夹或文件一键生成永久免密分享链接">
+                    📂 从我的网盘中选取...
+                  </button>
                   <button 
                     type="button" 
                     class="btn-detect" 
@@ -1681,6 +1763,45 @@
                   </div>
                 </div>
                 <input type="text" [(ngModel)]="editForm.quarkDesc" name="edit_quarkDesc" placeholder="夸克内容特色说明" style="margin-top: 6px;" />
+                @if (editForm.file_tree && editForm.file_tree.length > 0) {
+                  <div class="file-tree-preview-box">
+                    <div class="tree-header">
+                      <span class="tree-title">📂 网盘目录结构（共 {{ getFileCount(editForm.file_tree) }} 个文件）</span>
+                      <span class="tree-sub">已穿透抓取 · 真实层级</span>
+                    </div>
+                    <div class="tree-content-list">
+                      @for (node of getNormalizedTree(editForm.file_tree); track $index) {
+                        @if (node.is_dir) {
+                          <div class="tree-dir-node">
+                            <div class="dir-header" (click)="toggleFolder(node)">
+                              <span class="dir-toggle-icon">{{ node.collapsed ? '▶' : '▼' }}</span>
+                              <span class="dir-icon">📁</span>
+                              <span class="dir-name">{{ node.name }}</span>
+                              <span class="dir-meta-badge">{{ node.size || (node.children?.length + ' 个文件') }}</span>
+                            </div>
+                            @if (!node.collapsed && node.children && node.children.length > 0) {
+                              <div class="dir-children">
+                                @for (child of node.children; track $index) {
+                                  <div class="tree-file-node">
+                                    <span class="file-icon">{{ getFileIcon(child.ext, child.is_dir) }}</span>
+                                    <span class="file-name" [title]="child.name">{{ child.name }}</span>
+                                    <span class="file-size">{{ child.size }}</span>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        } @else {
+                          <div class="tree-file-node root-file">
+                            <span class="file-icon">{{ getFileIcon(node.ext, node.is_dir) }}</span>
+                            <span class="file-name" [title]="node.name">{{ node.name }}</span>
+                            <span class="file-size">{{ node.size }}</span>
+                          </div>
+                        }
+                      }
+                    </div>
+                  </div>
+                }
               </div>
 
               <div class="netdisk-item">
@@ -1962,6 +2083,121 @@
                 </div>
               }
             }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- 夸克网盘文件浏览器与一键免密公开分享模态弹窗 -->
+  @if (isDrivePickerOpen()) {
+    <div class="modal-backdrop" (click)="closeDrivePicker()">
+      <div class="modal-dialog drive-picker-dialog" (click)="$event.stopPropagation()" style="max-width: 680px;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">📂</span>
+            <div>
+              <h3 style="margin: 0; font-size: 15px;">夸克网盘文件浏览器</h3>
+              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                当前账号: <strong style="color: #0284c7;">{{ drivePickerAccountName() || '默认账号' }}</strong> · 浏览目录并直接生成永久免密公开分享
+              </div>
+            </div>
+          </div>
+          <button class="modal-close-btn" (click)="closeDrivePicker()">✕</button>
+        </div>
+
+        <div style="padding: 16px 20px;">
+          <!-- 面包屑导航 -->
+          <div class="folder-breadcrumbs">
+            <span style="font-size: 11px; color: #64748b; font-weight: 600;">当前位置:</span>
+            @for (crumb of drivePickerBreadcrumbs(); track crumb.fid; let i = $index; let isLast = $last) {
+              @if (!isLast) {
+                <span class="crumb-link" (click)="navigateDrivePickerBreadcrumb(i)">{{ crumb.name }}</span>
+                <span class="crumb-sep">/</span>
+              } @else {
+                <span class="crumb-current">{{ crumb.name }}</span>
+              }
+            }
+          </div>
+
+          <!-- 顶部快捷操作栏：当前文件夹设为分享 -->
+          @if (drivePickerCurrentFid() !== '0') {
+            <div style="margin-bottom: 12px; padding: 10px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <div style="font-size: 12px; color: #166534; display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <span>📁</span>
+                <span>当前目录: <strong>{{ drivePickerCurrentName() }}</strong></span>
+              </div>
+              <button 
+                type="button" 
+                class="btn btn-sm" 
+                style="background: #16a34a; color: #fff; font-size: 12px; padding: 5px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; white-space: nowrap; flex-shrink: 0;"
+                (click)="shareCurrentDriveFolder()"
+                [disabled]="drivePickerSharingFid() === drivePickerCurrentFid()">
+                {{ drivePickerSharingFid() === drivePickerCurrentFid() ? '⏳ 正在生成...' : '⚡ 将当前文件夹设为分享' }}
+              </button>
+            </div>
+          }
+
+          <!-- 文件列表区域 -->
+          <div class="drive-picker-scroll">
+            @if (drivePickerLoading()) {
+              <div style="text-align: center; padding: 40px 10px; color: #64748b; font-size: 13px;">
+                <div style="font-size: 24px; margin-bottom: 8px;">⏳</div>
+                正在读取夸克网盘目录内容...
+              </div>
+            } @else if (drivePickerList().length === 0) {
+              <div style="text-align: center; padding: 36px 10px; color: #94a3b8; font-size: 13px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                当前目录下空空如也，没有找到任何文件或子文件夹
+              </div>
+            } @else {
+              @for (item of drivePickerList(); track item.fid) {
+                <div class="drive-row-item" [class.is-dir]="item.dir">
+                  <!-- 左侧：图标与名称 -->
+                  <div class="drive-name-col" (click)="item.dir ? enterDrivePickerFolder(item) : null" [title]="item.dir ? '点击进入该文件夹' : item.file_name">
+                    <span style="font-size: 20px; flex-shrink: 0;">{{ item.dir ? '📁' : '📄' }}</span>
+                    <div style="min-width: 0; flex: 1;">
+                      <div class="drive-name-text">{{ item.file_name }}</div>
+                      <div class="drive-sub-text">
+                        @if (item.dir) {
+                          <span class="badge-folder">文件夹</span>
+                        } @else {
+                          <span class="badge-size">{{ item.format_size || '0 B' }}</span>
+                        }
+                        @if (item.updated_at) {
+                          <span style="margin-left: 8px; color: #94a3b8; font-size: 11px;">{{ item.updated_at }}</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 右侧操作 -->
+                  <div class="drive-actions-col">
+                    @if (item.dir) {
+                      <button 
+                        type="button" 
+                        class="btn-drive-enter" 
+                        (click)="enterDrivePickerFolder(item)"
+                        title="进入该文件夹">
+                        进入 ➔
+                      </button>
+                    }
+                    <button 
+                      type="button" 
+                      class="btn-drive-share" 
+                      [disabled]="drivePickerSharingFid() === item.fid"
+                      (click)="createAndApplyShare(item)"
+                      title="直接为此项生成永久免密公开分享并回填">
+                      {{ drivePickerSharingFid() === item.fid ? '⏳ 生成中...' : '⚡ 生成分享并选用' }}
+                    </button>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+
+          <div style="margin-top: 14px; font-size: 11px; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;">
+            <span>💡 提示：点击“生成分享并选用”将自动通过夸克 PC API 创建<strong>永久免密公开链接</strong>并自动回填到当前资源表单中。</span>
+            <button type="button" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 3px 8px;" (click)="fetchDrivePickerFiles(drivePickerCurrentFid())">🔄 刷新</button>
           </div>
         </div>
       </div>

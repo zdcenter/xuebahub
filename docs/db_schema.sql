@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS resources (
     
     -- 扩展元数据 (JSONB 灵活支持真题年份、省市地区、解析完备性等)
     extra_metadata JSONB DEFAULT '{}'::jsonb,
+    file_tree JSONB DEFAULT '[]'::jsonb,      -- 自动解析提取的网盘内含文件清单树
     
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

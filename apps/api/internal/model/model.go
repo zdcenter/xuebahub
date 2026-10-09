@@ -72,6 +72,7 @@ type Resource struct {
 	IsRecommended bool           `gorm:"default:false" json:"is_recommended"`
 	IsPublished   bool           `gorm:"default:true" json:"is_published"`
 	ExtraMetadata datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"extra_metadata"`
+	FileTree      datatypes.JSON `gorm:"type:jsonb;default:'[]'" json:"file_tree"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 
