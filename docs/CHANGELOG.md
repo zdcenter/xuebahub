@@ -12,7 +12,8 @@
     - 在 `getApiBaseUrl()` 中扩展环境检测优先级：优先使用 `PUBLIC_API_URL` 环境变量，若无则根据客户端主机名自动判定，生产环境构建 (`PROD`) 默认指向 `https://api.xuebaw.com:8443`，开发环境 (`DEV`) 默认指向本地 `4001` 端口；
     - 增加了 `apps/web/.env.development` 和 `apps/web/.env.production`，并在 `wrangler.toml` 中配置了生产 `PUBLIC_API_URL`；
     - 将 Cloudflare Pages SSR 服务端 `fetch` 的超时时间从 1.5s~2s 提升至 6s，彻底解决因跨国边缘网络抖动导致的误触发本地静态兜底老数据问题；
-    - **全面落地方案一（Cloudflare 边缘极速缓存与后台静默异步刷新 `stale-while-revalidate`）**：在 `ChannelPage.astro`（首页及所有频道页）和 `resource/[slug].astro`（所有详情页）注入 `Cache-Control: public, max-age=60, s-maxage=300, stale-while-revalidate=86400`。实现单页面独立秒级开出、到期后访客 0 等待、后台异步刷新最新数据，并严格保护国内服务器真实 IP 隐身。
+    - **全面落地方案一（Cloudflare 边缘极速缓存与后台静默异步刷新 `stale-while-revalidate`）**：在 `ChannelPage.astro`（首页及所有频道页）和 `resource/[slug].astro`（所有详情页）注入 `Cache-Control: public, max-age=60, s-maxage=300, stale-while-revalidate=86400`。实现单页面独立秒级开出、到期后访客 0 等待、后台异步刷新最新数据，并严格保护国内服务器真实 IP 隐身；
+    - **规范化主域名体系**：将 `astro.config.mjs` 中的主站点规范化统一为 `https://www.xuebaw.com`。
     - 详情页内嵌脚本中增加对非 localhost 客户端的智能 fallback 处理。
   - **Nginx 与 Systemd 部署体系固化**:
     - 统一将 Nginx 反向代理配置 `xuebaw.conf` 调整至 `8443` 端口（与 `puzzlepk` 共享端口，通过 SNI 域名识别分流，避免端口浪费与跨域冲突）；

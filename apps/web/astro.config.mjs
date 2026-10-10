@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://xuebaw.com',
+  site: 'https://www.xuebaw.com',
   output: 'server',
   adapter: cloudflare(),
   devToolbar: {

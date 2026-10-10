@@ -23,5 +23,12 @@ try {
     }
   }
 } catch (e) {}
+
+// 方案一：Cloudflare 边缘 CDN 极速缓存与后台静默刷新 (各频道页秒开)
+// s-maxage=300 (边缘节点新鲜期 5 分钟)；stale-while-revalidate=86400 (过期后后台异步刷新)
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
+);
 ---
 <ChannelPage channelSlug={channel} />
