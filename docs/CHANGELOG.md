@@ -1,5 +1,21 @@
 # 更新日志 (CHANGELOG.md)
 
+## [Unreleased] - 2026-10-10
+
+- **前端多环境与线上 API 远程自动化连接机制 (🌐 智能识别·本地与 Cloudflare 自动分流·生产 API 8443 无缝对接)**:
+  - **Angular 管理后台 (`apps/admin`) 智能 API 路由**:
+    - 在 `ResourceService.baseUrl` 中加入动态宿主识别：当在本地开发环境 (`localhost` / `127.0.0.1`) 运行时自动请求本地 `http://localhost:4001`；
+    - 当部署在 Cloudflare Pages 或公网域名时，自动指向生产远程 API `https://api.xuebaw.com:8443`；
+    - 支持通过 `localStorage.getItem('API_BASE_URL')` 随时在浏览器中覆盖指定测试接口；
+    - 修复了单链接检测、批量巡检和修改状态等处硬编码的本地 IP 地址。
+  - **Astro 用户前台 (`apps/web`) 生产环境自适应**:
+    - 在 `getApiBaseUrl()` 中扩展环境检测优先级：优先使用 `PUBLIC_API_URL` 环境变量，若无则根据客户端主机名自动判定，生产环境构建 (`PROD`) 默认指向 `https://api.xuebaw.com:8443`，开发环境 (`DEV`) 默认指向本地 `4001` 端口；
+    - 增加了 `apps/web/.env.development` 和 `apps/web/.env.production`，并在 `wrangler.toml` 中配置了生产 `PUBLIC_API_URL`；
+    - 详情页内嵌脚本中增加对非 localhost 客户端的智能 fallback 处理。
+  - **Nginx 与 Systemd 部署体系固化**:
+    - 统一将 Nginx 反向代理配置 `xuebaw.conf` 调整至 `8443` 端口（与 `puzzlepk` 共享端口，通过 SNI 域名识别分流，避免端口浪费与跨域冲突）；
+    - Systemd 配置文件强化了 `EnvironmentFile` 的容错能力与路径规范。
+
 ## [Unreleased] - 2026-10-09
 
 - **网盘深度嵌套子目录多级穿透递归与 0 B / 文件格式智能推断优化 (🌲 递归穿透·真实容量统计·告别 0 B·视频关键词智能识别)**:

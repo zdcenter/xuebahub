@@ -2,3 +2,6 @@ name = "xuebahub-web"
 pages_build_output_dir = "dist/client"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
+
+[vars]
+PUBLIC_API_URL = "https://api.xuebaw.com:8443"

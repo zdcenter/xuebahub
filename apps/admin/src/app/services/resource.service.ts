@@ -51,8 +51,21 @@ export class ResourceService {
   private http = inject(HttpClient);
 
   get baseUrl(): string {
-    const host = (typeof window !== 'undefined' && window.location.hostname) ? window.location.hostname : '127.0.0.1';
-    return `http://${host}:4001`;
+    if (typeof window !== 'undefined') {
+      // 1. 允许通过 localStorage 手动指定 API 地址，便于随时在线调试
+      const customApi = localStorage.getItem('API_BASE_URL');
+      if (customApi) {
+        return customApi.replace(/\/$/, '');
+      }
+
+      // 2. 本地开发环境检测 (localhost / 127.0.0.1)
+      const host = window.location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return `http://${host}:4001`;
+      }
+    }
+    // 3. 部署在 Cloudflare Pages 或公网时的远程 API 服务端地址
+    return 'https://api.xuebaw.com:8443';
   }
 
   get apiUrl(): string {
@@ -139,7 +152,7 @@ export class ResourceService {
 
   // 单链接手动立即检测
   checkSingleLink(linkId: string): Observable<{ id: string; status: string; invalid_reason: string; last_checked_at: string }> {
-    return this.http.post<{ code: number; data: any }>(`http://127.0.0.1:4001/api/v1/admin/links/${linkId}/check`, {}).pipe(
+    return this.http.post<{ code: number; data: any }>(`${this.baseUrl}/api/v1/admin/links/${linkId}/check`, {}).pipe(
       map(res => res.data)
     );
   }
@@ -153,14 +166,14 @@ export class ResourceService {
     skipped_count: number;
     results: any[];
   }> {
-    return this.http.post<{ code: number; message: string; data: any }>(`http://127.0.0.1:4001/api/v1/admin/links/batch-check`, options).pipe(
+    return this.http.post<{ code: number; message: string; data: any }>(`${this.baseUrl}/api/v1/admin/links/batch-check`, options).pipe(
       map(res => res.data)
     );
   }
 
   // 修改网盘链接状态或补链
   updateLinkStatus(linkId: string, data: { status: string; invalid_reason?: string; share_url?: string; extract_code?: string }): Observable<any> {
-    return this.http.put<{ code: number; data: any }>(`http://127.0.0.1:4001/api/v1/admin/links/${linkId}/status`, data).pipe(
+    return this.http.put<{ code: number; data: any }>(`${this.baseUrl}/api/v1/admin/links/${linkId}/status`, data).pipe(
       map(res => res.data)
     );
   }

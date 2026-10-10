@@ -145,3 +145,10 @@
   - `POST /api/v1/admin/netdisk/transfer-share` (核心：自动转存外部链接并生成专属分享链)
   - `GET / POST / PUT / DELETE /api/v1/admin/resources` (后台管理全套 CRUD，支持按频道筛选)
 
+### 2.4 生产部署与多环境自适应架构 (Cloudflare Pages + Nginx 反代 + Systemd)
+- **多端环境智能识别与零配置分流**:
+  - **Angular 管理后台 (`apps/admin`)**：在 `ResourceService` 中内置宿主感知逻辑，本地开发 (`localhost`) 自动连接本地 `http://localhost:4001`；部署至 Cloudflare Pages 公网域名后，无需额外打包参数，自动无缝接入生产远端 `https://api.xuebaw.com:8443`；同时支持在浏览器控制台通过 `localStorage.setItem('API_BASE_URL', '...')` 覆盖指定 API 地址。
+  - **Astro 用户前台 (`apps/web`)**：通过 `PUBLIC_API_URL` 环境变量、`wrangler.toml` 的 `[vars]` 配置及客户端运行期环境探针三级兜底，实现本地运行 `npm run dev` 连本地、发布上线自动连生产 API。
+- **高可用与网络架构**:
+  - **Nginx 多域名共享 8443 端口**：利用 SNI 技术让 `api.xuebaw.com` 与原有的 `api.puzzlepk.com` 共享单台服务器的 `8443` 端口，通过域名精准分流，解决端口冲突与证书隔离问题。
+  - **Systemd 进程自愈**：后端 Go API 服务由 Linux systemd 守护进程管理（`Restart=always`），崩溃 5 秒自拉起，支持标准 journal 日志追溯与开机自启。

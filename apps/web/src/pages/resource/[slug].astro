@@ -589,8 +589,9 @@ const totalFileCount = countTotalFiles(resource.fileTree);
     function recordSaveClick(slug, linkId) {
       if (!slug) return;
       var host = window.location.hostname || '127.0.0.1';
-      var container = document.getElementById('resource-container');
-      var base = (container && container.getAttribute('data-api-base')) ? container.getAttribute('data-api-base') : ('http://' + host + ':4001');
+      var base = (container && container.getAttribute('data-api-base')) 
+        ? container.getAttribute('data-api-base') 
+        : ((host === 'localhost' || host === '127.0.0.1') ? ('http://' + host + ':4001') : 'https://api.xuebaw.com:8443');
       var apiUrl = base + '/api/v1/public/resources/' + encodeURIComponent(slug) + '/track-save';
       if (linkId) {
         apiUrl += '?link_id=' + encodeURIComponent(linkId);

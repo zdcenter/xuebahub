@@ -1,0 +1,29 @@
+[Unit]
+Description=Netdisk Resource Hub API Service
+After=network.target postgresql.service
+# 如果 PostgreSQL 也在本机，After 加上 postgresql.service 确保数据库先启动
+
+[Service]
+Type=simple
+
+
+# ⚠️ 极其关键：工作目录必须指向包含 .env 和 netdisk_api 的文件夹
+WorkingDirectory=/opt/netdisk-api
+
+# 启动命令
+ExecStart=/opt/netdisk-api/netdisk-api
+
+# 环境变量密码
+EnvironmentFile=-/opt/netdisk-api/.env
+
+# 异常崩溃自动重启配置
+Restart=always
+RestartSec=5s
+
+# 资源限制与日志标准输出
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
