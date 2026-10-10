@@ -9,7 +9,7 @@ const apiBase = getApiBaseUrl();
 // 从 Go API 获取详情
 let resource: any = null;
 try {
-  const resp = await fetch(`${apiBase}/api/v1/public/resources/${slug}`, { signal: AbortSignal.timeout(2000) });
+  const resp = await fetch(`${apiBase}/api/v1/public/resources/${slug}`, { signal: AbortSignal.timeout(6000) });
   if (resp.ok) {
     const json = await resp.json();
     const data = json.data;

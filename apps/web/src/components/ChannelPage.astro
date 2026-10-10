@@ -29,7 +29,7 @@ const apiBase = getApiBaseUrl();
 
 // 1. 获取所有公开上线的频道 (动态支持后台上下线)
 try {
-  const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(2000) });
+  const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(6000) });
   if (chRes.ok) {
     const chJson = await chRes.json();
     const rawList = Array.isArray(chJson.data) ? chJson.data : (chJson.data?.items || []);
@@ -74,7 +74,7 @@ try {
     fetchUrl += `&q=${encodeURIComponent(q)}`;
   }
 
-  const response = await fetch(fetchUrl, { signal: AbortSignal.timeout(2000) });
+  const response = await fetch(fetchUrl, { signal: AbortSignal.timeout(6000) });
   if (response.ok) {
     const json = await response.json();
     resourcesList = (json.data?.items || []).map((item: any) => ({

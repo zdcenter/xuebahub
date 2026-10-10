@@ -22,7 +22,7 @@ const apiBase = getApiBaseUrl();
 let navChannels: { slug: string; name: string; icon: string }[] = [];
 let isNavApiConnected = false;
 try {
-  const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(1500) });
+  const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(6000) });
   if (chRes.ok) {
     const chData = await chRes.json();
     const rawList = Array.isArray(chData.data) ? chData.data : (chData.data?.items || []);
@@ -67,7 +67,7 @@ let eduNavStages: NavStageItem[] = [];
 let isNavMenuApiConnected = false;
 
 try {
-  const menuRes = await fetch(`${apiBase}/api/v1/public/nav-menus`, { signal: AbortSignal.timeout(1500) });
+  const menuRes = await fetch(`${apiBase}/api/v1/public/nav-menus`, { signal: AbortSignal.timeout(6000) });
   if (menuRes.ok) {
     const menuData = await menuRes.json();
     const rawMenus = Array.isArray(menuData.data) ? menuData.data : [];

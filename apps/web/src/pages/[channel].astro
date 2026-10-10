@@ -13,7 +13,7 @@ const apiBase = getApiBaseUrl();
 
 // 检查该频道是否在后台上线列表中，若已隐藏或下线则直接 302 重定向到首页
 try {
-  const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(2000) });
+  const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(6000) });
   if (chRes.ok) {
     const chJson = await chRes.json();
     const rawList = Array.isArray(chJson.data) ? chJson.data : (chJson.data?.items || []);
