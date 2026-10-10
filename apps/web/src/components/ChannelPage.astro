@@ -27,6 +27,15 @@ let isApiConnected = false;
 
 const apiBase = getApiBaseUrl();
 
+// 方案一：Cloudflare 边缘 CDN 极速缓存与后台静默刷新
+// max-age=60 (浏览器端缓存 1 分钟)
+// s-maxage=300 (Cloudflare 边缘节点新鲜期 5 分钟，全国各节点秒开直出)
+// stale-while-revalidate=86400 (过期后 24 小时内后台静默异步刷新，用户永不等待卡顿)
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
+);
+
 // 1. 获取所有公开上线的频道 (动态支持后台上下线)
 try {
   const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(6000) });

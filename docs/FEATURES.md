@@ -149,6 +149,11 @@
 - **多端环境智能识别与零配置分流**:
   - **Angular 管理后台 (`apps/admin`)**：在 `ResourceService` 中内置宿主感知逻辑，本地开发 (`localhost`) 自动连接本地 `http://localhost:4001`；部署至 Cloudflare Pages 公网域名后，无需额外打包参数，自动无缝接入生产远端 `https://api.xuebaw.com:8443`；同时支持在浏览器控制台通过 `localStorage.setItem('API_BASE_URL', '...')` 覆盖指定 API 地址。
   - **Astro 用户前台 (`apps/web`)**：通过 `PUBLIC_API_URL` 环境变量、`wrangler.toml` 的 `[vars]` 配置及客户端运行期环境探针三级兜底，实现本地运行 `npm run dev` 连本地、发布上线自动连生产 API。
-- **高可用与网络架构**:
+- **高可用、边缘加速与网络安全架构**:
+  - **Cloudflare 边缘极速缓存与后台静默异步刷新 (方案一落地)**：全前台路由（`/`、`/:channel`、`/resource/:slug`）均挂载 `Cache-Control: public, max-age=60, s-maxage=300, stale-while-revalidate=86400`。
+    - **极速响应**：新鲜期（5分钟）内全球访客直接由离其最近的 Cloudflare CDN 边缘节点 10ms~20ms 秒开直出；
+    - **无感后台静默刷新**：过期时进来的首个访客无卡顿秒开现有缓存，CDN 同时在后台异步发起对国内服务器的拉取，静默更新节点缓存；
+    - **天然源站隐身**：完全隐藏国内真实服务器 IP (`110.42.189.224`)，防御 DDoS 与脚本扫盘；
+    - **单页面精准粒度**：各资源详情页各自分配独立缓存与刷新周期，修改某篇资料仅在该篇被访问时后台刷新，不影响其他页面。
   - **Nginx 多域名共享 8443 端口**：利用 SNI 技术让 `api.xuebaw.com` 与原有的 `api.puzzlepk.com` 共享单台服务器的 `8443` 端口，通过域名精准分流，解决端口冲突与证书隔离问题。
   - **Systemd 进程自愈**：后端 Go API 服务由 Linux systemd 守护进程管理（`Restart=always`），崩溃 5 秒自拉起，支持标准 journal 日志追溯与开机自启。

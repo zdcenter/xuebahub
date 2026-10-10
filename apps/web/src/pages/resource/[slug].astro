@@ -6,6 +6,15 @@ import QRCode from 'qrcode';
 const { slug } = Astro.params;
 const apiBase = getApiBaseUrl();
 
+// 方案一：Cloudflare 边缘 CDN 极速缓存与后台静默刷新 (每个详情页独立缓存)
+// max-age=60 (浏览器端缓存 1 分钟)
+// s-maxage=300 (Cloudflare 边缘节点新鲜期 5 分钟，全国各节点秒开直出)
+// stale-while-revalidate=86400 (过期后 24 小时内后台静默异步刷新，用户永不等待卡顿)
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
+);
+
 // 从 Go API 获取详情
 let resource: any = null;
 try {
