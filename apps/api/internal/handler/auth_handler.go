@@ -98,3 +98,86 @@ func (h *AuthHandler) Me(c fiber.Ctx) error {
 		"data": user,
 	})
 }
+
+type UpdateProfileRequest struct {
+	Nickname string `json:"nickname"`
+}
+
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+// UpdateProfile 修改当前管理员个人资料（如昵称）
+func (h *AuthHandler) UpdateProfile(c fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"code": 401, "message": "未登录"})
+	}
+
+	var req UpdateProfileRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
+	}
+
+	var user model.AdminUser
+	if err := database.DB.First(&user, "id = ?", userID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "用户不存在"})
+	}
+
+	if req.Nickname != "" {
+		user.Nickname = req.Nickname
+		if err := database.DB.Model(&user).Update("nickname", user.Nickname).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "更新资料失败"})
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "资料更新成功",
+		"data":    user,
+	})
+}
+
+// ChangePassword 修改管理员密码
+func (h *AuthHandler) ChangePassword(c fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"code": 401, "message": "未登录"})
+	}
+
+	var req ChangePasswordRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
+	}
+
+	if len(req.NewPassword) < 6 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "新密码长度不能少于 6 位"})
+	}
+
+	var user model.AdminUser
+	if err := database.DB.First(&user, "id = ?", userID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "用户不存在"})
+	}
+
+	// 校验原密码
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "原密码不正确，请重新输入"})
+	}
+
+	// 生成新密码哈希
+	newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "密码加密失败"})
+	}
+
+	user.PasswordHash = string(newHash)
+	if err := database.DB.Model(&user).Update("password_hash", user.PasswordHash).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "保存新密码失败"})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "密码修改成功，新密码已生效",
+	})
+}

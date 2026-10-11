@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ResourceService, ResourceItemDto, NetdiskAccountDto, TransferShareResultDto, ChannelDto, NavMenuDto, RegionDto, SchoolDto } from './services/resource.service';
+import { ResourceService, ResourceItemDto, NetdiskAccountDto, TransferShareResultDto, ChannelDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto } from './services/resource.service';
 
 export interface StageConfigItem {
   grades: string[];
@@ -49,6 +49,31 @@ export class App implements OnInit {
 
   readonly stageOptions = STAGE_OPTIONS;
   readonly stageKeys = Object.keys(STAGE_OPTIONS);
+
+  // --- 身份认证与权限状态 ---
+  isLoggedIn = signal<boolean>(false);
+  currentUser = signal<{ username: string; nickname: string; role: string } | null>(null);
+  loginForm = {
+    username: 'admin',
+    password: ''
+  };
+  loginLoading = signal<boolean>(false);
+  loginError = signal<string>('');
+
+  // --- 管理员资料与修改密码弹窗状态 ---
+  showProfileModal = signal<boolean>(false);
+  profileLoading = signal<boolean>(false);
+  profileError = signal<string>('');
+  profileForm = {
+    nickname: '',
+    old_password: '',
+    new_password: '',
+    confirm_password: ''
+  };
+
+  // --- 数据统计与全站转存监控看板 ---
+  dashboardStats = signal<DashboardStatsDto | null>(null);
+  statsLoading = signal<boolean>(false);
 
   currentTab = signal<'list' | 'add' | 'stats' | 'crawler' | 'accounts' | 'channels' | 'navmenus' | 'schools'>('list');
   loading = signal<boolean>(false);
@@ -895,11 +920,172 @@ export class App implements OnInit {
   }
 
   ngOnInit() {
+    this.checkAuth();
+  }
+
+  checkAuth() {
+    const token = this.resService.getToken();
+    const cachedUser = this.resService.getCurrentUser();
+    if (token) {
+      if (cachedUser) {
+        this.currentUser.set(cachedUser);
+      }
+      this.isLoggedIn.set(true);
+      this.initDashboard();
+      // 异步校验 Token 是否依旧有效并同步管理员数据
+      this.resService.getMe().subscribe({
+        next: (user) => {
+          this.currentUser.set({
+            username: user.username,
+            nickname: user.nickname || '超级管理员',
+            role: user.role || 'superadmin'
+          });
+        },
+        error: () => {
+          this.resService.logout();
+          this.isLoggedIn.set(false);
+          this.currentUser.set(null);
+        }
+      });
+    } else {
+      this.isLoggedIn.set(false);
+    }
+  }
+
+  loadDashboardStats() {
+    this.statsLoading.set(true);
+    this.resService.getDashboardStats().subscribe({
+      next: (data) => {
+        this.dashboardStats.set(data);
+        this.statsLoading.set(false);
+      },
+      error: () => {
+        this.statsLoading.set(false);
+      }
+    });
+  }
+
+  initDashboard() {
     this.loadChannels();
     this.loadResources();
     this.loadAccounts();
     this.loadNavMenus();
     this.loadRegions();
+    this.loadDashboardStats();
+  }
+
+  onLogin() {
+    if (!this.loginForm.username.trim() || !this.loginForm.password) {
+      this.loginError.set('请输入管理员账号与密码');
+      return;
+    }
+    this.loginLoading.set(true);
+    this.loginError.set('');
+    this.resService.login(this.loginForm.username.trim(), this.loginForm.password).subscribe({
+      next: (res) => {
+        this.loginLoading.set(false);
+        this.isLoggedIn.set(true);
+        this.currentUser.set({
+          username: res.username,
+          nickname: res.nickname || '超级管理员',
+          role: res.role || 'superadmin'
+        });
+        this.showToast(`🎉 欢迎回来，${res.nickname || res.username}！`);
+        this.loginForm.password = '';
+        this.initDashboard();
+      },
+      error: (err) => {
+        this.loginLoading.set(false);
+        const msg = err.error?.message || '账号或密码错误，请重新输入';
+        this.loginError.set(msg);
+      }
+    });
+  }
+
+  onLogout() {
+    this.resService.logout();
+    this.isLoggedIn.set(false);
+    this.currentUser.set(null);
+    this.showToast('已安全退出管理后台');
+  }
+
+  openProfileModal() {
+    this.profileError.set('');
+    this.profileForm = {
+      nickname: this.currentUser()?.nickname || '',
+      old_password: '',
+      new_password: '',
+      confirm_password: ''
+    };
+    this.showProfileModal.set(true);
+  }
+
+  closeProfileModal() {
+    this.showProfileModal.set(false);
+  }
+
+  onSaveProfile() {
+    this.profileError.set('');
+    const { nickname, old_password, new_password, confirm_password } = this.profileForm;
+
+    const isChangingPassword = !!(old_password || new_password || confirm_password);
+
+    if (isChangingPassword) {
+      if (!old_password) {
+        this.profileError.set('请输入当前原密码以完成身份验证');
+        return;
+      }
+      if (!new_password || new_password.length < 6) {
+        this.profileError.set('新密码长度不能少于 6 位');
+        return;
+      }
+      if (new_password !== confirm_password) {
+        this.profileError.set('两次输入的新密码不一致，请核对');
+        return;
+      }
+    }
+
+    this.profileLoading.set(true);
+
+    const curNick = this.currentUser()?.nickname || '';
+    const shouldUpdateNick = nickname.trim() && nickname.trim() !== curNick;
+
+    const doChangePassword = () => {
+      if (isChangingPassword) {
+        this.resService.changePassword(old_password, new_password).subscribe({
+          next: () => {
+            this.profileLoading.set(false);
+            this.showToast('🎉 密码修改成功！请牢记您的新密码');
+            this.closeProfileModal();
+          },
+          error: (err) => {
+            this.profileLoading.set(false);
+            const msg = err.error?.message || '修改密码失败，请核对原密码是否正确';
+            this.profileError.set(msg);
+          }
+        });
+      } else {
+        this.profileLoading.set(false);
+        this.showToast('✅ 个人资料保存成功');
+        this.closeProfileModal();
+      }
+    };
+
+    if (shouldUpdateNick) {
+      this.resService.updateProfile(nickname.trim()).subscribe({
+        next: (user) => {
+          this.currentUser.update(curr => curr ? { ...curr, nickname: user.nickname } : null);
+          doChangePassword();
+        },
+        error: (err) => {
+          this.profileLoading.set(false);
+          const msg = err.error?.message || '更新昵称失败';
+          this.profileError.set(msg);
+        }
+      });
+    } else {
+      doChangePassword();
+    }
   }
 
   openEdit(item: ResourceItemDto) {
@@ -1031,6 +1217,8 @@ export class App implements OnInit {
     this.currentTab.set(tab);
     if (tab === 'list') {
       this.loadResources();
+    } else if (tab === 'stats') {
+      this.loadDashboardStats();
     } else if (tab === 'accounts') {
       this.loadAccounts();
     } else if (tab === 'channels') {

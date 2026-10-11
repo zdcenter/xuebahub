@@ -42,7 +42,26 @@ func Init(dsn string) (*gorm.DB, error) {
 }
 
 func seedInitialData(db *gorm.DB) {
-	// 0. 初始化核心频道 (教辅 / 工具素材 / 怀旧单机游戏)
+	// 0. 初始化默认管理员账号 (admin / admin123456)
+	var userCount int64
+	db.Model(&model.AdminUser{}).Count(&userCount)
+	if userCount == 0 {
+		hash, err := bcrypt.GenerateFromPassword([]byte("admin123456"), bcrypt.DefaultCost)
+		if err == nil {
+			defaultAdmin := model.AdminUser{
+				Username:     "admin",
+				PasswordHash: string(hash),
+				Nickname:     "超级管理员",
+				Role:         "superadmin",
+				IsActive:     true,
+			}
+			if err := db.Create(&defaultAdmin).Error; err == nil {
+				log.Println("Seeded default admin user: admin / admin123456")
+			}
+		}
+	}
+
+	// 1. 初始化核心频道 (教辅 / 工具素材 / 怀旧单机游戏)
 	var chanCount int64
 	db.Model(&model.Channel{}).Count(&chanCount)
 	if chanCount == 0 {
@@ -80,22 +99,6 @@ func seedInitialData(db *gorm.DB) {
 
 	// 补齐存量资源的 channel_slug (默认为 edu)
 	db.Model(&model.Resource{}).Where("channel_slug IS NULL OR channel_slug = ''").Update("channel_slug", "edu")
-
-	// 1. 初始化默认管理员 (账号: admin, 密码: admin123456)
-	var adminCount int64
-	db.Model(&model.AdminUser{}).Count(&adminCount)
-	if adminCount == 0 {
-		hash, _ := bcrypt.GenerateFromPassword([]byte("admin123456"), bcrypt.DefaultCost)
-		admin := model.AdminUser{
-			Username:     "admin",
-			PasswordHash: string(hash),
-			Nickname:     "站长管理员",
-			Role:         "superadmin",
-			IsActive:     true,
-		}
-		db.Create(&admin)
-		log.Println("Initialized default admin user: admin / admin123456")
-	}
 
 	// 2. 初始化核心示范资源（如果为空）
 	var resCount int64
@@ -138,67 +141,7 @@ func seedInitialData(db *gorm.DB) {
 			},
 		}
 
-		res2 := model.Resource{
-			Slug:          "2026-teacher-cert-middle-school-integrated",
-			Title:         "2026教师资格证（统考中学综合素质+教育知识与能力）核心考点背诵口诀清单",
-			Subtitle:      "最新考纲梳理，主观题必背高频简答30题 + 材料分析题万能套用模板",
-			Description:   "纯考点浓缩手写讲义，告别厚重课本！包含中学教资科一科二核心考点速记口诀，教育家思想、身心发展规律、职业道德规范考点全覆盖，PDF直接打印版。",
-			Stage:         "cert",
-			Grade:         "通用",
-			Subject:       "教师资格证",
-			Edition:       "统考通用",
-			CoverImage:    "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600&auto=format&fit=crop&q=80",
-			PreviewImages: datatypes.JSON([]byte(`["https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&auto=format&fit=crop&q=80"]`)),
-			FileType:      "PDF",
-			FileSize:      "8.6 MB",
-			PageCount:     36,
-			ViewCount:     2380,
-			SaveCount:     890,
-			IsRecommended: true,
-			IsPublished:   true,
-			ExtraMetadata: datatypes.JSON([]byte(`{"year":"2026","subject_code":"301/302","difficulty":"通关必备"}`)),
-			Links: []model.ResourceLink{
-				{
-					DriveType:    "quark",
-					ShareURL:     "https://pan.quark.cn/s/demo_quark_cert",
-					ExtractCode:  "",
-					PasswordHint: "夸克APP转存支持直接PDF阅读",
-					IsPrimary:    true,
-				},
-			},
-		}
-
-		res3 := model.Resource{
-			Slug:          "primary-olympiad-math-thinking-grade4",
-			Title:         "小学四年级奥数思维拓展特训30讲（和差倍、鸡兔同笼、行程问题全题型）",
-			Subtitle:      "学而思培优经典题型拆解，启发式思维导图 + 每讲名师思维拓展精练",
-			Description:   "适合三升四、四年级思维拔高训练。将复杂的算术应用题转化为直观的线段图，包含全套习题与极度详细的解题步骤手写稿。",
-			Stage:         "primary",
-			Grade:         "四年级",
-			Subject:       "数学",
-			Edition:       "奥数思维",
-			CoverImage:    "https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=600&auto=format&fit=crop&q=80",
-			PreviewImages: datatypes.JSON([]byte(`["https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=800&auto=format&fit=crop&q=80"]`)),
-			FileType:      "PDF",
-			FileSize:      "19.2 MB",
-			PageCount:     64,
-			ViewCount:     980,
-			SaveCount:     342,
-			IsRecommended: false,
-			IsPublished:   true,
-			Links: []model.ResourceLink{
-				{
-					DriveType:   "quark",
-					ShareURL:    "https://pan.quark.cn/s/demo_quark_olympiad",
-					ExtractCode: "",
-					IsPrimary:   true,
-				},
-			},
-		}
-
 		db.Create(&res1)
-		db.Create(&res2)
-		db.Create(&res3)
 		log.Println("Seeded initial demo learning resources!")
 	}
 }

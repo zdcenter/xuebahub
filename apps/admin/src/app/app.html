@@ -1,4 +1,4 @@
-<div class="admin-layout">
+<div class="admin-layout" [class.is-auth-screen]="!isLoggedIn()">
   <!-- 浮动轻量 Toast 提示 -->
   @if (toastMessage()) {
     <div class="toast-popup" [class.error]="toastType() === 'error'">
@@ -6,8 +6,73 @@
     </div>
   }
 
-  <!-- 侧边导航栏 -->
-  <aside class="sidebar">
+  @if (!isLoggedIn()) {
+    <div class="login-wrapper">
+      <div class="login-glow-bg login-glow-1"></div>
+      <div class="login-glow-bg login-glow-2"></div>
+
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="login-logo-circle">🎓</div>
+          <h2>学霸网 · 后台管理系统</h2>
+          <p>请输入管理员安全凭证以解锁数据库操作权限</p>
+        </div>
+
+        <form (submit)="$event.preventDefault(); onLogin()" class="login-form">
+          @if (loginError()) {
+            <div class="login-error-alert">
+              <span class="error-icon">⚠️</span>
+              <span>{{ loginError() }}</span>
+            </div>
+          }
+
+          <div class="login-field-group">
+            <label>管理员账号</label>
+            <div class="login-input-wrap">
+              <span class="input-icon">👤</span>
+              <input 
+                type="text" 
+                name="admin_user" 
+                [(ngModel)]="loginForm.username" 
+                placeholder="请输入管理员账号" 
+                required 
+                autocomplete="username" 
+              />
+            </div>
+          </div>
+
+          <div class="login-field-group">
+            <label>授权访问密码</label>
+            <div class="login-input-wrap">
+              <span class="input-icon">🔒</span>
+              <input 
+                type="password" 
+                name="admin_pass" 
+                [(ngModel)]="loginForm.password" 
+                placeholder="请输入登录密码" 
+                required 
+                autocomplete="current-password" 
+              />
+            </div>
+          </div>
+
+          <button type="submit" class="login-submit-btn" [disabled]="loginLoading()">
+            @if (loginLoading()) {
+              <span class="loading-spinner"></span> 正在校验安全凭证...
+            } @else {
+              <span>🔐</span> 安全登录进入后台
+            }
+          </button>
+        </form>
+
+        <div class="login-card-footer">
+          <span>🛡️ 全站后台已受 JWT 令牌签名与 bcrypt 强哈希双重认证防护</span>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <!-- 侧边导航栏 -->
+    <aside class="sidebar">
     <div class="brand">
       <div class="brand-logo">📚</div>
       <div class="brand-text">
@@ -89,6 +154,19 @@
         </p>
       </div>
       <div class="quick-stats">
+        @if (currentUser()) {
+          <div class="user-pill">
+            <span class="user-avatar">👤</span>
+            <span class="user-name">{{ currentUser()?.nickname || currentUser()?.username }}</span>
+            <span class="user-role-badge">超管</span>
+            <button type="button" class="btn-profile" (click)="openProfileModal()" title="修改管理员资料与安全密码">
+              🔑 修改密码
+            </button>
+            <button type="button" class="btn-logout" (click)="onLogout()" title="安全登出管理后台">
+              🚪 退出
+            </button>
+          </div>
+        }
         <span class="badge quark">夸克主推转化率: 高</span>
         <button class="btn btn-sm btn-secondary" (click)="loadResources()">🔄 刷新数据</button>
       </div>
@@ -168,8 +246,8 @@
                 <col style="width: 12%; min-width: 110px;" />
                 <col style="width: 11%; min-width: 100px;" />
                 <col style="width: 20%; min-width: 185px;" />
-                <col style="width: 7%; min-width: 70px;" />
-                <col style="width: 8%; min-width: 105px;" />
+                <col style="width: 8%; min-width: 85px;" />
+                <col style="width: 7%; min-width: 95px;" />
               </colgroup>
               <thead>
                 <tr>
@@ -282,18 +360,21 @@
                       </div>
                     </td>
                     <td>
-                      <span class="status-pill" [class.active]="res.is_published">
+                      <button 
+                        type="button" 
+                        class="status-toggle-pill" 
+                        [class.active]="res.is_published"
+                        (click)="togglePublish(res)" 
+                        [title]="res.is_published ? '当前处于【展示中】，点击快速下架' : '当前处于【已下架】，点击快速上架'">
                         <span class="status-dot-inline" [class.active]="res.is_published"></span>
-                        {{ res.is_published ? '展示中' : '已下架' }}
-                      </span>
+                        <span class="status-text">{{ res.is_published ? '展示中' : '已下架' }}</span>
+                        <span class="status-toggle-icon" aria-hidden="true">⇄</span>
+                      </button>
                     </td>
                     <td>
                       <div class="action-btn-group">
                         <button class="btn-action edit" (click)="openEdit(res)" title="修改资料">✏️ 修改</button>
-                        <button class="btn-action toggle" (click)="togglePublish(res)" title="切换上下架状态">
-                          {{ res.is_published ? '下架' : '上架' }}
-                        </button>
-                        <button class="btn-action danger" (click)="deleteResource(res.id)" title="删除资料">🗑️</button>
+                        <button class="btn-action danger" (click)="deleteResource(res.id)" title="删除资料">🗑️ 删除</button>
                       </div>
                     </td>
                   </tr>
@@ -676,25 +757,303 @@
         </div>
       }
 
-      <!-- 3. 转存收益与漏斗统计 -->
+      <!-- 3. 转存收益与全站运营监控看板 -->
       @if (currentTab() === 'stats') {
-        <div class="stats-overview">
-          <div class="metric-card">
-            <span class="metric-label">总计转存次数</span>
-            <span class="metric-value">1,700 <small>次</small></span>
-            <span class="metric-trend text-success">↑ 较昨日提升 23%</span>
+        <div class="stats-dashboard-container">
+          <!-- 顶部横幅控制条 -->
+          <div class="stats-hero-banner">
+            <div class="hero-content">
+              <div class="hero-tag">
+                <span class="live-dot"></span>
+                <span>PostgreSQL 实时全站数据驱动</span>
+              </div>
+              <h2>📊 网盘转存与网站运营监控中心</h2>
+              <p>实时监控拉新转化率、各网盘渠道分布占比、资源链路存活健康度与全网热门搜索需求</p>
+            </div>
+            <div class="hero-actions">
+              <button class="btn btn-primary" (click)="loadDashboardStats()" [disabled]="statsLoading()">
+                @if (statsLoading()) {
+                  <span class="loading-spinner"></span> 正在更新数据...
+                } @else {
+                  🔄 刷新实时统计
+                }
+              </button>
+            </div>
           </div>
 
-          <div class="metric-card">
-            <span class="metric-label">夸克网盘转存占比</span>
-            <span class="metric-value text-blue">89.4%</span>
-            <span class="metric-sub">高效拉新沉淀主力</span>
+          <!-- 第一层：四大核心业务指标卡片 -->
+          <div class="stats-kpi-grid">
+            <div class="stats-kpi-card">
+              <div class="kpi-icon-wrap icon-purple">📥</div>
+              <div class="kpi-content">
+                <span class="kpi-title">网盘转存总次数</span>
+                <div class="kpi-number">{{ (dashboardStats()?.overview?.total_saves || 0) | number }} <small>次</small></div>
+                <div class="kpi-footer">
+                  <span class="kpi-sub">全站各网盘链接累计点击 <strong>{{ (dashboardStats()?.overview?.total_clicks || 0) | number }}</strong> 次</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="stats-kpi-card">
+              <div class="kpi-icon-wrap icon-blue">👁️</div>
+              <div class="kpi-content">
+                <span class="kpi-title">资料浏览总量 / 综合转化率</span>
+                <div class="kpi-number">{{ (dashboardStats()?.overview?.total_views || 0) | number }} <small>次</small></div>
+                <div class="kpi-footer">
+                  <span class="kpi-badge badge-green">综合转存率 {{ dashboardStats()?.overview?.save_rate || 0 }}%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="stats-kpi-card">
+              <div class="kpi-icon-wrap icon-emerald">🛡️</div>
+              <div class="kpi-content">
+                <span class="kpi-title">网盘链接存活健康率</span>
+                <div class="kpi-number" [class.text-amber]="(dashboardStats()?.overview?.health_rate || 100) < 95">
+                  {{ dashboardStats()?.overview?.health_rate || 100 }}%
+                </div>
+                <div class="kpi-footer">
+                  <span class="kpi-sub">
+                    共 {{ dashboardStats()?.overview?.total_links || 0 }} 条 (
+                    <span class="text-green">✅ {{ dashboardStats()?.overview?.active_links || 0 }} 正常</span>
+                    @if ((dashboardStats()?.overview?.invalid_links || 0) + (dashboardStats()?.overview?.reported_links || 0) > 0) {
+                      / <span class="text-red">🚨 {{ (dashboardStats()?.overview?.invalid_links || 0) + (dashboardStats()?.overview?.reported_links || 0) }} 异常</span>
+                    }
+                    )
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="stats-kpi-card">
+              <div class="kpi-icon-wrap icon-orange">📚</div>
+              <div class="kpi-content">
+                <span class="kpi-title">在库资源套数 / 网盘账号</span>
+                <div class="kpi-number">{{ dashboardStats()?.overview?.total_resources || 0 }} <small>套</small></div>
+                <div class="kpi-footer">
+                  <span class="kpi-sub">已上架 <strong>{{ dashboardStats()?.overview?.published_resources || 0 }}</strong> 套 · 托管网盘 <strong>{{ dashboardStats()?.overview?.valid_accounts || 0 }}/{{ dashboardStats()?.overview?.total_accounts || 0 }}</strong></span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="metric-card">
-            <span class="metric-label">热门多媒体</span>
-            <span class="metric-value">压轴函数视频课</span>
-            <span class="metric-sub">视频转化拉新提升 3.2 倍</span>
+          <!-- 第二层：两栏网盘渠道分布 & 顶级频道效益 -->
+          <div class="stats-two-col">
+            <!-- 左栏：各网盘渠道占比 -->
+            <div class="stats-panel-card">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span class="panel-icon">☁️</span>
+                  <div>
+                    <h4>各网盘渠道转存占比与点击量</h4>
+                    <p class="panel-sub">分析访客偏好的网盘平台，保障推广转化佣金最大化</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel-body">
+                @if (!dashboardStats()?.drives?.length) {
+                  <div class="empty-state-card">
+                    <span class="empty-icon">📁</span>
+                    <p>暂无网盘链接数据，请先录入资料与网盘链接</p>
+                  </div>
+                } @else {
+                  <div class="drive-stat-list">
+                    @for (d of dashboardStats()?.drives; track d.drive_type) {
+                      <div class="drive-stat-item">
+                        <div class="drive-header-row">
+                          <div class="drive-meta">
+                            <span class="drive-icon">{{ d.icon }}</span>
+                            <span class="drive-name">{{ d.name }}</span>
+                            <span class="drive-count">({{ d.link_count }} 条链接)</span>
+                          </div>
+                          <div class="drive-val">
+                            <strong>{{ d.click_count | number }} 次点击</strong>
+                            <span class="drive-pct">{{ d.percentage }}%</span>
+                          </div>
+                        </div>
+                        <div class="progress-bar-bg">
+                          <div 
+                            class="progress-bar-fill" 
+                            [class.fill-quark]="d.drive_type === 'quark'"
+                            [class.fill-baidu]="d.drive_type === 'baidu'"
+                            [style.width.%]="d.percentage">
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- 右栏：顶级业务频道效益分析 -->
+            <div class="stats-panel-card">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <span class="panel-icon">🏷️</span>
+                  <div>
+                    <h4>业务频道资源与转化效益排行</h4>
+                    <p class="panel-sub">各垂直频道的资料体量、浏览与转存产出比对比</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel-body">
+                @if (!dashboardStats()?.channels?.length) {
+                  <div class="empty-state-card">
+                    <span class="empty-icon">🏷️</span>
+                    <p>暂无频道统计数据</p>
+                  </div>
+                } @else {
+                  <div class="channel-stat-list">
+                    @for (ch of dashboardStats()?.channels; track ch.channel_slug) {
+                      <div class="channel-stat-row">
+                        <div class="chan-col-main">
+                          <span class="chan-icon">{{ ch.icon }}</span>
+                          <div>
+                            <span class="chan-name">{{ ch.channel_name }}</span>
+                            <span class="chan-res-badge">{{ ch.resource_count }} 套在库</span>
+                          </div>
+                        </div>
+                        <div class="chan-col-metrics">
+                          <div class="metric-mini">
+                            <span class="m-label">浏览</span>
+                            <span class="m-num">{{ ch.view_count | number }}</span>
+                          </div>
+                          <div class="metric-mini">
+                            <span class="m-label">转存</span>
+                            <span class="m-num text-purple">{{ ch.save_count | number }}</span>
+                          </div>
+                          <div class="metric-mini">
+                            <span class="m-label">转化率</span>
+                            <span class="m-num text-green">{{ ch.save_rate }}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- 第三层：热门高转化资料排行榜 -->
+          <div class="stats-panel-card full-width">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span class="panel-icon">🔥</span>
+                <div>
+                  <h4>全站热门高转化资料排行榜 (Top 10)</h4>
+                  <p class="panel-sub">根据实际转存次数和浏览量综合排序，为您提供选题上架参考</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-body table-responsive">
+              @if (!dashboardStats()?.top_resources?.length) {
+                <div class="empty-state-card">
+                  <span class="empty-icon">📄</span>
+                  <p>暂无发布资料</p>
+                </div>
+              } @else {
+                <table class="stats-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 60px; text-align: center;">排名</th>
+                      <th>资料标题</th>
+                      <th style="width: 100px;">所属频道</th>
+                      <th style="width: 90px;">格式</th>
+                      <th style="width: 110px; text-align: right;">浏览次数</th>
+                      <th style="width: 110px; text-align: right;">转存次数</th>
+                      <th style="width: 130px; text-align: center;">转存转化率</th>
+                      <th style="width: 110px; text-align: center;">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of dashboardStats()?.top_resources; track item.id; let idx = $index) {
+                      <tr>
+                        <td style="text-align: center;">
+                          @if (idx === 0) { <span class="rank-badge rank-1">🥇 1</span> }
+                          @else if (idx === 1) { <span class="rank-badge rank-2">🥈 2</span> }
+                          @else if (idx === 2) { <span class="rank-badge rank-3">🥉 3</span> }
+                          @else { <span class="rank-badge rank-normal">{{ idx + 1 }}</span> }
+                        </td>
+                        <td>
+                          <div class="table-resource-title" [title]="item.title">{{ item.title }}</div>
+                        </td>
+                        <td>
+                          <span class="channel-pill">{{ item.channel_slug }}</span>
+                        </td>
+                        <td>
+                          <span class="badge" [class.quark]="item.file_type === 'MP4'" [class.badge-secondary]="item.file_type !== 'MP4'">
+                            {{ item.file_type || 'PDF' }}
+                          </span>
+                        </td>
+                        <td style="text-align: right; font-weight: 600; color: #475569;">
+                          {{ item.view_count | number }}
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #6366f1;">
+                          {{ item.save_count | number }}
+                        </td>
+                        <td style="text-align: center;">
+                          <span class="conv-rate-pill">{{ item.save_rate }}%</span>
+                        </td>
+                        <td style="text-align: center;">
+                          <button class="btn btn-sm btn-edit" (click)="openEditById(item.id)">
+                            ✏️ 编辑
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </div>
+          </div>
+
+          <!-- 第四层：用户搜索意向与需求监控 -->
+          <div class="stats-panel-card full-width">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span class="panel-icon">🔍</span>
+                <div>
+                  <h4>用户搜索意向与长尾需求监控</h4>
+                  <p class="panel-sub">实时捕获全站访客的真实搜索关键词，精准洞察需求，发掘稀缺资源上架契机</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-body">
+              @if (!dashboardStats()?.searches?.length) {
+                <div class="empty-state-card">
+                  <span class="empty-icon">🔎</span>
+                  <p>暂无搜索记录，用户在前台搜索时将自动沉淀需求热词</p>
+                </div>
+              } @else {
+                <div class="search-keywords-grid">
+                  @for (s of dashboardStats()?.searches; track s.keyword) {
+                    <div class="search-keyword-card">
+                      <div class="kw-left">
+                        <span class="kw-text">{{ s.keyword }}</span>
+                        <span class="kw-count">🔍 {{ s.count }} 次搜索</span>
+                      </div>
+                      <div class="kw-right">
+                        @if (s.result_count === 0) {
+                          <span class="kw-tag tag-warning" title="用户搜索但库中暂缺，建议重点录入！">
+                            🚨 库中暂缺 · 建议补录
+                          </span>
+                        } @else {
+                          <span class="kw-tag tag-success">
+                            ✅ 匹配 {{ s.result_count }} 套
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
           </div>
         </div>
       }
@@ -2450,5 +2809,97 @@
       </div>
     </div>
   }
+
+  <!-- 8. 修改管理员资料与安全密码弹窗 -->
+  @if (showProfileModal()) {
+    <div class="modal-backdrop" (click)="closeProfileModal()">
+      <div class="modal-dialog profile-modal" (click)="$event.stopPropagation()" style="max-width: 520px;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-icon">🔐</span>
+            <div>
+              <h3>修改管理员资料与安全密码</h3>
+              <p class="modal-desc">可修改管理员昵称与重设高强度访问密码</p>
+            </div>
+          </div>
+          <button type="button" class="modal-close-btn" (click)="closeProfileModal()">✕</button>
+        </div>
+
+        <form (submit)="$event.preventDefault(); onSaveProfile()" class="modal-body profile-form">
+          @if (profileError()) {
+            <div class="login-error-alert" style="margin-bottom: 16px;">
+              <span class="error-icon">⚠️</span>
+              <span>{{ profileError() }}</span>
+            </div>
+          }
+
+          <div class="form-group full-width">
+            <label>管理员登录账号</label>
+            <input 
+              type="text" 
+              [value]="currentUser()?.username || 'admin'" 
+              disabled 
+              style="background: #f1f5f9; color: #64748b; cursor: not-allowed;" 
+            />
+            <span class="tip-text">系统根账号用户名不可变更</span>
+          </div>
+
+          <div class="form-group full-width">
+            <label>管理员显示昵称</label>
+            <input 
+              type="text" 
+              [(ngModel)]="profileForm.nickname" 
+              name="prof_nickname" 
+              placeholder="请输入管理员个性昵称，如：超级管理员" 
+              maxlength="30" 
+            />
+          </div>
+
+          <div class="modal-divider" style="margin: 16px 0; border-top: 1px dashed #e2e8f0;"></div>
+
+          <div class="form-group full-width">
+            <label>当前原密码 <span class="tip-text">（若仅修改昵称可留空）</span></label>
+            <input 
+              type="password" 
+              [(ngModel)]="profileForm.old_password" 
+              name="prof_old_pass" 
+              placeholder="请输入当前正在使用的旧密码" 
+              autocomplete="current-password" 
+            />
+          </div>
+
+          <div class="form-group full-width">
+            <label>设置新密码 <span class="tip-text">（不少于 6 位）</span></label>
+            <input 
+              type="password" 
+              [(ngModel)]="profileForm.new_password" 
+              name="prof_new_pass" 
+              placeholder="请输入新的安全访问密码" 
+              autocomplete="new-password" 
+            />
+          </div>
+
+          <div class="form-group full-width">
+            <label>确认新密码</label>
+            <input 
+              type="password" 
+              [(ngModel)]="profileForm.confirm_password" 
+              name="prof_confirm_pass" 
+              placeholder="请再次输入新密码以确认" 
+              autocomplete="new-password" 
+            />
+          </div>
+
+          <div class="modal-actions full-width" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+            <button type="button" class="btn btn-secondary" (click)="closeProfileModal()">取消</button>
+            <button type="submit" class="btn btn-primary" [disabled]="profileLoading()">
+              {{ profileLoading() ? '正在保存...' : '💾 保存修改' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+}
 </div>
 

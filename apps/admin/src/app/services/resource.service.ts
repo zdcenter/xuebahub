@@ -44,6 +44,66 @@ export interface ResourceItemDto {
   links?: ResourceLinkDto[];
 }
 
+export interface OverviewStatsDto {
+  total_resources: number;
+  published_resources: number;
+  total_views: number;
+  total_saves: number;
+  save_rate: number;
+  total_links: number;
+  active_links: number;
+  invalid_links: number;
+  reported_links: number;
+  health_rate: number;
+  total_clicks: number;
+  total_accounts: number;
+  valid_accounts: number;
+}
+
+export interface DriveStatItemDto {
+  drive_type: string;
+  name: string;
+  icon: string;
+  link_count: number;
+  click_count: number;
+  percentage: number;
+}
+
+export interface ChannelStatItemDto {
+  channel_slug: string;
+  channel_name: string;
+  icon: string;
+  resource_count: number;
+  view_count: number;
+  save_count: number;
+  save_rate: number;
+}
+
+export interface TopResourceItemDto {
+  id: string;
+  slug: string;
+  title: string;
+  channel_slug: string;
+  file_type: string;
+  view_count: number;
+  save_count: number;
+  save_rate: number;
+}
+
+export interface SearchStatItemDto {
+  keyword: string;
+  count: number;
+  result_count: number;
+}
+
+export interface DashboardStatsDto {
+  overview: OverviewStatsDto;
+  drives: DriveStatItemDto[];
+  channels: ChannelStatItemDto[];
+  top_resources: TopResourceItemDto[];
+  searches: SearchStatItemDto[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -70,6 +130,95 @@ export class ResourceService {
 
   get apiUrl(): string {
     return `${this.baseUrl}/api/v1/admin/resources`;
+  }
+
+  // --- 身份认证与权限 API ---
+  login(username: string, password: string): Observable<{ token: string; username: string; nickname: string; role: string }> {
+    return this.http.post<{ code: number; message: string; data: any }>(
+      `${this.baseUrl}/api/v1/auth/login`,
+      { username, password }
+    ).pipe(
+      map(res => {
+        if (res.code === 200 && res.data?.token) {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('admin_token', res.data.token);
+            localStorage.setItem('admin_user', JSON.stringify({
+              username: res.data.username,
+              nickname: res.data.nickname,
+              role: res.data.role
+            }));
+          }
+        }
+        return res.data;
+      })
+    );
+  }
+
+  getMe(): Observable<any> {
+    return this.http.get<{ code: number; data: any }>(`${this.baseUrl}/api/v1/admin/me`).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateProfile(nickname: string): Observable<any> {
+    return this.http.put<{ code: number; message: string; data: any }>(
+      `${this.baseUrl}/api/v1/admin/me/profile`,
+      { nickname }
+    ).pipe(
+      map(res => {
+        if (res.code === 200 && res.data) {
+          if (typeof localStorage !== 'undefined') {
+            const cached = this.getCurrentUser();
+            if (cached) {
+              cached.nickname = res.data.nickname;
+              localStorage.setItem('admin_user', JSON.stringify(cached));
+            }
+          }
+        }
+        return res.data;
+      })
+    );
+  }
+
+  changePassword(oldPassword: string, newPassword: string): Observable<any> {
+    return this.http.put<{ code: number; message: string }>(
+      `${this.baseUrl}/api/v1/admin/me/password`,
+      { old_password: oldPassword, new_password: newPassword }
+    );
+  }
+
+  getDashboardStats(): Observable<DashboardStatsDto> {
+    return this.http.get<{ code: number; data: DashboardStatsDto }>(
+      `${this.baseUrl}/api/v1/admin/stats`
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  logout(): void {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+    }
+  }
+
+  getToken(): string | null {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('admin_token');
+    }
+    return null;
+  }
+
+  getCurrentUser(): { username: string; nickname: string; role: string } | null {
+    if (typeof localStorage !== 'undefined') {
+      const u = localStorage.getItem('admin_user');
+      if (u) {
+        try {
+          return JSON.parse(u);
+        } catch {}
+      }
+    }
+    return null;
   }
 
   // 获取后台全部资源列表（支持按频道过滤）
