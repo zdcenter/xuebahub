@@ -248,12 +248,16 @@ const STAGE_LABELS: Record<string, string> = {
 };
 const stageLabel = STAGE_LABELS[resource.stage] || resource.stage || '资料专区';
 const stageHref = STAGE_LABELS[resource.stage] ? `/${resource.stage}` : '/edu';
+// 自动判定分享缩略图优先级：用户指定封面 > 后端 VPS 现场动态生成+CDN缓存的真实清单海报 > 官方通用兜底图
+const resourceCoverUrl = resource.coverUrl || `${apiBase}/api/v1/public/resources/${resource.slug}/cover.png`;
 ---
 
 <Layout
   title={`${resource.title} - 学霸网`}
   description={resource.subtitle}
   keywords={`${resource.grade}, ${resource.subject}, ${resource.edition}, 期末试卷, 试卷下载`}
+  canonicalUrl={canonicalPageUrl}
+  image={resourceCoverUrl}
 >
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="resource-container" data-api-base={apiBase}>
     <!-- 面包屑导航 -->
@@ -308,11 +312,6 @@ const stageHref = STAGE_LABELS[resource.stage] ? `/${resource.stage}` : '/edu';
               </span>
               <span class="text-slate-200 hidden sm:inline">•</span>
               <span class="text-slate-400 flex items-center space-x-1.5">
-                <span>📖</span>
-                <span class="font-medium text-slate-500">共 {resource.pageCount} 页/讲</span>
-              </span>
-              <span class="text-slate-200 hidden sm:inline">•</span>
-              <span class="text-slate-400 flex items-center space-x-1.5">
                 <span>👁️</span>
                 <span class="font-mono font-medium text-slate-500">{resource.viewCount} 次浏览</span>
               </span>
@@ -343,15 +342,15 @@ const stageHref = STAGE_LABELS[resource.stage] ? `/${resource.stage}` : '/edu';
 
         <div class="grid grid-cols-1 gap-4">
           {resource.links.map((link: any) => (
-            <div class={`flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all ${
+            <div class={`flex flex-col lg:flex-row lg:items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all gap-4 ${
               link.status === 'invalid'
                 ? 'bg-rose-50/40 border-rose-200 opacity-80'
                 : link.is_primary 
                   ? 'bg-white border-blue-300 shadow-sm ring-1 ring-blue-50' 
                   : 'bg-white border-slate-200 shadow-sm hover:border-blue-200'
             }`}>
-              <div class="flex items-center gap-4 flex-1 min-w-0">
-                <div class={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner border ${
+              <div class="flex items-start sm:items-center gap-3.5 sm:gap-4 flex-1 min-w-0">
+                <div class={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner border mt-0.5 sm:mt-0 ${
                   link.drive_name.includes('夸克') ? 'bg-blue-50 border-blue-100 text-blue-500' : 
                   link.drive_name.includes('百度') ? 'bg-sky-50 border-sky-100 text-sky-500' : 
                   'bg-indigo-50 border-indigo-100 text-indigo-500'
@@ -381,10 +380,41 @@ const stageHref = STAGE_LABELS[resource.stage] ? `/${resource.stage}` : '/edu';
                     <span class="text-slate-300">•</span>
                     <span class="flex items-center gap-1">⚡ <span id={`link-count-${link.id}`}>{link.click_count}</span> 人已转存</span>
                   </div>
+
+                  <!-- 明文网盘真实地址栏 (透明公开真实网盘URL，支持直达与一键复制) -->
+                  {link.share_url && (
+                    <div class="mt-2.5 flex items-center gap-2 bg-slate-50/90 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs transition">
+                      <span class="text-slate-400 font-medium shrink-0 flex items-center gap-1">
+                        <span>🔗</span>
+                        <span class="hidden sm:inline">网盘地址:</span>
+                      </span>
+                      <a
+                        href={link.share_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-blue-600 hover:text-blue-800 font-mono text-xs truncate flex-1 hover:underline select-all"
+                        title={`直接打开网盘链接: ${link.share_url}`}
+                      >
+                        {link.share_url}
+                      </a>
+                      <button
+                        type="button"
+                        class="btn-copy-raw-link px-2 py-0.5 text-slate-500 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200/80 hover:border-blue-200 rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1 text-[11px] font-medium shadow-2xs"
+                        data-url={link.share_url}
+                        data-pwd={link.extract_code || ''}
+                        title="复制网盘链接与提取码"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <span>复制</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div class="flex flex-row items-center justify-end gap-3 w-full sm:w-auto mt-4 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 relative">
+              <div class="flex flex-row items-center justify-end gap-3 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 relative shrink-0">
                 <!-- 电脑端悬浮放大二维码 -->
                 {link.qr_svg && link.status !== 'invalid' && (
                   <div class="hidden md:flex items-center justify-center w-12 h-12 p-0.5 border border-slate-200 rounded-lg hover:scale-[4] transition-transform origin-right bg-white shadow-xs cursor-crosshair z-20 [&>svg]:w-full [&>svg]:h-full" set:html={link.qr_svg} title="鼠标悬浮放大，微信/网盘直接扫码保存"></div>
@@ -1045,6 +1075,18 @@ const stageHref = STAGE_LABELS[resource.stage] ? `/${resource.stage}` : '/edu';
             url: window.location.href
           }).catch(function() {});
         }
+        return;
+      }
+
+      // 7. 点击复制真实网盘地址与提取码
+      var copyRawBtn = target.closest('.btn-copy-raw-link');
+      if (copyRawBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        var rawUrl = copyRawBtn.getAttribute('data-url') || '';
+        var rawPwd = copyRawBtn.getAttribute('data-pwd') || '';
+        var copyPayload = rawPwd ? ('链接: ' + rawUrl + ' 提取码: ' + rawPwd) : rawUrl;
+        copyToClipboard(copyPayload, '网盘地址' + (rawPwd ? '及提取码' : '') + '已成功复制！', copyRawBtn, '已复制');
         return;
       }
     });

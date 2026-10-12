@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build && node scripts/patch-wrangler.mjs",
+    "generate:covers": "node scripts/generate-resource-covers.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },

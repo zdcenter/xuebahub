@@ -16,14 +16,16 @@ import (
 )
 
 type ResourceHandler struct {
-	parser  *service.NetdiskParserService
-	checker *service.NetdiskCheckerService
+	parser   *service.NetdiskParserService
+	checker  *service.NetdiskCheckerService
+	coverGen *service.CoverGeneratorService
 }
 
-func NewResourceHandler(parser *service.NetdiskParserService, checker *service.NetdiskCheckerService) *ResourceHandler {
+func NewResourceHandler(parser *service.NetdiskParserService, checker *service.NetdiskCheckerService, coverGen *service.CoverGeneratorService) *ResourceHandler {
 	return &ResourceHandler{
-		parser:  parser,
-		checker: checker,
+		parser:   parser,
+		checker:  checker,
+		coverGen: coverGen,
 	}
 }
 
@@ -142,6 +144,36 @@ func (h *ResourceHandler) GetPublicResourceDetail(c fiber.Ctx) error {
 		"code": 200,
 		"data": res,
 	})
+}
+
+// GetPublicResourceCover 获取资源动态封面缩略图（若未生成则现场生成并缓存至磁盘与CDN）
+func (h *ResourceHandler) GetPublicResourceCover(c fiber.Ctx) error {
+	identifier := c.Params("id_or_slug")
+	identifier = strings.TrimSuffix(identifier, ".png")
+
+	var res model.Resource
+	err := database.DB.Where("(slug = ? OR id::text = ?) AND is_published = ?", identifier, identifier, true).
+		First(&res).Error
+
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"code":    404,
+			"message": "资源不存在或已下架",
+		})
+	}
+
+	filePath, err := h.coverGen.GetCoverFilePath(&res)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code":    500,
+			"message": fmt.Sprintf("生成缩略图封面失败: %v", err),
+		})
+	}
+
+	c.Set("Content-Type", "image/png")
+	// 浏览器缓存 30 天，Cloudflare CDN 边缘强缓存 1 年 (immutable)
+	c.Set("Cache-Control", "public, max-age=2592000, s-maxage=31536000, immutable")
+	return c.SendFile(filePath)
 }
 
 // TrackSaveClick 统计网盘链接转存点击量并返回直达跳转地址

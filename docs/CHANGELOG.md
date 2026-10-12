@@ -11,7 +11,18 @@
     - **云端网盘核心母体 (Cloud of Drive & Vault)**：在深邃极光蓝超椭圆徽章底座上，嵌入立体灵动、层次通透的科技白晶云朵，一眼树立“网盘资源、云端文库”的清晰业务心智；
     - **璀璨金黄色学霸帽与状元星芒 (Vibrant Royal Gold Scholar Cap)**：针对原先白晶帽子与下方白色云朵产生颜色粘连、界线不清的核心痛点，全面重塑为**纯正耀眼的金黄色学霸帽（Royal Gold）**。帽顶采用亮金至暖金流光渐变，帽身圆柱底座采用深金琥珀立体切面扎实扣在云端，形成“深蓝底座 + 洁白云朵 + 纯正金黄学霸帽”经典三色对比，在全端及 16x16 极小浏览器 Favicon 下均实现一眼识别、极度醒目；
     - **资源流动与极速转存光箭 (Fast Resource Transfer Arrow)**：云朵核心正中融入向上疾速冲刺的资源转存光箭与展开的教辅书页羽翼，深刻契合“网盘资料极速转存与下载”的业务场景；
-    - **全端与微缩尺寸极致辨识**：底座内嵌 `XUEBAW.COM` 域名标识，在 16x16 / 32x32 浏览器 Favicon、移动端 36px 顶栏以及高清大图上均保持锐利轮廓与极高辨识度。
+  - **前台详情页信息透明度与信息层级精炼优化 (`resource/[slug].astro`)**:
+    - **取消冗余规格信息**：根据实际教辅与多媒体资料特性，彻底移除标题副标右侧易产生认知混淆的“共 XX 页/讲”文本，仅保留发布日期与真实查阅次数，大幅精炼首屏元数据行；
+  - **全渠道社媒裂变与基于网盘真实文件树的动态分享封面引擎 (`Layout.astro`, `resource/[slug].astro` & `generate-resource-covers.mjs`)**:
+    - **微信与社交平台卡片抓取规范落地**：针对微信分享抓取仅识别绝对路径（`http(s)://...`）、尺寸要求 $\ge 300\times300$、不解析 SVG 的严苛特性，在全局 `<Layout image={resourceCoverUrl}>` 深度集成标准 Open Graph（`og:image`）、Twitter Card（`twitter:image`），并在 `<body>` 起始处内置首屏微信爬虫优先嗅探节点；
+    - **基于网盘真实文件目录的动态内容封面 (File-Tree Driven Visual Proof)**：告别千篇一律的通用模板或繁重的人工制图，基于抓取解析的真实网盘文件树（`file_tree`），通过 Headless Chrome 自动化流水线渲染生成 600×600 高清卡片：
+      - 智能解构单根文件夹，前置透出排名前 4 的高价值真实资源（视频 🎬、试卷 📄、题库 📝 等）与规格大小；
+      - 醒目标注全网盘已探明资源总项数与“所见即所存 · 100% 存活”背书微标签；
+    - **后端 VPS 按需现场动态生成与 Cloudflare CDN 永久边缘强缓存架构 (`CoverGeneratorService` & `/api/v1/public/resources/:id_or_slug/cover.png`)**:
+      - **零预生成负担**：管理员录入新资料或大批量爬取入库时无需预先消耗 CPU 截图，资源首次被微信爬虫或用户访问时才触发现场生成（首次耗时仅 ~500ms），随后永久缓存到 VPS 本地磁盘（`/storage/covers/{slug}.png`）；
+      - **防高并发打爆机制**：集成资源级互斥锁（`sync.Mutex`），防止热点资源初次转发到大群时多个并发请求重复拉起 Headless Chrome；
+      - **Cloudflare 边缘永久加速**：返回头挂载 `Cache-Control: public, max-age=2592000, s-maxage=31536000, immutable`，被抓取一次后由 Cloudflare 全球 CDN 节点永久接管分发，0ms 秒开且后续访问 0 回源、0 服务器压力；
+      - **多层容灾降级**：提供 `/covers/:id_or_slug.png` 与 `/resources/:id_or_slug/cover.png` 规范双路由；若环境缺失 Chrome 或临时异常，自动优雅降级返回品牌官方默认封面 `og-cover.png`，杜绝 500 或碎图。
 
 ## [Unreleased] - 2026-10-11
 
