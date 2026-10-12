@@ -30,12 +30,18 @@
   border-color: #cbd5e1;
 }
 
-/* 夸克/网盘强调转存按钮流光微动效 */
+/* 夸克网盘转存按钮：雅致淡蓝微质感，柔和克制不喧宾夺主，hover 时平滑反馈 */
 .btn-save-quark {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  transition: all 0.2s ease;
+  background: #f0f7ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .btn-save-quark:hover {
-  filter: brightness(1.1);
-  box-shadow: 0 8px 16px -4px rgba(37, 99, 235, 0.4);
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
 }
+

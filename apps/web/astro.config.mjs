@@ -12,6 +12,9 @@ export default defineConfig({
     enabled: false
   },
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
+    ssr: {
+      noExternal: ['qrcode']
+    }
   }
 });

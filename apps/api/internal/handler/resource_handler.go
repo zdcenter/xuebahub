@@ -27,6 +27,25 @@ func NewResourceHandler(parser *service.NetdiskParserService, checker *service.N
 	}
 }
 
+// NormalizeStage 将可能存在的历史中文名称标准化为唯一的标准英文枚举 (primary, junior, senior, cert, exam)
+func NormalizeStage(stage string) string {
+	s := strings.TrimSpace(stage)
+	switch s {
+	case "小学", "小学阶段", "小学专区":
+		return "primary"
+	case "初中", "初中冲刺", "初中专区":
+		return "junior"
+	case "高中", "高中专区", "高中高考专项":
+		return "senior"
+	case "成人考证", "考证", "教师资格证", "教资":
+		return "cert"
+	case "考公考研", "考公", "考研":
+		return "exam"
+	default:
+		return strings.ToLower(s)
+	}
+}
+
 // ListPublicResources 前台公开资源列表，支持多维条件筛选
 func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 	stage := c.Query("stage")       // primary, junior, senior, cert, exam
@@ -54,7 +73,8 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 		query = query.Where("channel_slug = ?", channel)
 	}
 	if stage != "" && stage != "all" {
-		query = query.Where("stage = ?", stage)
+		stdStage := NormalizeStage(stage)
+		query = query.Where("stage = ?", stdStage)
 	}
 	if grade != "" {
 		query = query.Where("grade = ?", grade)
@@ -215,6 +235,9 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 	if res.ChannelSlug == "" {
 		res.ChannelSlug = "edu"
 	}
+	if res.Stage != "" {
+		res.Stage = NormalizeStage(res.Stage)
+	}
 
 	if err := database.DB.Create(&res).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "创建失败: " + err.Error()})
@@ -283,7 +306,7 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 	existing.Title = req.Title
 	existing.Subtitle = req.Subtitle
 	existing.Description = req.Description
-	existing.Stage = req.Stage
+	existing.Stage = NormalizeStage(req.Stage)
 	existing.Grade = req.Grade
 	existing.Subject = req.Subject
 	existing.Edition = req.Edition

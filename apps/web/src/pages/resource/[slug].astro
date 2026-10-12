@@ -4,7 +4,7 @@ import { getApiBaseUrl } from '../../lib/api';
 import QRCode from 'qrcode';
 
 const { slug } = Astro.params;
-const apiBase = getApiBaseUrl();
+const apiBase = getApiBaseUrl(Astro.url);
 
 // 方案一：Cloudflare 边缘 CDN 极速缓存与后台静默刷新 (每个详情页独立缓存)
 // max-age=60 (浏览器端缓存 1 分钟)
@@ -135,6 +135,25 @@ if (resource && Array.isArray(resource.links)) {
   }
 }
 
+// 生成本页面专属分享二维码与标准推荐口令
+let pageShareQrSvg = '';
+const canonicalPageUrl = `${Astro.url.origin}/resource/${resource.slug}`;
+try {
+  pageShareQrSvg = await QRCode.toString(canonicalPageUrl, {
+    type: 'svg',
+    margin: 1,
+    width: 200,
+    color: {
+      dark: '#1e40af',
+      light: '#ffffff'
+    }
+  });
+} catch (e) {
+  pageShareQrSvg = '';
+}
+
+const shareRecommendationText = `【学霸网资料推荐】《${resource.title}》\n📁 规格：${resource.grade} ${resource.subject} · ${resource.fileType}\n✨ 特色：${resource.subtitle || '名校高清排版，支持直接A4打印冲刺高分'}\n⚡ 点击直达极速转存与下载：\n${canonicalPageUrl}`;
+
 function normalizeFileTree(list: any[]): any[] {
   if (!list || !Array.isArray(list)) return [];
   if (list.some((it: any) => it.children && it.children.length > 0)) {
@@ -219,6 +238,16 @@ function getFileBadgeClass(ext: string): string {
 
 const displayTree = normalizeFileTree(resource.fileTree);
 const totalFileCount = countTotalFiles(resource.fileTree);
+
+const STAGE_LABELS: Record<string, string> = {
+  primary: '小学',
+  junior: '初中',
+  senior: '高中',
+  cert: '资格考证',
+  exam: '公考升学'
+};
+const stageLabel = STAGE_LABELS[resource.stage] || resource.stage || '资料专区';
+const stageHref = STAGE_LABELS[resource.stage] ? `/${resource.stage}` : '/edu';
 ---
 
 <Layout
@@ -231,7 +260,7 @@ const totalFileCount = countTotalFiles(resource.fileTree);
     <nav class="flex items-center space-x-2 text-xs text-slate-500">
       <a href="/" class="hover:text-blue-600">首页</a>
       <span>/</span>
-      <a href="/?stage=primary" class="hover:text-blue-600">{resource.stage}</a>
+      <a href={stageHref} class="hover:text-blue-600">{stageLabel}</a>
       <span>/</span>
       <span class="text-slate-800 font-medium">{resource.grade} {resource.subject}</span>
     </nav>
@@ -272,21 +301,31 @@ const totalFileCount = countTotalFiles(resource.fileTree);
               )}
             </div>
             
-            <div class="flex flex-wrap items-center sm:justify-end gap-3 sm:gap-4 text-xs text-slate-400">
-              <span class="flex items-center space-x-1.5">
+            <div class="flex flex-wrap items-center sm:justify-end gap-2.5 sm:gap-3 text-xs">
+              <span class="text-slate-400 flex items-center space-x-1.5">
                 <span>📅</span>
                 <span class="font-medium text-slate-500">{resource.createdAt}</span>
               </span>
-              <span class="text-slate-200">•</span>
-              <span class="flex items-center space-x-1.5">
+              <span class="text-slate-200 hidden sm:inline">•</span>
+              <span class="text-slate-400 flex items-center space-x-1.5">
                 <span>📖</span>
                 <span class="font-medium text-slate-500">共 {resource.pageCount} 页/讲</span>
               </span>
-              <span class="text-slate-200">•</span>
-              <span class="flex items-center space-x-1.5">
+              <span class="text-slate-200 hidden sm:inline">•</span>
+              <span class="text-slate-400 flex items-center space-x-1.5">
                 <span>👁️</span>
                 <span class="font-mono font-medium text-slate-500">{resource.viewCount} 次浏览</span>
               </span>
+              <!-- 醒目顶部分享推荐按钮 (直通扫码与一键推荐) -->
+              <button
+                type="button"
+                id="btn-header-share"
+                class="btn-trigger-share ml-1 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 active:scale-95 text-white font-bold text-xs shadow-sm hover:shadow-md hover:scale-[1.03] transition-all flex items-center gap-1.5 cursor-pointer select-none"
+                title="分享资料、微信扫码或推荐给家长/考友群"
+              >
+                <span>🎁</span>
+                <span>分享推荐</span>
+              </button>
             </div>
           </div>
         </div>
@@ -365,6 +404,7 @@ const totalFileCount = countTotalFiles(resource.fileTree);
           ))}
         </div>
       </div>
+
 
       <!-- 底部：资源内含文件清单 -->
       {resource.fileTree && resource.fileTree.length > 0 && (
@@ -598,9 +638,10 @@ const totalFileCount = countTotalFiles(resource.fileTree);
     function recordSaveClick(slug, linkId) {
       if (!slug) return;
       var host = window.location.hostname || '127.0.0.1';
-      var base = (container && container.getAttribute('data-api-base')) 
-        ? container.getAttribute('data-api-base') 
-        : ((host === 'localhost' || host === '127.0.0.1') ? ('http://' + host + ':4001') : 'https://api.xuebaw.com:8443');
+      var isLocal = (host === 'localhost' || host === '127.0.0.1');
+      var base = isLocal 
+        ? ('http://' + host + ':4001') 
+        : ((container && container.getAttribute('data-api-base')) || 'https://api.xuebaw.com:8443');
       var apiUrl = base + '/api/v1/public/resources/' + encodeURIComponent(slug) + '/track-save';
       if (linkId) {
         apiUrl += '?link_id=' + encodeURIComponent(linkId);
@@ -695,7 +736,11 @@ const totalFileCount = countTotalFiles(resource.fileTree);
         btn.setAttribute('disabled', 'true');
         btn.classList.add('opacity-50', 'cursor-not-allowed');
 
-        const apiBaseUrl = document.getElementById('resource-container')?.getAttribute('data-api-base') || '';
+        const host = window.location.hostname || '127.0.0.1';
+        const isLocal = (host === 'localhost' || host === '127.0.0.1');
+        const apiBaseUrl = isLocal 
+          ? `http://${host}:4001` 
+          : (document.getElementById('resource-container')?.getAttribute('data-api-base') || 'https://api.xuebaw.com:8443');
 
         fetch(`${apiBaseUrl}/api/v1/public/links/${linkId}/report`, {
           method: 'POST',
@@ -762,5 +807,253 @@ const totalFileCount = countTotalFiles(resource.fileTree);
         }
       });
     }
+  </script>
+
+  <!-- 专属高颜值分享与推荐弹窗 (Share Modal) -->
+  <div id="share-modal-backdrop" class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-200 flex items-center justify-center p-4">
+    <div id="share-modal-panel" class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform scale-95 opacity-0 transition-all duration-200">
+      <!-- 弹窗顶部 -->
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50/50 to-indigo-50/30">
+        <div class="flex items-center space-x-2.5">
+          <img src="/logo.svg" alt="学霸网" class="w-8 h-8 rounded-xl shadow-sm" />
+          <div>
+            <div class="font-extrabold text-slate-900 text-sm">分享推荐此资料</div>
+            <div class="text-[10px] text-slate-400">学霸网 · 专业的网盘学习与备考资源站</div>
+          </div>
+        </div>
+        <button id="btn-close-share-modal" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl transition cursor-pointer" title="关闭">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-5 sm:p-6 space-y-4">
+        <!-- 资料信息摘要 -->
+        <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+          <div class="flex items-center gap-1.5 text-[11px]">
+            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 font-bold rounded">{resource.grade} {resource.subject}</span>
+            <span class="text-slate-400 font-mono">{resource.fileType}</span>
+          </div>
+          <h4 class="text-xs sm:text-sm font-bold text-slate-800 line-clamp-2 leading-snug">
+            {resource.title}
+          </h4>
+        </div>
+
+        <!-- 手机扫码与推荐语双模式 -->
+        <div class="flex flex-col sm:flex-row items-center gap-4 bg-blue-50/40 rounded-2xl p-4 border border-blue-100/60">
+          <!-- 手机微信扫码直达二维码 -->
+          {pageShareQrSvg && (
+            <div class="flex-shrink-0 flex flex-col items-center">
+              <div class="w-24 h-24 sm:w-28 sm:h-28 bg-white p-1 rounded-xl shadow-xs border border-blue-100 [&>svg]:w-full [&>svg]:h-full" set:html={pageShareQrSvg}></div>
+              <span class="text-[10px] text-blue-700 font-bold mt-1.5 flex items-center gap-0.5">
+                <span>📱</span><span>微信扫码直达</span>
+              </span>
+            </div>
+          )}
+          <div class="flex-1 text-xs text-slate-600 space-y-2 text-center sm:text-left">
+            <div class="font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-1">
+              <span>💬</span><span>推荐方式：</span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-relaxed">
+              手机打开微信【扫一扫】直接浏览并转存，或点击下方按钮复制完整推荐语，直接粘贴至<strong>微信群、朋友圈、QQ群</strong>。
+            </p>
+          </div>
+        </div>
+
+        <!-- 推荐文案预览框 -->
+        <div class="relative">
+          <textarea
+            id="share-text-box"
+            readonly
+            class="w-full h-20 p-2.5 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl text-slate-600 resize-none outline-none leading-relaxed"
+          >{shareRecommendationText}</textarea>
+        </div>
+
+        <!-- 移动端系统原生分享按钮 (仅在支持的环境显示) -->
+        <button
+          type="button"
+          id="btn-native-share"
+          class="hidden w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition text-center cursor-pointer items-center justify-center gap-1.5"
+        >
+          <span>📲</span><span>唤起手机系统分享 (直发微信好友/群)</span>
+        </button>
+
+        <!-- 按钮行动组 -->
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            id="btn-copy-link-only"
+            class="flex-1 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl shadow-2xs transition text-center cursor-pointer"
+          >
+            仅复制网页链接
+          </button>
+          <button
+            type="button"
+            id="btn-copy-full-text"
+            class="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition text-center cursor-pointer"
+          >
+            一键复制推荐全文
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline>
+    // 分享推荐弹窗总控逻辑
+    function openShareModal() {
+      var backdrop = document.getElementById('share-modal-backdrop');
+      var panel = document.getElementById('share-modal-panel');
+      if (backdrop && panel) {
+        backdrop.classList.remove('opacity-0', 'pointer-events-none');
+        backdrop.classList.add('opacity-100', 'pointer-events-auto');
+        panel.classList.remove('scale-95', 'opacity-0');
+        panel.classList.add('scale-100', 'opacity-100');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeShareModal() {
+      var backdrop = document.getElementById('share-modal-backdrop');
+      var panel = document.getElementById('share-modal-panel');
+      if (backdrop && panel) {
+        panel.classList.remove('scale-100', 'opacity-100');
+        panel.classList.add('scale-95', 'opacity-0');
+        backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        document.body.style.overflow = '';
+      }
+    }
+
+    function copyToClipboard(text, successMsg, btnElement, successBtnText) {
+      function onSuccess() {
+        if (window.showGlobalToast) {
+          window.showGlobalToast(successMsg, '🎉');
+        } else if (typeof showToast === 'function') {
+          showToast(successMsg);
+        } else {
+          alert(successMsg);
+        }
+        if (btnElement && successBtnText) {
+          var origHtml = btnElement.innerHTML;
+          btnElement.innerHTML = '✓ ' + successBtnText;
+          btnElement.classList.add('bg-emerald-600', 'text-white');
+          setTimeout(function() {
+            btnElement.innerHTML = origHtml;
+            btnElement.classList.remove('bg-emerald-600', 'text-white');
+          }, 2000);
+        }
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(function() {
+          fallbackCopy(text, onSuccess);
+        });
+      } else {
+        fallbackCopy(text, onSuccess);
+      }
+    }
+
+    function fallbackCopy(text, onSuccess) {
+      var textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        var successful = document.execCommand('copy');
+        if (successful) {
+          onSuccess();
+        } else {
+          if (window.showGlobalToast) window.showGlobalToast('已选中，请按 Ctrl+C 复制', '📋');
+        }
+      } catch (err) {
+        if (window.showGlobalToast) window.showGlobalToast('已选中，请按 Ctrl+C 复制', '📋');
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // 检查是否显示系统原生分享按钮
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      var nativeBtn = document.getElementById('btn-native-share');
+      if (nativeBtn) {
+        nativeBtn.classList.remove('hidden');
+        nativeBtn.classList.add('flex');
+      }
+    }
+
+    // 全局事件委托监听：保证无论元素渲染时机如何，100% 捕获点击！
+    document.addEventListener('click', function(e) {
+      var target = e.target;
+      if (!target) return;
+
+      // 1. 点击“分享推荐”按钮
+      var shareTrigger = target.closest('#btn-header-share, .btn-trigger-share');
+      if (shareTrigger) {
+        e.preventDefault();
+        e.stopPropagation();
+        openShareModal();
+        return;
+      }
+
+      // 2. 点击关闭弹窗按钮
+      var closeBtn = target.closest('#btn-close-share-modal');
+      if (closeBtn) {
+        e.preventDefault();
+        closeShareModal();
+        return;
+      }
+
+      // 3. 点击遮罩背景关闭
+      var backdrop = document.getElementById('share-modal-backdrop');
+      if (target === backdrop) {
+        e.preventDefault();
+        closeShareModal();
+        return;
+      }
+
+      // 4. 点击一键复制推荐全文
+      var copyFullBtn = target.closest('#btn-copy-full-text');
+      if (copyFullBtn) {
+        e.preventDefault();
+        var textBox = document.getElementById('share-text-box');
+        var text = (textBox && textBox.value) ? textBox.value : window.location.href;
+        copyToClipboard(text, '推荐全文与专属链接已复制！去微信/QQ粘贴即可分享', copyFullBtn, '已复制全文');
+        return;
+      }
+
+      // 5. 点击仅复制网页链接
+      var copyLinkBtn = target.closest('#btn-copy-link-only');
+      if (copyLinkBtn) {
+        e.preventDefault();
+        copyToClipboard(window.location.href, '网页直达链接已复制！', copyLinkBtn, '已复制链接');
+        return;
+      }
+
+      // 6. 点击原生分享
+      var nativeShareBtn = target.closest('#btn-native-share');
+      if (nativeShareBtn) {
+        e.preventDefault();
+        if (navigator.share) {
+          var textBox2 = document.getElementById('share-text-box');
+          navigator.share({
+            title: document.title,
+            text: (textBox2 && textBox2.value) ? textBox2.value : document.title,
+            url: window.location.href
+          }).catch(function() {});
+        }
+        return;
+      }
+    });
+
+    // ESC 键关闭弹窗
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeShareModal();
+      }
+    });
   </script>
 </Layout>

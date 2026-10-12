@@ -4,33 +4,45 @@ import { FormsModule } from '@angular/forms';
 import { ResourceService, ResourceItemDto, NetdiskAccountDto, TransferShareResultDto, ChannelDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto } from './services/resource.service';
 
 export interface StageConfigItem {
+  key: string;
+  label: string;
   grades: string[];
   subjects: string[];
   editions: string[];
 }
 
 export const STAGE_OPTIONS: Record<string, StageConfigItem> = {
-  '小学阶段': {
+  primary: {
+    key: 'primary',
+    label: '小学阶段 (1-6年级)',
     grades: ['通用 (1-6年级通用)', '一年级', '二年级', '三年级', '四年级', '五年级', '六年级'],
     subjects: ['通用/全科', '数学', '语文', '英语', '奥数思维培优', '科学'],
     editions: ['通用版本', '人教版 (统编)', '北师大版', '苏教版', '外研版 (英语)', '冀教版', '沪教版']
   },
-  '初中冲刺': {
+  junior: {
+    key: 'junior',
+    label: '初中专区 (中考冲刺)',
     grades: ['通用 (初中全阶段通用)', '初一/七年级', '初二/八年级', '初三/中考冲刺'],
     subjects: ['中考综合/全科', '数学', '语文', '英语', '物理', '化学', '道德与法治', '历史', '生物', '地理'],
     editions: ['通用版本', '人教版 (统编)', '北师大版', '苏教版', '华师大版', '外研版']
   },
-  '高中专区': {
+  senior: {
+    key: 'senior',
+    label: '高中专区 (高考专项)',
     grades: ['通用 (高中全阶段通用)', '高一', '高二', '高三/高考总复习'],
     subjects: ['高考综合/全科', '数学', '语文', '英语', '物理', '化学', '生物', '政治', '历史', '地理'],
     editions: ['通用版本', '人教版 (新高考)', '北师大版', '苏教版', '外研版']
   },
-  '成人考证': {
+  cert: {
+    key: 'cert',
+    label: '成人考证 (教师资格证)',
     grades: ['国家统考通用', '小学教师资格证', '中学教师资格证', '幼儿教师资格证', '普通话等级考试'],
     subjects: ['统考全套考点', '综合素质 (科一)', '教育知识与能力 (科二)', '保教知识与能力', '学科知识与教学能力 (科三)', '面试试讲教案'],
     editions: ['国家考试大纲通用', '中公教育配套', '粉笔教育配套']
   },
-  '考公考研': {
+  exam: {
+    key: 'exam',
+    label: '考公考研专区',
     grades: ['国家/地方统一大纲', '国家公务员考试 (国考)', '多省联考/省考', '事业单位招聘', '全国硕士研究生统考 (考研)'],
     subjects: ['备考全套大礼包', '申论提分范文与热点', '行测高频速算与技巧', '考研政治核心背诵', '考研英语词汇与长难句', '考研数学'],
     editions: ['国家考试大纲通用', '华图教育版', '中公教育版', '粉笔教育版']
@@ -115,7 +127,7 @@ export class App implements OnInit {
     channel_slug: 'edu',
     title: '',
     subtitle: '',
-    stage: '小学阶段',
+    stage: 'primary',
     grade: '通用 (1-6年级通用)',
     subject: '数学',
     edition: '人教版 (统编)',
@@ -145,7 +157,7 @@ export class App implements OnInit {
     channel_slug: 'edu',
     title: '',
     subtitle: '',
-    stage: '小学阶段',
+    stage: 'primary',
     grade: '通用 (1-6年级通用)',
     subject: '数学',
     edition: '人教版 (统编)',
@@ -169,9 +181,29 @@ export class App implements OnInit {
     file_tree: [] as any[]
   };
 
+  // 标准化学段键值（完全兼容历史中文与规范英文字符）
+  normalizeStageKey(stage: string): string {
+    if (!stage) return 'primary';
+    if (this.stageOptions[stage]) return stage;
+    if (stage === '小学阶段' || stage === '小学' || stage === '小学专区') return 'primary';
+    if (stage === '初中冲刺' || stage === '初中' || stage === '初中专区') return 'junior';
+    if (stage === '高中专区' || stage === '高中') return 'senior';
+    if (stage === '成人考证' || stage === '教师资格证' || stage === '教资') return 'cert';
+    if (stage === '考公考研' || stage === '考公' || stage === '考研') return 'exam';
+    return stage;
+  }
+
   // 获取当前选中学段的可选项配置
   getStageConfig(stage: string): StageConfigItem {
-    return this.stageOptions[stage] || this.stageOptions['小学阶段'];
+    const key = this.normalizeStageKey(stage);
+    return this.stageOptions[key] || this.stageOptions['primary'];
+  }
+
+  // 获取学段中文简洁标签（用于后台表格展示）
+  getStageLabel(stage: string): string {
+    const key = this.normalizeStageKey(stage);
+    const item = this.stageOptions[key];
+    return item ? item.label.split(' ')[0] : (stage || '全阶段');
   }
 
   // 学段切换时自动联动推荐默认项
@@ -1097,7 +1129,7 @@ export class App implements OnInit {
       channel_slug: item.channel_slug || 'edu',
       title: item.title,
       subtitle: item.subtitle || '',
-      stage: item.stage,
+      stage: this.normalizeStageKey(item.stage),
       grade: item.grade,
       subject: item.subject,
       edition: item.edition,

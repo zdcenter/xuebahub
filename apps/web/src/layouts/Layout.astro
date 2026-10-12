@@ -7,16 +7,18 @@ interface Props {
   description?: string;
   keywords?: string;
   canonicalUrl?: string;
+  hasHeroSearch?: boolean;
 }
 
 const {
   title = "学霸网 - 中小学同步教辅、网盘学习资源与考试真题平台",
   description = "学霸网 (xuebaw.com) 免费提供中小学名校期末冲刺卷、人教版同步教辅、实用工具素材与精品网盘学习资料，支持A4高清打印与极速网盘转存。",
   keywords = "学霸网,xuebaw.com,网盘资源,中小学试卷下载,期末冲刺卷,人教版同步教辅,夸克网盘学习资料,百度网盘资源,考试真题",
-  canonicalUrl
+  canonicalUrl,
+  hasHeroSearch: propHasHeroSearch
 } = Astro.props;
 
-const apiBase = getApiBaseUrl();
+const apiBase = getApiBaseUrl(Astro.url);
 
 // 动态拉取在线业务频道 (严格仅展示已上线的频道)
 let navChannels: { slug: string; name: string; icon: string }[] = [];
@@ -94,80 +96,57 @@ try {
   }
 } catch (e) {}
 
-// 仅在后端 API 离线时提供兜底
+// 仅在后端 API 离线时提供兜底（清爽纯粹的一级核心专区）
+// 核心教辅专区定义（专注教育、考证与公考升学）
 if (!isNavMenuApiConnected && eduNavStages.length === 0) {
   eduNavStages = [
     {
       title: "小学专区",
       slug: "primary",
-      href: "/edu?stage=primary",
-      icon: "🎒",
-      subItems: [
-        { title: "小升初择校与名校分班卷", desc: "重点初中选拔密卷/历年真题分类", href: "/edu?stage=primary&q=小升初", badge: "爆款" },
-        { title: "小学奥数思维拓展30讲", desc: "和差倍/鸡兔同笼/拔尖压轴全题型", href: "/edu?stage=primary&q=奥数", badge: "培优" },
-        { title: "4-6年级名校期末冲刺卷", desc: "重点小学期末夺冠密卷PDF", href: "/edu?stage=primary&q=期末冲刺", badge: "精选" },
-        { title: "1-3年级基础同步期末", desc: "基础字词/口算速算/人教版单元卷", href: "/edu?stage=primary&grade=三年级" },
-        { title: "人教版语数英同步教辅", desc: "A4标准排版无水印直接打印", href: "/edu?stage=primary&q=人教版" },
-      ]
-    },
-    {
-      title: "小升初择校",
-      slug: "xiaoshengchu",
-      href: "/edu?stage=primary&q=小升初",
-      icon: "🎯",
-      isHot: true
+      href: "/primary",
+      icon: "🎒"
     },
     {
       title: "初中专区",
       slug: "junior",
-      href: "/edu?stage=junior",
-      icon: "📘",
-      subItems: [
-        { title: "中考历年真题分类汇编", desc: "中考全国各省真题必刷", href: "/edu?stage=junior&q=中考真题", badge: "必刷" },
-        { title: "初中数学几何压轴题", desc: "配名师高清手写解答步骤", href: "/edu?stage=junior&q=压轴题" },
-        { title: "初一初二期末冲刺卷", desc: "人教版/北师大版同步压轴", href: "/edu?stage=junior&q=冲刺" },
-      ]
+      href: "/junior",
+      icon: "📘"
     },
     {
       title: "高中专区",
       slug: "senior",
-      href: "/edu?stage=senior",
-      icon: "🎓",
-      subItems: [
-        { title: "新高考一模二模真题", desc: "名校名师精选联合冲刺卷", href: "/edu?stage=senior&q=高考一模", badge: "2026" },
-        { title: "导数极值与圆锥曲线", desc: "含名师手撕解题高清精讲视频", href: "/edu?stage=senior&q=数学压轴", badge: "名师" },
-        { title: "高中学霸手撕复习笔记", desc: "高频考点思维导图PDF", href: "/edu?stage=senior&q=笔记" },
-      ]
+      href: "/senior",
+      icon: "🎓"
     },
     {
-      title: "成人考证",
+      title: "考证专区",
       slug: "cert",
-      href: "/edu?stage=cert",
-      icon: "📋",
-      subItems: [
-        { title: "教师资格证（统考笔试）", desc: "中学/小学综合素质核心背诵清单", href: "/edu?stage=cert&q=教师资格证", badge: "刚需" },
-        { title: "公务员国考/省考冲刺", desc: "申论行测秒杀题型归纳", href: "/edu?stage=exam&q=考公" },
-        { title: "考研公共课核心笔记", desc: "政治/英语核心考点精编", href: "/edu?stage=exam&q=考研" },
-      ]
+      href: "/cert",
+      icon: "📋"
     },
     {
-      title: "期末压轴专题",
-      slug: "topic",
-      href: "/edu?q=期末冲刺",
-      icon: "⚡",
-      isHot: true
+      title: "公考升学",
+      slug: "exam",
+      href: "/exam",
+      icon: "🏛️"
     }
   ];
 }
 
-// 未来扩展频道（如 tools, games 上线时动态并入导航右侧）
-const otherActiveChannels = navChannels.filter(c => c.slug !== 'edu');
-
 // 当前激活状态判断
 const currentUrl = Astro.url;
 const currentPath = currentUrl.pathname;
-const currentStage = currentUrl.searchParams.get('stage') || '';
+const rawPathSlug = currentPath.replace(/^\/+|\/+$/g, '');
+const STAGE_ROUTES = ['/primary', '/junior', '/senior', '/cert', '/exam'];
+const isCleanStageRoute = ['primary', 'junior', 'senior', 'cert', 'exam'].includes(rawPathSlug);
+const currentStage = isCleanStageRoute ? rawPathSlug : (currentUrl.searchParams.get('stage') || '');
 const currentQ = currentUrl.searchParams.get('q') || '';
+
+// 智能判定当前页面是否自带 Hero 大搜索框：
+// 若显式传入则优先遵从；若未传，则首页 ('/')、学段专区 ('/primary', '/junior', '/senior', '/cert', '/exam') 与各频道目录 ('/edu', '/tools', '/games') 自动判定为自带 Hero 搜索框
+const hasHeroSearch = propHasHeroSearch !== undefined
+  ? propHasHeroSearch
+  : (currentPath === '/' || currentPath === '/edu' || STAGE_ROUTES.includes(currentPath) || navChannels.some(c => currentPath === `/${c.slug}`));
 ---
 
 <!doctype html>
@@ -192,25 +171,33 @@ const currentQ = currentUrl.searchParams.get('q') || '';
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16 gap-2 xl:gap-4">
-          <!-- Logo 品牌区 (严格单行不换行) -->
+          <!-- Logo 品牌区 (严格单行不换行，融入学霸网全新矢量徽标) -->
           <div class="flex items-center space-x-2.5 shrink-0">
-            <a href="/" class="flex items-center space-x-2 text-blue-600 font-extrabold text-base sm:text-lg tracking-tight whitespace-nowrap">
-              <span class="p-1.5 sm:p-2 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20 shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-              </span>
-              <span class="whitespace-nowrap">学霸网<span class="text-[11px] ml-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded-md font-medium border border-blue-200">教辅精选</span></span>
+            <a href="/" class="flex items-center space-x-2.5 text-blue-600 font-extrabold text-base sm:text-lg tracking-tight whitespace-nowrap group">
+              <img
+                src="/logo.svg"
+                alt="学霸网 Logo"
+                class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl shadow-md shadow-blue-500/25 shrink-0 object-contain group-hover:scale-105 group-hover:rotate-1 transition-all"
+              />
+              <div class="flex flex-col">
+                <div class="flex items-center space-x-1.5 leading-none">
+                  <span class="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 bg-clip-text text-transparent font-black tracking-tight text-lg sm:text-xl">学霸网</span>
+                  <span class="text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 rounded-md font-extrabold border border-amber-200/90 flex items-center gap-0.5 shadow-2xs">
+                    <span>👑</span><span>真题精选</span>
+                  </span>
+                </div>
+                <span class="text-[9px] font-mono text-slate-400 font-bold tracking-wider pt-0.5">xuebaw.com</span>
+              </div>
             </a>
           </div>
 
-          <!-- PC 端核心学段与 Hover 二级轻量下拉菜单 (lg及以上展示，加 whitespace-nowrap 绝不折行) -->
-          <nav class="hidden lg:flex items-center space-x-0.5 xl:space-x-1 font-medium text-slate-600 shrink-0">
+          <!-- PC 端核心学段直达专区 (5大垂直专区·极简纯粹) -->
+          <nav class="hidden lg:flex items-center space-x-1 xl:space-x-1.5 font-medium text-slate-600 shrink-0">
             <a
               href="/"
               class={`whitespace-nowrap shrink-0 px-2.5 xl:px-3 py-1.5 rounded-xl text-xs xl:text-sm font-bold transition flex items-center space-x-1 ${
                 currentPath === '/' && !currentStage && !currentQ
-                  ? 'bg-blue-50 text-blue-600'
+                  ? 'bg-blue-600 text-white shadow-xs'
                   : 'hover:text-blue-600 hover:bg-slate-100 text-slate-700'
               }`}
             >
@@ -218,123 +205,55 @@ const currentQ = currentUrl.searchParams.get('q') || '';
               <span class="whitespace-nowrap">全部</span>
             </a>
 
-            {eduNavStages.map((item) => (
-              item.isHot ? (
-                <a
-                  href={item.href}
-                  class={`whitespace-nowrap shrink-0 ml-0.5 px-2.5 xl:px-3 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1 shadow-xs transition hover:shadow-sm border ${
-                    item.slug === 'xiaoshengchu'
-                      ? 'bg-gradient-to-r from-red-500/10 to-amber-500/10 text-red-700 border-red-200/80 hover:border-red-300'
-                      : 'bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-amber-500/10 text-amber-700 border-amber-300/70 hover:border-amber-400'
-                  }`}
-                >
-                  <span class="animate-pulse">{item.icon}</span>
-                  <span class="whitespace-nowrap">{item.title}</span>
-                  <span class={`px-1 py-0.2 text-[9px] font-extrabold uppercase rounded text-white ${item.slug === 'xiaoshengchu' ? 'bg-red-500' : 'bg-amber-500'}`}>HOT</span>
-                </a>
-              ) : (
-                <div class="relative group shrink-0">
-                  <a
-                    href={item.href}
-                    class={`whitespace-nowrap shrink-0 px-2 xl:px-2.5 py-1.5 rounded-xl text-xs xl:text-sm font-bold transition flex items-center space-x-1 ${
-                      currentStage === item.slug
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'hover:text-blue-600 hover:bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    <span>{item.icon}</span>
-                    <span class="whitespace-nowrap">{item.title}</span>
-                    <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 group-hover:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </a>
-
-                  <!-- 二级轻量下拉菜单浮窗 (增加 pt-2 绝不掉落) -->
-                  {item.subItems && (
-                    <div class="absolute left-0 top-full pt-2 w-72 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform group-hover:translate-y-0 translate-y-1">
-                      <div class="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl shadow-slate-900/10 border border-slate-200/90 p-2 space-y-0.5">
-                        <div class="px-2.5 py-1 text-[11px] font-bold text-slate-400 border-b border-slate-100 flex items-center justify-between">
-                          <span>{item.title}重点分类</span>
-                          <span class="text-[10px] text-blue-500">A4高清打印</span>
-                        </div>
-                        {item.subItems.map((sub) => (
-                          <a
-                            href={sub.href}
-                            class="flex items-start justify-between p-2 rounded-xl hover:bg-blue-50/80 group/sub transition text-left"
-                          >
-                            <div>
-                              <div class="text-xs font-bold text-slate-800 group-hover/sub:text-blue-600 flex items-center gap-1.5 whitespace-nowrap">
-                                <span>{sub.title}</span>
-                                {sub.badge && (
-                                  <span class="px-1.5 py-0.2 text-[9px] font-extrabold rounded bg-blue-100 text-blue-700">
-                                    {sub.badge}
-                                  </span>
-                                )}
-                              </div>
-                              {sub.desc && (
-                                <p class="text-[11px] text-slate-400 group-hover/sub:text-slate-600 mt-0.5 whitespace-nowrap">
-                                  {sub.desc}
-                                </p>
-                              )}
-                            </div>
-                            <svg class="w-3.5 h-3.5 text-slate-300 group-hover/sub:text-blue-600 group-hover/sub:translate-x-0.5 transition-all mt-1 shrink-0 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            ))}
-
-            <!-- 动态兼顾未来其他在线频道 (如 tools, games) -->
-            {otherActiveChannels.map((c) => {
-              const cleanName = c.name.replace(/^[\s\p{Emoji}\uFE0F]+/u, '').trim();
+            <!-- 核心学段专区：小学、初中、高中、考证、公考升学 -->
+            {eduNavStages.map((item) => {
+              const isActive = (currentPath === item.href) || (currentStage === item.slug) || (currentPath === `/${item.slug}`);
               return (
                 <a
-                  href={`/${c.slug}`}
-                  class={`whitespace-nowrap shrink-0 px-2.5 xl:px-3 py-1.5 rounded-xl text-xs xl:text-sm font-bold transition flex items-center space-x-1 ${
-                    currentPath === `/${c.slug}`
-                      ? 'bg-blue-50 text-blue-600'
+                  href={item.href}
+                  class={`whitespace-nowrap shrink-0 px-2.5 xl:px-3 py-1.5 rounded-xl text-xs xl:text-sm font-bold transition flex items-center space-x-1.5 ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-xs'
                       : 'hover:text-blue-600 hover:bg-slate-100 text-slate-700'
                   }`}
                 >
-                  <span>{c.icon}</span>
-                  <span class="whitespace-nowrap">{cleanName}</span>
+                  <span>{item.icon}</span>
+                  <span class="whitespace-nowrap">{item.title}</span>
+                  {item.badgeText && (
+                    <span class="px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded bg-red-500 text-white">
+                      {item.badgeText}
+                    </span>
+                  )}
                 </a>
               );
             })}
           </nav>
 
-          <!-- 顶部右侧：快捷检索框与移动端菜单按钮 -->
+          <!-- 顶部右侧：快捷检索框（仅在详情页等无 Hero 大搜索框的页面展示）与移动端菜单按钮 -->
           <div class="flex items-center space-x-2 shrink-0">
-            <!-- 桌面端宽屏搜索输入框 -->
-            <form action="/edu" method="GET" class="hidden xl:flex items-center relative shrink-0">
-              <input
-                type="text"
-                name="q"
-                placeholder="搜索小升初、真题、教资..."
-                class="w-40 2xl:w-52 pl-7 pr-2.5 py-1.5 text-xs bg-slate-100/80 hover:bg-slate-200/60 focus:bg-white text-slate-800 placeholder-slate-400 rounded-xl border border-slate-200/70 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-none"
-              />
-              <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </form>
+            {!hasHeroSearch && (
+              <>
+                <!-- 详情页桌面端快速检索框 -->
+                <form action="/edu" method="GET" class="hidden md:flex items-center relative shrink-0">
+                  <input
+                    type="text"
+                    name="q"
+                    placeholder="搜全站真题、微课、教资..."
+                    class="w-36 lg:w-48 xl:w-56 pl-7 pr-2.5 py-1.5 text-xs bg-slate-100/80 hover:bg-slate-200/60 focus:bg-white text-slate-800 placeholder-slate-400 rounded-xl border border-slate-200/70 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-none"
+                  />
+                  <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </form>
 
-            <!-- 超宽屏品质徽标 -->
-            <div class="hidden 2xl:flex items-center text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full font-medium shrink-0 whitespace-nowrap">
-              <span class="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
-              全站试卷配手写解析
-            </div>
-
-            <!-- 中等屏幕快速搜索图标 -->
-            <a href="/#search-box" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl xl:hidden" title="快速查找资料">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </a>
+                <!-- 详情页移动端快速查找图标 -->
+                <a href="/#search-box" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl md:hidden" title="快速查找资料">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </a>
+              </>
+            )}
 
             <!-- 移动端全景二级分类抽屉触发按钮 -->
             <button
@@ -356,14 +275,15 @@ const currentQ = currentUrl.searchParams.get('q') || '';
       <div class="lg:hidden bg-white/95 border-t border-slate-100 px-3 py-2 flex items-center space-x-1.5 overflow-x-auto no-scrollbar">
         <span class="text-[11px] font-bold text-slate-400 whitespace-nowrap">直达:</span>
         <a href="/" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentPath === '/' && !currentStage && !currentQ ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>全部</a>
-        <a href="/edu?stage=primary&q=小升初" class="whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 flex items-center space-x-0.5">
+        <a href="/primary?q=小升初" class="whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 flex items-center space-x-0.5">
           <span>🎯</span><span>小升初</span>
         </a>
-        <a href="/edu?stage=primary" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentStage === 'primary' && currentQ !== '小升初' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>🎒 小学</a>
-        <a href="/edu?stage=junior" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentStage === 'junior' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>📘 初中</a>
-        <a href="/edu?stage=senior" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentStage === 'senior' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>🎓 高中</a>
-        <a href="/edu?stage=cert" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentStage === 'cert' || currentStage === 'exam' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>📋 考证</a>
-        <a href="/edu?q=期末冲刺" class="whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">⚡ 期末</a>
+        <a href="/primary" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentStage === 'primary' && currentQ !== '小升初' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>🎒 小学</a>
+        <a href="/junior" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentStage === 'junior' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>📘 初中</a>
+        <a href="/senior" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentStage === 'senior' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>🎓 高中</a>
+        <a href="/cert" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentStage === 'cert' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>📋 考证</a>
+        <a href="/exam" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentStage === 'exam' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>🏛️ 公考</a>
+        <a href="/primary?q=期末冲刺" class="whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">⚡ 期末</a>
         <button id="open-mobile-drawer-sub" type="button" class="whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 flex items-center space-x-1">
           <span>📑</span><span>全部分类 ▾</span>
         </button>
@@ -408,74 +328,64 @@ const currentQ = currentUrl.searchParams.get('q') || '';
         </form>
       </div>
 
-      <!-- 抽屉各学段二级直达菜单列表 -->
+      <!-- 抽屉核心专区大按钮直达 -->
       <div class="flex-1 overflow-y-auto p-4 space-y-4">
-        <!-- 重点爆款专区 -->
-        <div class="space-y-1.5">
-          <div class="text-[11px] font-bold text-red-600 flex items-center space-x-1">
-            <span>🔥</span><span>极速热搜专区</span>
+        <div>
+          <div class="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1">
+            <span>🏷️</span><span>核心专区</span>
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <a href="/edu?stage=primary&q=小升初" class="p-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-xs font-bold text-red-700 flex items-center space-x-1">
-              <span>🎯</span><span>小升初择校考</span>
+            <a
+              href="/"
+              class="p-3 bg-white hover:bg-blue-50 border border-slate-200/90 rounded-2xl flex flex-col justify-between shadow-2xs transition"
+            >
+              <div class="flex items-center space-x-2">
+                <span class="text-xl">🌐</span>
+                <span class="font-bold text-xs text-slate-900">全部资源</span>
+              </div>
+              <span class="text-[10px] text-blue-600 font-medium mt-1">浏览全站 ➔</span>
             </a>
-            <a href="/edu?q=期末冲刺" class="p-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-xs font-bold text-amber-700 flex items-center space-x-1">
-              <span>⚡</span><span>期末押题密卷</span>
-            </a>
+            {eduNavStages.map((stage) => (
+              <a
+                href={stage.href}
+                class="p-3 bg-white hover:bg-blue-50 border border-slate-200/90 rounded-2xl flex flex-col justify-between shadow-2xs transition"
+              >
+                <div class="flex items-center space-x-2">
+                  <span class="text-xl">{stage.icon}</span>
+                  <span class="font-bold text-xs text-slate-900">{stage.title}</span>
+                </div>
+                <span class="text-[10px] text-blue-600 font-medium mt-1">进入专区 ➔</span>
+              </a>
+            ))}
           </div>
         </div>
 
-        {eduNavStages.filter(s => s.subItems).map((stage) => (
-          <div class="border border-slate-200/80 rounded-2xl p-3 bg-slate-50/50 space-y-2">
-            <div class="flex items-center justify-between pb-1 border-b border-slate-200/60">
-              <a href={stage.href} class="font-bold text-xs sm:text-sm text-slate-800 flex items-center space-x-1 hover:text-blue-600">
-                <span>{stage.icon}</span>
-                <span>{stage.title}</span>
-              </a>
-              <a href={stage.href} class="text-[11px] text-blue-600 font-medium">查看专区 ➔</a>
-            </div>
-            <div class="space-y-1">
-              {stage.subItems?.map((sub) => (
-                <a
-                  href={sub.href}
-                  class="flex items-center justify-between p-2 rounded-xl bg-white hover:bg-blue-50 border border-slate-100 transition"
-                >
-                  <div>
-                    <div class="text-xs font-bold text-slate-800 flex items-center space-x-1">
-                      <span>{sub.title}</span>
-                      {sub.badge && (
-                        <span class="px-1.5 py-0.2 text-[9px] font-extrabold rounded bg-blue-100 text-blue-700">
-                          {sub.badge}
-                        </span>
-                      )}
-                    </div>
-                    {sub.desc && (
-                      <div class="text-[10px] text-slate-400 mt-0.5">{sub.desc}</div>
-                    )}
-                  </div>
-                  <span class="text-slate-300 text-xs">➔</span>
-                </a>
-              ))}
-            </div>
+        <!-- 极速热搜推荐直达 -->
+        <div class="border border-slate-200/80 rounded-2xl p-3.5 bg-slate-50/70 space-y-2.5">
+          <div class="text-[11px] font-bold text-red-600 flex items-center space-x-1">
+            <span>🔥</span><span>热门推荐标签</span>
           </div>
-        ))}
-
-        {otherActiveChannels.length > 0 && (
-          <div class="border border-slate-200/80 rounded-2xl p-3 bg-slate-50/50 space-y-2">
-            <div class="text-[11px] font-bold text-slate-500">其他业务专区</div>
-            <div class="space-y-1">
-              {otherActiveChannels.map((c) => {
-                const cleanName = c.name.replace(/^[\s\p{Emoji}\uFE0F]+/u, '').trim();
-                return (
-                  <a href={`/${c.slug}`} class="flex items-center space-x-2 p-2 rounded-xl bg-white text-xs font-bold text-slate-800 hover:text-blue-600">
-                    <span>{c.icon}</span>
-                    <span>{cleanName}</span>
-                  </a>
-                );
-              })}
-            </div>
+          <div class="flex flex-wrap gap-1.5">
+            <a href="/primary?q=小升初" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-xs font-bold text-red-700">
+              🎯 小升初择校
+            </a>
+            <a href="/junior?q=几何压轴" class="px-2.5 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+              📐 初中压轴
+            </a>
+            <a href="/senior?q=高考一模" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold text-blue-700">
+              📈 高考一模
+            </a>
+            <a href="/cert?q=教师资格证" class="px-2.5 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+              🧑‍🏫 教师资格证
+            </a>
+            <a href="/exam?q=国家公务员" class="px-2.5 py-1 bg-white hover:bg-blue-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700">
+              🏛️ 公务员国考
+            </a>
+            <a href="/edu?q=期末冲刺" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold text-amber-700">
+              ⚡ 期末冲刺卷
+            </a>
           </div>
-        )}
+        </div>
       </div>
     </div>
 
@@ -489,8 +399,9 @@ const currentQ = currentUrl.searchParams.get('q') || '';
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div class="space-y-3 md:col-span-2">
-            <div class="font-bold text-slate-800 text-base flex items-center space-x-2">
-              <span>学霸网 (xuebaw.com) - 专业的网盘学习资源站</span>
+            <div class="font-bold text-slate-800 text-base flex items-center space-x-2.5">
+              <img src="/logo.svg" alt="学霸网 Logo" class="w-7 h-7 rounded-lg shadow-sm" />
+              <span>学霸网 (xuebaw.com) - 专业的网盘学习备考资源站</span>
             </div>
             <p class="text-xs text-slate-500 leading-relaxed">
               聚焦中小学同步名校密卷、期末押题卷、奥数思维拓展及成人考证真题。所有资料均经过排版清洗，支持 A4 纸张直接打印练习，帮助家长和考生高效备考。
@@ -499,10 +410,10 @@ const currentQ = currentUrl.searchParams.get('q') || '';
           <div>
             <div class="font-semibold text-slate-700 mb-2">快速导航</div>
             <ul class="space-y-1.5 text-xs">
-              <li><a href="/?stage=primary" class="hover:text-blue-600">小学 1-6 年级期末卷</a></li>
-              <li><a href="/?stage=junior" class="hover:text-blue-600">中考历年真题分类汇编</a></li>
-              <li><a href="/?stage=cert" class="hover:text-blue-600">教师资格证统考笔试清单</a></li>
-              <li><a href="/?stage=exam" class="hover:text-blue-600">国家公务员申论行测冲刺</a></li>
+              <li><a href="/primary" class="hover:text-blue-600">小学 1-6 年级期末卷</a></li>
+              <li><a href="/junior" class="hover:text-blue-600">中考历年真题分类汇编</a></li>
+              <li><a href="/cert" class="hover:text-blue-600">教师资格证统考笔试清单</a></li>
+              <li><a href="/exam" class="hover:text-blue-600">国家公务员申论行测冲刺</a></li>
             </ul>
           </div>
           <div>
@@ -522,8 +433,30 @@ const currentQ = currentUrl.searchParams.get('q') || '';
       </div>
     </footer>
 
-    <!-- 移动端全景分类抽屉交互逻辑 -->
+    <!-- 全局轻量微交互吐司 (Toast) 提示容器 -->
+    <div id="global-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 -translate-y-2 transition-all duration-300 ease-out flex items-center space-x-2 px-4 py-2.5 bg-slate-900/90 text-white text-xs sm:text-sm font-semibold rounded-2xl shadow-xl backdrop-blur-md border border-slate-700/60 max-w-sm text-center">
+      <span id="global-toast-icon">🎉</span>
+      <span id="global-toast-msg">已复制！</span>
+    </div>
+
+    <!-- 移动端全景分类抽屉交互逻辑与全局分享复制助手 -->
     <script is:inline>
+      window.showGlobalToast = function(msg, icon = '🎉', duration = 3000) {
+        const toast = document.getElementById('global-toast');
+        const msgEl = document.getElementById('global-toast-msg');
+        const iconEl = document.getElementById('global-toast-icon');
+        if (!toast || !msgEl) return;
+        msgEl.innerText = msg;
+        if (iconEl) iconEl.innerText = icon;
+        toast.classList.remove('opacity-0', '-translate-y-2', 'pointer-events-none');
+        toast.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(window.__toastTimeout);
+        window.__toastTimeout = setTimeout(() => {
+          toast.classList.add('opacity-0', '-translate-y-2', 'pointer-events-none');
+          toast.classList.remove('opacity-100', 'translate-y-0');
+        }, duration);
+      };
+
       document.addEventListener('DOMContentLoaded', () => {
         const openBtn = document.getElementById('open-mobile-drawer');
         const openSubBtn = document.getElementById('open-mobile-drawer-sub');
@@ -551,6 +484,32 @@ const currentQ = currentUrl.searchParams.get('q') || '';
         // 点击抽屉内任意链接后自动平滑收起抽屉
         drawer?.querySelectorAll('a').forEach(link => {
           link.addEventListener('click', closeDrawer);
+        });
+
+        // 全局绑定列表卡片快捷分享推荐按钮
+        document.addEventListener('click', (e) => {
+          const btn = e.target.closest('.btn-quick-share');
+          if (!btn) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          const title = btn.getAttribute('data-title') || document.title;
+          const path = btn.getAttribute('data-url') || window.location.pathname;
+          const fullUrl = window.location.origin + path;
+          const shareText = `【学霸网资料推荐】《${title}》\n高清名校试卷与备考真题，支持A4直接打印与网盘极速转存！\n直达链接：${fullUrl}`;
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareText).then(() => {
+              window.showGlobalToast('推荐文案与链接已复制！去微信/QQ粘贴即可分享给好友', '🎉');
+              const originalHtml = btn.innerHTML;
+              btn.innerHTML = `<span class="text-emerald-600 font-bold text-xs flex items-center gap-0.5">✓ 已复制</span>`;
+              setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+            }).catch(() => {
+              window.showGlobalToast('直达链接：' + fullUrl, '🔗');
+            });
+          } else {
+            window.showGlobalToast('直达链接：' + fullUrl, '🔗');
+          }
         });
       });
     </script>

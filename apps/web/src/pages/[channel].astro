@@ -9,26 +9,46 @@ if (!channel || channel === 'favicon.ico' || channel.includes('.')) {
   return new Response(null, { status: 404 });
 }
 
-const apiBase = getApiBaseUrl();
+// 核心学段专属独立路由 (如 /primary, /junior, /senior, /cert, /exam)
+const VALID_STAGES = ['primary', 'junior', 'senior', 'cert', 'exam'];
+const isStageRoute = VALID_STAGES.includes(channel);
 
-// 检查该频道是否在后台上线列表中，若已隐藏或下线则直接 302 重定向到首页
-try {
-  const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(6000) });
-  if (chRes.ok) {
-    const chJson = await chRes.json();
-    const rawList = Array.isArray(chJson.data) ? chJson.data : (chJson.data?.items || []);
-    const activeChannels = rawList.map((c: any) => c.slug);
-    if (!activeChannels.includes(channel)) {
-      return Astro.redirect('/', 302);
-    }
+// 若访问旧的 /edu?stage=xxx 形式，统一 301 永久重定向到全新独立根路径 (利于 SEO 权重汇聚与平滑升级)
+if (channel === 'edu') {
+  const stageParam = Astro.url.searchParams.get('stage') || '';
+  if (stageParam && VALID_STAGES.includes(stageParam)) {
+    const nextParams = new URLSearchParams(Astro.url.search);
+    nextParams.delete('stage');
+    const qs = nextParams.toString();
+    return Astro.redirect(`/${stageParam}${qs ? `?${qs}` : ''}`, 301);
   }
-} catch (e) {}
+}
 
-// 方案一：Cloudflare 边缘 CDN 极速缓存与后台静默刷新 (各频道页秒开)
+const apiBase = getApiBaseUrl(Astro.url);
+
+// 若非核心学段专区路由，则检查该业务频道是否在后台上线列表中；若已隐藏或下线则直接 302 重定向到首页
+if (!isStageRoute) {
+  try {
+    const chRes = await fetch(`${apiBase}/api/v1/public/channels`, { signal: AbortSignal.timeout(6000) });
+    if (chRes.ok) {
+      const chJson = await chRes.json();
+      const rawList = Array.isArray(chJson.data) ? chJson.data : (chJson.data?.items || []);
+      const activeChannels = rawList.map((c: any) => c.slug);
+      if (!activeChannels.includes(channel)) {
+        return Astro.redirect('/', 302);
+      }
+    }
+  } catch (e) {}
+}
+
+// 方案一：Cloudflare 边缘 CDN 极速缓存与后台静默刷新 (各频道与专区页秒开)
 // s-maxage=300 (边缘节点新鲜期 5 分钟)；stale-while-revalidate=86400 (过期后后台异步刷新)
 Astro.response.headers.set(
   'Cache-Control',
   'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
 );
 ---
-<ChannelPage channelSlug={channel} />
+<ChannelPage 
+  channelSlug={isStageRoute ? 'edu' : channel} 
+  stageSlug={isStageRoute ? channel : ''} 
+/>

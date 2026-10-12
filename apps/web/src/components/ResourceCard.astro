@@ -5,6 +5,9 @@ interface ResourceLink {
   extract_code?: string;
   password_hint?: string;
   is_primary: boolean;
+  file_type?: string;
+  file_size?: string;
+  resource_desc?: string;
 }
 
 interface Props {
@@ -62,32 +65,55 @@ const primaryLink = links.find(l => l.drive_type === 'quark') || links[0] || {
   is_primary: true
 };
 const hasBaidu = links.some(l => l.drive_type === 'baidu');
+
+// 智能推导格式与类型（精准优先识别视频微课与多格式）
+const rawType = (fileType || '').toUpperCase();
+const linkHasVideo = links.some(l => 
+  (l.file_type && (l.file_type.includes('视频') || l.file_type.toUpperCase().includes('MP4'))) || 
+  (l.resource_desc && l.resource_desc.includes('视频'))
+);
+
+const isVideo = rawType.includes('视频') || rawType.includes('MP4') || linkHasVideo;
+const isPdf = rawType.includes('PDF');
+const isPpt = rawType.includes('PPT');
+const isZip = rawType.includes('ZIP') || rawType.includes('RAR') || rawType.includes('7Z') || rawType.includes('游戏') || channelSlug === 'games';
 ---
 
-<article class="resource-row-card bg-white rounded-2xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all duration-200 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 group">
+<article class="resource-row-card bg-white rounded-2xl border border-slate-200/90 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06),0_4px_16px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.12),0_4px_12px_-2px_rgba(15,23,42,0.06)] hover:border-blue-400 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between group">
   <!-- 左侧：类型图标徽标 + 中间信息密集流 -->
-  <div class="flex items-start space-x-3.5 sm:space-x-4 flex-1 min-w-0">
+  <div class="p-4 sm:p-5 flex items-start space-x-3.5 sm:space-x-4 flex-1 min-w-0">
     <!-- 专属类型特征徽章 (替代大面积缩略图) -->
-    <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/70 border border-slate-200 text-center shadow-xs group-hover:scale-105 group-hover:border-blue-300 transition-transform">
-      {fileType?.includes('PDF') ? (
+    <div 
+      class="flex-shrink-0 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br border text-center shadow-xs group-hover:scale-105 transition-all"
+      class:list={[
+        isVideo ? 'from-blue-50 to-indigo-100/70 border-blue-200 group-hover:border-blue-400' :
+        isPpt ? 'from-amber-50 to-orange-100/70 border-amber-200 group-hover:border-amber-400' :
+        isZip ? 'from-purple-50 to-violet-100/70 border-purple-200 group-hover:border-purple-400' :
+        isPdf ? 'from-rose-50 to-red-100/70 border-rose-200 group-hover:border-red-400' :
+        'from-slate-50 to-blue-50/70 border-slate-200 group-hover:border-blue-300'
+      ]}
+    >
+      {isVideo ? (
         <div class="flex flex-col items-center">
-          <span class="text-xl leading-none">📄</span>
-          <span class="text-[10px] font-mono font-bold mt-1 text-red-600">PDF</span>
+          <span class="text-xl leading-none">🎬</span>
+          <span class="text-[10px] font-mono font-bold mt-1 text-blue-700">
+            {isPdf ? 'MP4+PDF' : 'MP4视频'}
+          </span>
         </div>
-      ) : fileType?.includes('PPT') ? (
+      ) : isPpt ? (
         <div class="flex flex-col items-center">
           <span class="text-xl leading-none">📑</span>
           <span class="text-[10px] font-mono font-bold mt-1 text-amber-700">PPTX</span>
         </div>
-      ) : fileType?.includes('视频') || fileType?.includes('MP4') ? (
-        <div class="flex flex-col items-center">
-          <span class="text-xl leading-none">🎬</span>
-          <span class="text-[10px] font-mono font-bold mt-1 text-blue-600">MP4</span>
-        </div>
-      ) : fileType?.includes('ZIP') ? (
+      ) : isZip ? (
         <div class="flex flex-col items-center">
           <span class="text-xl leading-none">📦</span>
           <span class="text-[10px] font-mono font-bold mt-1 text-purple-700">ZIP</span>
+        </div>
+      ) : isPdf ? (
+        <div class="flex flex-col items-center">
+          <span class="text-xl leading-none">📄</span>
+          <span class="text-[10px] font-mono font-bold mt-1 text-rose-600">PDF</span>
         </div>
       ) : (
         <div class="flex flex-col items-center">
@@ -138,9 +164,9 @@ const hasBaidu = links.some(l => l.drive_type === 'baidu');
             <span>🔥 热门精选</span>
           </span>
         )}
-        {(fileType?.includes('视频') || fileType?.includes('MP4')) && (
-          <span class="px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 font-bold rounded-md flex items-center space-x-1 animate-pulse">
-            <span>🎥 含高清微课</span>
+        {isVideo && (
+          <span class="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 font-bold rounded-md flex items-center space-x-1 animate-pulse">
+            <span>🎬 {isPdf ? '含微课视频+课件' : '含高清微课视频'}</span>
           </span>
         )}
         <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium rounded-md">
@@ -168,7 +194,9 @@ const hasBaidu = links.some(l => l.drive_type === 'baidu');
           <span>💾</span> 大小：<strong class="text-slate-700 font-semibold">{fileSize}</strong>
         </span>
         <span class="text-slate-600 font-medium flex items-center gap-1">
-          <span>📄</span> 规格：<strong class="text-slate-700 font-semibold">{pageCount > 100 ? `${pageCount}+ 套` : `${pageCount} 页可打印`}</strong>
+          <span>{isVideo ? '🎬' : '📄'}</span> 规格：<strong class="text-slate-700 font-semibold">
+            {isVideo ? (pageCount > 0 ? `${pageCount} 讲视频课` : '全套高清视频课') : (pageCount > 100 ? `${pageCount}+ 套` : `${pageCount} 页可打印`)}
+          </strong>
         </span>
         <span class="hidden sm:inline-flex items-center gap-1">
           <span>👁️</span> {viewCount} 次查阅
@@ -185,26 +213,40 @@ const hasBaidu = links.some(l => l.drive_type === 'baidu');
     </div>
   </div>
 
-  <!-- 右侧：直达转化行动区 (桌面端垂直居中对齐，移动端全宽操作) -->
-  <div class="flex sm:flex-row lg:flex-col items-stretch lg:items-end justify-end gap-2 flex-shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+  <!-- 右侧：直达转化行动区 (桌面端垂直居中对齐；移动端作为独立底座卡片条，柔和淡雅不喧宾夺主) -->
+  <div class="px-4 py-3 sm:px-5 sm:py-5 bg-slate-50/80 sm:bg-transparent border-t border-slate-100 sm:border-0 flex sm:flex-row lg:flex-col items-stretch lg:items-end justify-end gap-2 flex-shrink-0">
     <a
       href={primaryLink.share_url}
       target="_blank"
       rel="noopener noreferrer"
-      class="btn-save-quark flex-1 lg:flex-initial py-2.5 px-5 text-xs sm:text-sm font-bold text-white rounded-xl shadow-sm flex items-center justify-center space-x-1.5 hover:shadow-md transition-all whitespace-nowrap"
+      class="btn-save-quark flex-1 lg:flex-initial py-2 px-3.5 sm:px-4 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 whitespace-nowrap shadow-2xs"
       title="直接在新窗口打开夸克网盘极速转存"
     >
-      <span>⚡ 夸克极速转存</span>
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <span class="text-amber-500 text-xs leading-none">⚡</span>
+      <span>夸克极速转存</span>
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
       </svg>
     </a>
 
-    <a
-      href={`/resource/${slug}`}
-      class="py-2.5 px-4 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-xl transition text-center whitespace-nowrap"
-    >
-      试看详情 ➔
-    </a>
+    <div class="flex items-center gap-1.5 flex-1 lg:flex-initial">
+      <a
+        href={`/resource/${slug}`}
+        class="flex-1 py-2 px-3 sm:px-3.5 text-xs font-medium text-slate-600 bg-slate-100/90 hover:bg-slate-200/90 hover:text-slate-900 border border-slate-200/60 rounded-xl transition text-center whitespace-nowrap shadow-2xs sm:shadow-none"
+      >
+        试看详情 ➔
+      </a>
+      <button
+        type="button"
+        class="btn-quick-share p-2 text-slate-400 hover:text-blue-600 bg-slate-100/90 hover:bg-blue-50 border border-slate-200/60 hover:border-blue-200 rounded-xl transition text-center shadow-2xs sm:shadow-none shrink-0 cursor-pointer flex items-center justify-center"
+        title="复制推荐语与直达链接分享给好友/家长群"
+        data-title={title}
+        data-url={`/resource/${slug}`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+      </button>
+    </div>
   </div>
 </article>

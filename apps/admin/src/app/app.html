@@ -295,7 +295,7 @@
                     </td>
                     <td>
                       <div class="stage-grade-cell">
-                        <span class="tag stage">{{ res.stage }}</span>
+                        <span class="tag stage">{{ getStageLabel(res.stage) }}</span>
                         <span class="tag grade">{{ res.grade }}</span>
                       </div>
                     </td>
@@ -441,7 +441,7 @@
               <label>所属学段 <span class="required">*</span></label>
               <select [(ngModel)]="newResource.stage" name="stage" (change)="onStageChange('new')">
                 @for (stage of stageKeys; track stage) {
-                  <option [value]="stage">{{ stage }}</option>
+                  <option [value]="stage">{{ stageOptions[stage].label }}</option>
                 }
               </select>
             </div>
@@ -1905,7 +1905,7 @@
             <label>所属学段 <span class="required">*</span></label>
             <select [(ngModel)]="editForm.stage" name="edit_stage" (change)="onStageChange('edit')">
               @for (stage of stageKeys; track stage) {
-                <option [value]="stage">{{ stage }}</option>
+                <option [value]="stage">{{ stageOptions[stage].label }}</option>
               }
             </select>
           </div>

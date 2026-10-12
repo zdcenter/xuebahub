@@ -12,15 +12,16 @@ interface ChannelItem {
 
 interface Props {
   channelSlug?: string;
+  stageSlug?: string;
 }
 
-const { channelSlug = 'all' } = Astro.props;
+const { channelSlug = 'all', stageSlug = '' } = Astro.props;
 
 let channelsList: ChannelItem[] = [];
 let resourcesList: any[] = [];
 
 const url = new URL(Astro.request.url);
-const stage = url.searchParams.get('stage') || '';
+const stage = stageSlug || url.searchParams.get('stage') || '';
 const q = url.searchParams.get('q') || '';
 
 let isApiConnected = false;
@@ -57,9 +58,7 @@ try {
 // 仅在后端 API 离线连接失败时，使用本地静态备用频道
 if (!isApiConnected && channelsList.length === 0) {
   channelsList = [
-    { slug: 'edu', name: '刚需教辅学习', icon: '📚', description: '中小学同步名校密卷、期末押题、奥数培优与教资考公真题' },
-    { slug: 'tools', name: '实用工具素材', icon: '🎨', description: 'PPT精选模板、免抠设计素材、自媒体剪辑音效包与实用代码' },
-    { slug: 'games', name: '怀旧单机合集', icon: '🎮', description: '经典单机整合、模拟器怀旧游戏全家桶与MOD模组包' }
+    { slug: 'edu', name: '刚需教辅学习', icon: '📚', description: '中小学同步名校密卷、期末押题、奥数培优与教资考公真题' }
   ];
 }
 
@@ -210,15 +209,55 @@ if (!isApiConnected && resourcesList.length === 0) {
 }
 
 // 针对不同频道的专业 SEO TDK 深度定制
-let seoTitle = "学霸网 - 中小学同步教辅、实用工具素材与经典怀旧单机整合";
-let seoDesc = "学霸网 (xuebaw.com) 严选中小学人教版同步期末密卷、实用职场PPT模板、音效素材与经典怀旧单机游戏整合包，高速一键转存。";
-let seoKeywords = "学霸网,xuebaw.com,网盘资源,中小学试卷下载,期末冲刺卷,PPT模板下载,自媒体音效包,怀旧单机游戏,夸克网盘转存";
-let heroTitle = "中小学名校期末密卷 & 实用素材游戏整合库";
-let heroSubtitle = "严选人教版同步压轴真题、实用生产力工具模版与怀旧单机游戏整合包，一键极速转存。";
-let heroBadge = "✨ 2026 全域资源 · 极速转存 · 持续更新";
-let searchPlaceholder = "输入关键词搜索全域资源，如：三年级数学期末、PPT模板、街机合集...";
+let seoTitle = "学霸网 - 中小学同步教辅、考试真题与网盘学习资源平台";
+let seoDesc = "学霸网 (xuebaw.com) 严选中小学人教版同步期末密卷、名校压轴真题、奥数培优与教师资格证/公考备考真题，支持A4高清打印与高速一键转存。";
+let seoKeywords = "学霸网,xuebaw.com,网盘资源,中小学试卷下载,期末冲刺卷,中考真题,高考模拟卷,教师资格证真题,公务员备考,夸克网盘转存";
+let heroTitle = "中小学名校期末密卷 & 升学考试真题精选库";
+let heroSubtitle = "严选人教版同步压轴真题、名校期末冲刺卷与教资公考刚需备考资料，一键极速转存。";
+let heroBadge = "✨ 2026 全域学霸真题 · 高清排版 · 每日巡检";
+let searchPlaceholder = "输入年级、科目或考点，如：三年级数学期末、中考几何压轴、教资科目二...";
 
-if (channelSlug === 'edu') {
+if (stageSlug === 'primary' || (!stageSlug && stage === 'primary')) {
+  seoTitle = "小学同步名校期末冲刺密卷与奥数培优 - 学霸网小学专区";
+  seoDesc = "学霸网免费提供人教版/北师大版小学1-6年级数学、语文、英语名校期末冲刺押题密卷、小升初分班卷与奥数微课动画，A4排版直接打印。";
+  seoKeywords = "学霸网,小学试卷下载,小升初真题,人教版小学数学,小学奥数,期末冲刺卷,小学微课视频";
+  heroTitle = "小学同步名校密卷 & 奥数思维培优专区";
+  heroSubtitle = "涵盖人教版/北师大版 1-6 年级期末押题密卷、小升初分班卷与趣味奥数动画微课，一键极速转存。";
+  heroBadge = "🎒 小学专区 · 1-6年级同步 · 名校期末分班密卷";
+  searchPlaceholder = "输入年级或考点，如：三年级数学下册、小升初择校、奥数培优...";
+} else if (stageSlug === 'junior' || (!stageSlug && stage === 'junior')) {
+  seoTitle = "初中名校期末密卷与中考历年真题分类汇编 - 学霸网初中专区";
+  seoDesc = "学霸网提供初一至初三年级同步名校期末卷、中考历年分类汇编真题、几何与二次函数压轴题、物理化学实验大突破。";
+  seoKeywords = "学霸网,初中试卷下载,中考真题,中考压轴题,初中数学几何,初二物理,人教版初中教辅";
+  heroTitle = "初中中考全科名校密卷 & 压轴专题突围专区";
+  heroSubtitle = "涵盖七八九年级同步期末卷、中考历年真题分类汇编、数学圆与函数压轴、物理电学实验突破。";
+  heroBadge = "📘 初中专区 · 中考总复习 · 几何函数压轴专项";
+  searchPlaceholder = "输入初中年级或考点，如：初二物理、几何压轴、中考数学真题...";
+} else if (stageSlug === 'senior' || (!stageSlug && stage === 'senior')) {
+  seoTitle = "2026新高考名校模拟试卷与导数圆锥曲线专项 - 学霸网高中专区";
+  seoDesc = "学霸网精选九省联考/八省联考、百强名校一模二模新高考模拟试卷、导数与圆锥曲线大招微课、学霸手撕笔记。";
+  seoKeywords = "学霸网,新高考模拟卷,高中试卷下载,九省联考真题,高考数学导数,高考圆锥曲线,学霸笔记";
+  heroTitle = "高中高考全科名校模拟 & 新高考专项提分专区";
+  heroSubtitle = "精选九省联考/八省联考、百强名校一模二模真题、导数与圆锥曲线大招微课与名师手撕笔记。";
+  heroBadge = "🎓 高中专区 · 2026新高考模考 · 导数圆锥曲线大招";
+  searchPlaceholder = "输入高中文理科目或考点，如：新高考一模、导数极值、圆锥曲线...";
+} else if (stageSlug === 'cert' || (!stageSlug && stage === 'cert')) {
+  seoTitle = "教师资格证统考笔试面试核心备考真题与速记口诀 - 学霸网考证专区";
+  seoDesc = "学霸网提供中学/小学教师资格证统考综合素质、教育知识与能力、学科知识与教学能力、结构化面试高频口诀与教案。";
+  seoKeywords = "学霸网,教师资格证真题,教资科目一,教资科目二,教资面试试讲,普通话考试,教师资格证题库";
+  heroTitle = "考证专区 & 教师资格证统考笔试面试核心真题";
+  heroSubtitle = "涵盖小学/中学教资综合素质、教育知识与能力、学科知识科三、结构化面试精讲与通关背诵口诀。";
+  heroBadge = "📋 考证专区 · 教师资格证统考 · 笔试面试通关必备";
+  searchPlaceholder = "输入考证类别，如：中学综合素质、教育知识与能力、结构化面试...";
+} else if (stageSlug === 'exam' || (!stageSlug && stage === 'exam')) {
+  seoTitle = "国家公务员考试行测申论与考研公共课真题 - 学霸网公考升学专区";
+  seoDesc = "学霸网提供国家公务员国考/省考行测高频速算与申论热点范文、全国硕士研究生统考政治英语核心背诵与高分笔记。";
+  seoKeywords = "学霸网,公务员国考真题,行测技巧,申论范文,考研政治背诵,考研英语长难句,考研数学";
+  heroTitle = "国家公务员与升学统考公共课备考专区";
+  heroSubtitle = "汇集国考省考行测申论热点、考研政治英语数学核心背诵与高频错题速算技巧。";
+  heroBadge = "🏛️ 公考升学 · 国考省考行测申论 · 笔试面试冲刺";
+  searchPlaceholder = "输入考公升学类别，如：国考申论、行测速算、考研政治、考研英语...";
+} else if (channelSlug === 'edu') {
   seoTitle = "中小学名校期末密卷与成人考证真题库 - 学霸网教辅专区";
   seoDesc = "学霸网免费提供小学、初中、高中名校期末冲刺卷、人教版同步押题密卷、奥数思维拓展及教师资格证/考公考研核心笔记，A4高清打印。";
   seoKeywords = "学霸网,期末冲刺卷,中小学试卷下载,人教版同步教辅,小学奥数,教师资格证真题,高考压轴数学,夸克网盘学习资料";
@@ -226,42 +265,20 @@ if (channelSlug === 'edu') {
   heroSubtitle = "严选人教版/北师大版同步压轴真题与教师资格/考公冲刺笔记，配高清手写步骤与思维导图，一键极速转存。";
   heroBadge = "📚 刚需教辅 · A4高清排版 · 名校真题解析";
   searchPlaceholder = "输入科目、年级或考试关键词，如：三年级数学期末、教资科二、申论...";
-} else if (channelSlug === 'tools') {
-  seoTitle = "实用生产力工具与精选设计音效素材库 - 学霸网素材专区";
-  seoDesc = "学霸网精选职场商务述职PPT模板、平面设计免抠PNG素材、自媒体剪辑无版权BGM音效包与Python办公自动化实用脚本代码包，即下即用。";
-  seoKeywords = "学霸网,PPT模板免费下载,述职报告PPT,免抠素材PNG,自媒体音效包,BGM背景音乐,办公自动化脚本";
-  heroTitle = "实用生产力工具 & 精选设计音效素材库";
-  heroSubtitle = "精选职场高逼格PPT模板、免抠设计素材、自媒体剪辑无版权BGM音效包与Python办公自动化实用代码包。";
-  heroBadge = "🎨 实用素材 · 开箱即用 · 提升办公创作效率";
-  searchPlaceholder = "输入素材关键词，如：述职PPT、自媒体音效、免抠素材、自动化脚本...";
-} else if (channelSlug === 'games') {
-  seoTitle = "经典怀旧单机游戏与开源模拟器整合包 - 学霸网怀旧游戏专区";
-  seoDesc = "学霸网提供全套经典街机500合1、FC红白机全集、PS2单机经典整合、热门游戏高画质MOD模组绿色免安装版，电脑手机双端随下随玩。";
-  seoKeywords = "学霸网,怀旧游戏下载,街机模拟器合集,FC红白机500合1,PS2模拟器单机,游戏MOD整合包,免安装单机游戏";
-  heroTitle = "经典怀旧单机游戏 & 开源整合免安装包";
-  heroSubtitle = "精选经典街机/FC/PS2模拟器全家桶、热门单机经典整合版与高画质MOD模组包，随下随玩。";
-  heroBadge = "🎮 怀旧游戏 · 纯净整合 · 零门槛即开即玩";
-  searchPlaceholder = "输入游戏或模拟器关键词，如：街机500合1、FC魂斗罗、PS2模拟器、MOD整合...";
-} else if (activeChannel) {
-  seoTitle = `${activeChannel.name} - 学霸网`;
-  seoDesc = activeChannel.description || seoDesc;
-  heroTitle = activeChannel.name;
-  heroSubtitle = activeChannel.description || heroSubtitle;
-  heroBadge = `${activeChannel.icon} 精选业务频道 · 高速转存`;
 }
 
-// 学段与年级分类列表（教辅与全域时展示）
+// 学段与年级分类列表（直达全新独立根路由）
 const stages = [
-  { id: "all", name: "全部阶段" },
-  { id: "primary", name: "小学阶段 (1-6年级)" },
-  { id: "junior", name: "初中中考冲刺" },
-  { id: "senior", name: "高中高考专项" },
-  { id: "cert", name: "教师资格证" },
-  { id: "exam", name: "考公考研专区" }
+  { id: "all", name: "全部阶段", href: "/" },
+  { id: "primary", name: "小学阶段 (1-6年级)", href: "/primary" },
+  { id: "junior", name: "初中中考冲刺", href: "/junior" },
+  { id: "senior", name: "高中高考专项", href: "/senior" },
+  { id: "cert", name: "教师资格证", href: "/cert" },
+  { id: "exam", name: "公考升学专区", href: "/exam" }
 ];
 
-// 计算当前页面基础路径（用于搜索与过滤拼接）
-const basePath = isAll ? '/' : `/${channelSlug}`;
+// 计算当前页面基础路径（用于搜索与过滤拼接，优先使用独立专区路径）
+const basePath = isAll ? '/' : (stageSlug ? `/${stageSlug}` : `/${channelSlug}`);
 ---
 
 <Layout 
@@ -321,16 +338,14 @@ const basePath = isAll ? '/' : `/${channelSlug}`;
             </>
           ) : (
             <>
-              <a href="/edu?stage=primary&q=小升初" class="hover:text-red-600 bg-red-50 text-red-700 font-bold px-2 py-0.5 rounded border border-red-200">🎯 小升初择校密卷</a>
-              <a href="/edu?q=三年级数学" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">三年级数学下册</a>
-              <a href="/edu?q=期末冲刺" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">期末押题密卷</a>
-              <a href="/edu?q=教师资格证" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">教资综合素质</a>
-              {channelsList.some(c => c.slug === 'tools') && (
-                <a href="/tools?q=PPT" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">商务PPT模板</a>
-              )}
-              {channelsList.some(c => c.slug === 'games') && (
-                <a href="/games?q=街机" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">怀旧街机合集</a>
-              )}
+              <a href="/primary?q=小升初" class="hot-search-pill highlight">🎯 小升初择校密卷</a>
+              <a href="/junior?q=压轴题" class="hot-search-pill">📐 初中几何压轴</a>
+              <a href="/senior?q=模拟卷" class="hot-search-pill hot">📈 2026新高考模考</a>
+              <a href="/cert?q=教师资格证" class="hot-search-pill">🧑‍🏫 教师资格证统考</a>
+              <a href="/exam?q=公务员" class="hot-search-pill">🏛️ 国考行测申论</a>
+              <a href="/primary?q=奥数" class="hot-search-pill">🧮 小学奥数培优</a>
+              <a href="/primary?q=期末冲刺" class="hot-search-pill">⚡ 名校期末押题</a>
+              <a href="/senior?q=导数" class="hot-search-pill">📝 高考导数大招</a>
             </>
           )}
         </div>
@@ -340,58 +355,65 @@ const basePath = isAll ? '/' : `/${channelSlug}`;
 
   <!-- 核心资料流与筛选 -->
   <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-    <!-- 1. 业务顶级频道导航条 (标准 SEO 静态目录结构) -->
-    <div class="flex items-center space-x-2.5 overflow-x-auto pb-3 border-b border-slate-200 no-scrollbar">
+    <!-- 1. 业务顶级频道导航条 (仅在多频道时展示，单频道模式下自动精简) -->
+    {channelsList.length > 1 && (
+      <div class="flex items-center space-x-2.5 overflow-x-auto pb-3 border-b border-slate-200 no-scrollbar">
+        <span class="text-xs font-bold text-slate-400 whitespace-nowrap flex items-center gap-1">
+          <span>🏷️</span> 频道:
+        </span>
+        <a
+          href="/"
+          class={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+            isAll
+              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <span>🌐</span>
+          <span>全域资源</span>
+        </a>
+        {channelsList.map((ch) => {
+          const cleanName = ch.name.replace(/^[\s\p{Emoji}\uFE0F]+/u, '').trim();
+          return (
+            <a
+              href={`/${ch.slug}`}
+              class={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+                channelSlug === ch.slug
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span>{ch.icon}</span>
+              <span>{cleanName}</span>
+            </a>
+          );
+        })}
+      </div>
+    )}
+
+    <!-- 2. 核心学段专区切换栏 (直达全新独立根路由) -->
+    <div class="flex items-center space-x-2 overflow-x-auto pb-2 no-scrollbar">
       <span class="text-xs font-bold text-slate-400 whitespace-nowrap flex items-center gap-1">
-        <span>🏷️</span> 频道:
+        <span>🏷️</span> 学段专区:
       </span>
-      <a
-        href="/"
-        class={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
-          isAll
-            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
-            : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-        }`}
-      >
-        <span>🌐</span>
-        <span>全域资源</span>
-      </a>
-      {channelsList.map((ch) => {
-        const cleanName = ch.name.replace(/^[\s\p{Emoji}\uFE0F]+/u, '').trim();
+      {stages.map((st) => {
+        const isCurrentActive = stageSlug
+          ? stageSlug === st.id
+          : (stage === st.id || (!stage && st.id === 'all'));
         return (
           <a
-            href={`/${ch.slug}`}
-            class={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
-              channelSlug === ch.slug
-                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+            href={st.id === 'all' ? '/' : `/${st.id}`}
+            class={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+              isCurrentActive
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <span>{ch.icon}</span>
-            <span>{cleanName}</span>
-          </a>
-        );
-      })}
-    </div>
-
-    <!-- 2. 教辅学段子分类 (当处于教辅或全域频道时展示) -->
-    {(channelSlug === 'edu' || isAll) && (
-      <div class="flex items-center space-x-2 overflow-x-auto pb-2 no-scrollbar">
-        <span class="text-xs font-medium text-slate-400 whitespace-nowrap">学段筛选:</span>
-        {stages.map((st) => (
-          <a
-            href={isAll ? `/?stage=${st.id}` : `/${channelSlug}?stage=${st.id}`}
-            class={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-              (stage === st.id || (!stage && st.id === 'all'))
-                ? 'bg-slate-800 text-white font-semibold'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             {st.name}
           </a>
-        ))}
-      </div>
-    )}
+        );
+      })}
+    </div>
 
     <!-- 3. 资源目录总控信息条 (增强专业站权威质感) -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1 text-xs">
@@ -442,18 +464,67 @@ const basePath = isAll ? '/' : `/${channelSlug}`;
           🔔 官方资源与备考交流社群
         </div>
         <h2 class="text-xl sm:text-2xl font-bold tracking-tight">
-          获取最新一手名校期末密卷、实用工具素材与经典单机整合
+          获取最新一手名校期末密卷、中高考冲刺与考证真题
         </h2>
         <p class="text-xs sm:text-sm text-blue-100 max-w-xl">
-          每日更新一手期末真题、学霸手撕笔记、PPT实用模版包与经典游戏，网盘链接每日自动巡检防失效。
+          每日更新一手期末真题、学霸手撕笔记、微课视频与教师资格/公考考点总结，网盘链接每日自动巡检防失效。
         </p>
       </div>
 
       <div class="flex flex-col sm:flex-row items-center gap-3">
         <div class="px-5 py-3 bg-white text-blue-700 rounded-2xl font-bold text-xs sm:text-sm shadow-md text-center">
-          微信扫码加入「学霸网官方交流群」
+          微信扫码加入「学霸网官方备考交流群」
         </div>
       </div>
     </div>
   </section>
 </Layout>
+
+<style>
+  .hot-search-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .hot-search-pill:hover {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px -1px rgba(37, 99, 235, 0.15);
+  }
+  .hot-search-pill.highlight {
+    background-color: #fff1f2;
+    border-color: #fecdd3;
+    color: #e11d48;
+    font-weight: 600;
+  }
+  .hot-search-pill.highlight:hover {
+    background-color: #ffe4e6;
+    border-color: #fda4af;
+    color: #be123c;
+  }
+  .hot-search-pill.hot {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #2563eb;
+    font-weight: 600;
+  }
+  .hot-search-pill.hot:hover {
+    background-color: #dbeafe;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+  }
+</style>
