@@ -248,8 +248,9 @@ const STAGE_LABELS: Record<string, string> = {
 };
 const stageLabel = STAGE_LABELS[resource.stage] || resource.stage || '资料专区';
 const stageHref = STAGE_LABELS[resource.stage] ? `/${resource.stage}` : '/edu';
-// 自动判定分享缩略图优先级：用户指定封面 > 后端 VPS 现场动态生成+CDN缓存的真实清单海报 > 官方通用兜底图
-const resourceCoverUrl = resource.coverUrl || `${apiBase}/api/v1/public/resources/${resource.slug}/cover.png`;
+// 自动判定分享缩略图优先级：用户指定封面 > Cloudflare R2 极速对象存储图片 > 官方通用兜底图
+const imageBase = import.meta.env.PUBLIC_IMAGE_URL || 'https://image.xuebaw.com';
+const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.slug}.png`;
 ---
 
 <Layout

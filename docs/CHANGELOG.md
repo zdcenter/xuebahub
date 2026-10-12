@@ -18,11 +18,16 @@
     - **基于网盘真实文件目录的动态内容封面 (File-Tree Driven Visual Proof)**：告别千篇一律的通用模板或繁重的人工制图，基于抓取解析的真实网盘文件树（`file_tree`），通过 Headless Chrome 自动化流水线渲染生成 600×600 高清卡片：
       - 智能解构单根文件夹，前置透出排名前 4 的高价值真实资源（视频 🎬、试卷 📄、题库 📝 等）与规格大小；
       - 醒目标注全网盘已探明资源总项数与“所见即所存 · 100% 存活”背书微标签；
-    - **后端 VPS 按需现场动态生成与 Cloudflare CDN 永久边缘强缓存架构 (`CoverGeneratorService` & `/api/v1/public/resources/:id_or_slug/cover.png`)**:
-      - **零预生成负担**：管理员录入新资料或大批量爬取入库时无需预先消耗 CPU 截图，资源首次被微信爬虫或用户访问时才触发现场生成（首次耗时仅 ~500ms），随后永久缓存到 VPS 本地磁盘（`/storage/covers/{slug}.png`）；
-      - **防高并发打爆机制**：集成资源级互斥锁（`sync.Mutex`），防止热点资源初次转发到大群时多个并发请求重复拉起 Headless Chrome；
-      - **Cloudflare 边缘永久加速**：返回头挂载 `Cache-Control: public, max-age=2592000, s-maxage=31536000, immutable`，被抓取一次后由 Cloudflare 全球 CDN 节点永久接管分发，0ms 秒开且后续访问 0 回源、0 服务器压力；
-      - **多层容灾降级**：提供 `/covers/:id_or_slug.png` 与 `/resources/:id_or_slug/cover.png` 规范双路由；若环境缺失 Chrome 或临时异常，自动优雅降级返回品牌官方默认封面 `og-cover.png`，杜绝 500 或碎图。
+    - **Cloudflare R2 对象存储与无依赖零宕机分发全面打通 (`https://image.xuebaw.com` & `sync_covers_to_r2.mjs`)**:
+      - **生产环境 `node: executable file not found in $PATH` 根治**：
+        - 针对生产服务器 VPS 环境未预装 Node.js 或通过 systemd 运行时环境变量 `$PATH` 无法解析 `node` 与无头 Chrome 的问题，彻底解耦服务器物理机对重型截图环境的强依赖；
+        - 后端 `/api/v1/public/resources/:id_or_slug/cover.png` 接口全面升级为**全自动 302 重定向至 Cloudflare R2 对象存储**（`https://image.xuebaw.com/covers/{slug}.png`）；未探明或缺失封面时直接平滑重定向至默认封面 `https://image.xuebaw.com/covers/default.png`，杜绝 500 报错与碎图风险；
+      - **Cloudflare R2 极速对象存储与自定义 CDN 域名集成**：
+        - 实测打通 `.env` 中配置的 Cloudflare R2 存储桶（`xuebaw-image`）与公网加速域名（`https://image.xuebaw.com`），连通性与权限校验 100% 正常；
+        - 全站资料 600×600 PNG 封面以及官方默认大图已全量同步上传至 R2，获得 Cloudflare 全球 Anycast CDN 毫秒级极速分发；
+      - **前台详情页直连 R2 规范适配 (`slug.astro`)**：
+        - 详情页 `<meta property="og:image">` 直接输出 `https://image.xuebaw.com/covers/{slug}.png`，微信与社交平台爬虫无需经过业务服务器中转即可直取高清图片；
+        - 在 `package.json` 中集成 `npm run sync:r2` 指令，本地一键全量同步封面资产至 Cloudflare R2。
 
 ## [Unreleased] - 2026-10-11
 

@@ -12,6 +12,7 @@ import (
 	"netdisk/api/internal/database"
 	"netdisk/api/internal/model"
 	"netdisk/api/internal/service"
+	"os"
 	"strings"
 )
 
@@ -146,34 +147,37 @@ func (h *ResourceHandler) GetPublicResourceDetail(c fiber.Ctx) error {
 	})
 }
 
-// GetPublicResourceCover 获取资源动态封面缩略图（若未生成则现场生成并缓存至磁盘与CDN）
+// GetPublicResourceCover 获取资源动态封面缩略图（优先 302 重定向至 Cloudflare R2，次选本地缓存直出，避免依赖服务器底层 node/chrome）
 func (h *ResourceHandler) GetPublicResourceCover(c fiber.Ctx) error {
 	identifier := c.Params("id_or_slug")
 	identifier = strings.TrimSuffix(identifier, ".png")
+
+	r2Base := os.Getenv("R2_PUBLIC_URL")
+	if r2Base == "" {
+		r2Base = "https://image.xuebaw.com"
+	}
+	r2Base = strings.TrimRight(r2Base, "/")
 
 	var res model.Resource
 	err := database.DB.Where("(slug = ? OR id::text = ?) AND is_published = ?", identifier, identifier, true).
 		First(&res).Error
 
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"code":    404,
-			"message": "资源不存在或已下架",
-		})
+		// 找不到资源时，302 重定向到 R2 上的默认兜底封面
+		return c.Redirect().Status(fiber.StatusFound).To(fmt.Sprintf("%s/covers/default.png", r2Base))
 	}
 
-	filePath, err := h.coverGen.GetCoverFilePath(&res)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"code":    500,
-			"message": fmt.Sprintf("生成缩略图封面失败: %v", err),
-		})
+	// 1. 若本地磁盘已有生成好的缓存文件，直接返回
+	if filePath, err := h.coverGen.GetCachedCoverFilePath(&res); err == nil && filePath != "" {
+		c.Set("Content-Type", "image/png")
+		c.Set("Cache-Control", "public, max-age=2592000, s-maxage=31536000, immutable")
+		return c.SendFile(filePath)
 	}
 
-	c.Set("Content-Type", "image/png")
-	// 浏览器缓存 30 天，Cloudflare CDN 边缘强缓存 1 年 (immutable)
-	c.Set("Cache-Control", "public, max-age=2592000, s-maxage=31536000, immutable")
-	return c.SendFile(filePath)
+	// 2. 默认重定向到 Cloudflare R2 全球 CDN 节点，极速直出且不占 VPS 算力与带宽
+	targetR2URL := fmt.Sprintf("%s/covers/%s.png", r2Base, res.Slug)
+	c.Set("Cache-Control", "public, max-age=86400")
+	return c.Redirect().Status(fiber.StatusFound).To(targetR2URL)
 }
 
 // TrackSaveClick 统计网盘链接转存点击量并返回直达跳转地址

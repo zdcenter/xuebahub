@@ -45,6 +45,21 @@ func fileExists(path string) bool {
 	return err == nil && !info.IsDir()
 }
 
+// GetCachedCoverFilePath 仅检查本地磁盘是否已存在已生成的封面
+func (s *CoverGeneratorService) GetCachedCoverFilePath(res *model.Resource) (string, error) {
+	if res == nil {
+		return "", fmt.Errorf("resource is nil")
+	}
+
+	fileName := fmt.Sprintf("%s.png", res.Slug)
+	targetPath := filepath.Join(s.storageDir, fileName)
+
+	if fileExists(targetPath) {
+		return targetPath, nil
+	}
+	return "", fmt.Errorf("not cached locally")
+}
+
 // GetCoverFilePath 获取封面本地文件路径，若已存在则直接返回，若不存在则现场动态生成并缓存到磁盘
 func (s *CoverGeneratorService) GetCoverFilePath(res *model.Resource) (string, error) {
 	if res == nil {

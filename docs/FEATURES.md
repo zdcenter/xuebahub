@@ -26,7 +26,7 @@
   - **全渠道社媒裂变与基于网盘真实文件树的动态分享封面引擎 (File-Tree Driven Social Open Graph System)**:
     - **全端 Open Graph / 微信卡片协议标准适配**：在全局布局（`Layout.astro`）中集成标准 `og:image`、`og:title`、`og:description` 与 `twitter:card`，自动将相对路径转换为绝对协议 URL（`http(s)://...`）；在 HTML `<body>` 顶端内嵌微信原生爬虫抓取隐藏节点（尺寸 $\ge 300\times300$），解决微信等社交软件转发无法解析 SVG 的行业难题；
     - **真实网盘目录透出式高信任封面渲染 (`scripts/generate-resource-covers.mjs`)**：摒弃千篇一律且人工维护成本极高的假大空封面图，自动解析资源所含网盘真实文件树（`file_tree`），提取前 4 项核心资料（视频、PDF、试卷、讲义），标注已探明资源总数及“100% 存活”背书微标签，渲染出 600×600 高清动态封面；
-    - **后端按需现场动态生成与 Cloudflare CDN 永久边缘强缓存 (`/api/v1/public/resources/:id_or_slug/cover.png`)**：摒弃大批量录入时的无效全量预渲染，改为用户/微信首次请求时服务器现场 500ms 动态渲染并落盘（`storage/covers/{slug}.png`）；响应头挂载 `Cache-Control: public, max-age=2592000, s-maxage=31536000, immutable`，在 Cloudflare 全球边缘节点获得永久极速缓存，后续访问 0 回源、0 服务器压力；搭配并发防打爆互斥锁与官方品牌兜底图容灾降级。
+    - **Cloudflare R2 对象存储与无依赖零宕机直出 (`https://image.xuebaw.com` & API 302 规范)**：彻底解耦服务器物理机对 Node/Chrome 的强依赖，封面资产全量直存于 Cloudflare R2 存储桶（`xuebaw-image`）；后端 API `/api/v1/public/resources/:id_or_slug/cover.png` 自动执行 HTTP 302 重定向至 R2 公网加速地址（未命中时回退至 `default.png`），前台详情页 `<meta property="og:image">` 直接挂载 `https://image.xuebaw.com/covers/{slug}.png`，实现 0 服务器负载、全球 Anycast 边缘毫秒级极速直达。
 - **极简清爽顶部五大垂直专区导航与搜索框高转化热搜胶囊 (Clean Direct Navigation & Hot Search Pills)**:
   - **清爽纯粹五大垂直专区直达 (`Layout.astro`)**：桌面端彻底剔除厚重二级下拉浮层与非教育类的工具/游戏干扰，顶级导航项纯粹呈现 5 大垂直教育专区（`🎒 小学专区`、`📘 初中专区`、`🎓 高中专区`、`📋 考证专区`、`🏛️ 公考升学`）；自动匹配当前学段激活高亮蓝底胶囊样式（`bg-blue-600 text-white shadow-xs`），全端响应式无横向滚动条。
   - **顶部右侧搜索输入框智能按需分流**：

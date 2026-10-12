@@ -12,6 +12,11 @@ type Config struct {
 	DatabaseURL string
 	JWTSecret   string
 	CORSOrigin  string
+	R2AccountID string
+	R2AccessKey string
+	R2SecretKey string
+	R2Bucket    string
+	R2PublicURL string
 }
 
 // loadEnvFile 尝试加载指定的 .env 文件
@@ -93,10 +98,20 @@ func Load() *Config {
 		corsOrigin = "*"
 	}
 
+	r2PublicURL := strings.TrimRight(os.Getenv("R2_PUBLIC_URL"), "/")
+	if r2PublicURL == "" {
+		r2PublicURL = "https://image.xuebaw.com"
+	}
+
 	return &Config{
 		Port:        port,
 		DatabaseURL: dbURL,
 		JWTSecret:   jwtSecret,
 		CORSOrigin:  corsOrigin,
+		R2AccountID: os.Getenv("R2_ACCOUNT_ID"),
+		R2AccessKey: os.Getenv("R2_ACCESS_KEY"),
+		R2SecretKey: os.Getenv("R2_SECRET_KEY"),
+		R2Bucket:    os.Getenv("R2_BUCKET_NAME"),
+		R2PublicURL: r2PublicURL,
 	}
 }

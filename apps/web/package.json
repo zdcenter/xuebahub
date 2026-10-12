@@ -9,6 +9,7 @@
     "dev": "astro dev",
     "build": "astro build && node scripts/patch-wrangler.mjs",
     "generate:covers": "node scripts/generate-resource-covers.mjs",
+    "sync:r2": "node ../api/scripts/sync_covers_to_r2.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },
