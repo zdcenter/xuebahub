@@ -28,7 +28,11 @@
       - 后端支持一键向 Telegram 官方注册 Webhook（`POST /crawler/webhook/register`）与注销切回轮询（`POST /crawler/webhook/remove`）；
       - 在 Webhook 模式下，电报频道一有新资源发布，Telegram 官方服务器将 0 秒延迟自动推送到系统接口，无需服务器主动频繁轮询；
       - 管理端支持在首屏与配置弹窗随时一键切换【⚡ 开启 Webhook 自动触发】与【🔄 切回轮询模式】；
-    - **全量统一系统二次确认对话框 (UI 体验统一)**：废除原生浏览器粗糙的 `window.confirm()` 弹框（包括注销 Webhook、移除监控频道、删除草稿与批量删除），全部无缝接入系统统一的高质感玻璃拟态模态框 `this.confirmDialog`，保持全站视觉与交互体验高度一致。
+    - **全量统一系统二次确认对话框 (UI 体验统一)**：废除原生浏览器粗糙的 `window.confirm()` 弹框（包括注销 Webhook、移除监控频道、删除草稿与批量删除），全部无缝接入系统统一的高质感玻璃拟态模态框 `this.confirmDialog`，保持全站视觉与交互体验高度一致；
+    - **Telegram 代理自愈与自定义 API 网关引擎 (`apps/api` & `apps/admin`)**：
+      - 解决国内网络环境无法直连 `api.telegram.org` 导致注册 Webhook 或拉取消息出现 `context deadline exceeded (Timeout)` 的网络痛点；
+      - 后端 HTTP Client 支持动态接入网络代理，内置智能自愈探测机制：优先使用配置的 `ProxyURL` / 系统代理环境变量，当未配置时自动嗅探本地正在运行的 Clash / Clash Verge 代理端口（`7897` / `7890`），实现国内开箱即通；
+      - 支持配置自定义 Telegram API 反代网关（如 Cloudflare Worker 反向代理），彻底规避网络封锁。
 
 ## [2026-10-14]
 

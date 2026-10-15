@@ -5182,6 +5182,24 @@
                   </div>
                 </div>
 
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 600; font-size: 12px;">🌐 网络代理地址 (如 Clash 端口，留空自动探测)：</label>
+                    <input type="text" class="form-control" [(ngModel)]="cfg.proxy_url" placeholder="如: http://127.0.0.1:7897" style="font-size: 12px; font-family: monospace;">
+                    <span style="font-size: 11px; color: #64748b; margin-top: 2px; display: block;">
+                      国内环境连接 Telegram 必备，系统已内置智能探测本地 7897/7890 端口
+                    </span>
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 600; font-size: 12px;">🔗 API 网关反代 (可选)：</label>
+                    <input type="text" class="form-control" [(ngModel)]="cfg.api_base_url" placeholder="默认: https://api.telegram.org" style="font-size: 12px; font-family: monospace;">
+                    <span style="font-size: 11px; color: #64748b; margin-top: 2px; display: block;">
+                      支持自定义 Cloudflare Worker 等反向代理加速地址
+                    </span>
+                  </div>
+                </div>
+
                 @if (cfg.last_sync_message) {
                   <div style="font-size: 11px; color: #475569; background: #ffffff; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
                     🕒 最近状态 ({{ cfg.last_sync_at | date:'yyyy-MM-dd HH:mm:ss' }}): {{ cfg.last_sync_message }}

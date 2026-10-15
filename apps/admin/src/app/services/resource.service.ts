@@ -813,6 +813,8 @@ export interface TelegramConfigDto {
   bot_username?: string;
   sync_mode?: 'polling' | 'webhook';
   webhook_url?: string;
+  proxy_url?: string;
+  api_base_url?: string;
   auto_sync: boolean;
   sync_interval_seconds: number;
   last_update_id?: number;

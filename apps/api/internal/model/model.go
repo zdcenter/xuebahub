@@ -116,6 +116,8 @@ type TelegramConfig struct {
 	BotUsername         string     `gorm:"type:varchar(100)" json:"bot_username"`
 	SyncMode            string     `gorm:"type:varchar(30);default:'polling'" json:"sync_mode"` // polling (定时轮询), webhook (实时自动触发)
 	WebhookURL          string     `gorm:"type:varchar(255)" json:"webhook_url"`
+	ProxyURL            string     `gorm:"type:varchar(255)" json:"proxy_url"`                  // e.g. http://127.0.0.1:7897
+	ApiBaseURL          string     `gorm:"type:varchar(255)" json:"api_base_url"`               // defaults to https://api.telegram.org
 	AutoSync            bool       `gorm:"default:true" json:"auto_sync"`
 	SyncIntervalSeconds int        `gorm:"default:60" json:"sync_interval_seconds"`
 	LastUpdateID        int64      `gorm:"default:0" json:"last_update_id"`

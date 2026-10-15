@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -32,15 +34,66 @@ func NewTelegramCrawlerService(db *gorm.DB, parser *NetdiskParserService) *Teleg
 		db:     db,
 		parser: parser,
 		client: &http.Client{
-			Timeout: 15 * time.Second,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
+			Timeout: 25 * time.Second,
 		},
 	}
 	// 启动后台自动轮询采集 worker
 	go s.startBackgroundWorker()
 	return s
+}
+
+// getClient 动态获取支持 Proxy 和 TLS 的 HTTP 客户端
+func (s *TelegramCrawlerService) getClient(cfg *model.TelegramConfig) *http.Client {
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		Proxy:           http.ProxyFromEnvironment,
+	}
+
+	proxyStr := ""
+	if cfg != nil && strings.TrimSpace(cfg.ProxyURL) != "" {
+		proxyStr = strings.TrimSpace(cfg.ProxyURL)
+	} else if p := os.Getenv("HTTPS_PROXY"); p != "" {
+		proxyStr = p
+	} else if p := os.Getenv("HTTP_PROXY"); p != "" {
+		proxyStr = p
+	} else if p := os.Getenv("https_proxy"); p != "" {
+		proxyStr = p
+	} else if p := os.Getenv("http_proxy"); p != "" {
+		proxyStr = p
+	} else if p := os.Getenv("all_proxy"); p != "" {
+		proxyStr = p
+	}
+
+	if proxyStr != "" {
+		if u, err := url.Parse(proxyStr); err == nil {
+			transport.Proxy = http.ProxyURL(u)
+		}
+	} else {
+		// 智能探测本地 Clash / Clash Verge (7897, 7890) 代理端口
+		for _, port := range []string{"7897", "7890"} {
+			conn, err := net.DialTimeout("tcp", "127.0.0.1:"+port, 150*time.Millisecond)
+			if err == nil {
+				conn.Close()
+				if u, err := url.Parse("http://127.0.0.1:" + port); err == nil {
+					transport.Proxy = http.ProxyURL(u)
+					break
+				}
+			}
+		}
+	}
+
+	return &http.Client{
+		Timeout:   25 * time.Second,
+		Transport: transport,
+	}
+}
+
+// getApiBaseURL 获取 Telegram API 网关地址 (支持反代或官方默认)
+func (s *TelegramCrawlerService) getApiBaseURL(cfg *model.TelegramConfig) string {
+	if cfg != nil && strings.TrimSpace(cfg.ApiBaseURL) != "" {
+		return strings.TrimRight(strings.TrimSpace(cfg.ApiBaseURL), "/")
+	}
+	return "https://api.telegram.org"
 }
 
 // startBackgroundWorker 定时检查并拉取订阅频道更新
@@ -120,8 +173,10 @@ func (s *TelegramCrawlerService) SyncNow() (*SyncResult, error) {
 	}
 
 	// 构造请求 Telegram getUpdates
+	client := s.getClient(&cfg)
+	baseURL := s.getApiBaseURL(&cfg)
 	offset := cfg.LastUpdateID + 1
-	tgURL := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates?offset=%d&limit=100&timeout=5", cfg.BotToken, offset)
+	tgURL := fmt.Sprintf("%s/bot%s/getUpdates?offset=%d&limit=100&timeout=5", baseURL, cfg.BotToken, offset)
 
 	req, err := http.NewRequest("GET", tgURL, nil)
 	if err != nil {
@@ -130,7 +185,7 @@ func (s *TelegramCrawlerService) SyncNow() (*SyncResult, error) {
 	}
 	req.Header.Set("User-Agent", "NetdiskCrawler/1.0")
 
-	resp, err := s.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		s.updateSyncStatus(&cfg, "error", fmt.Sprintf("连接 Telegram API 失败: %v", err))
 		return nil, err
@@ -423,15 +478,20 @@ func (s *TelegramCrawlerService) SetWebhook(webhookURL string) error {
 		return fmt.Errorf("Bot Token 为空，请先配置机器人凭证")
 	}
 	if strings.TrimSpace(webhookURL) == "" {
-		webhookURL = "https://api.xuebaw.com:8443/api/v1/public/telegram/webhook"
+		if strings.TrimSpace(cfg.WebhookURL) != "" {
+			webhookURL = strings.TrimSpace(cfg.WebhookURL)
+		} else {
+			webhookURL = "https://api.xuebaw.com:8443/api/v1/public/telegram/webhook"
+		}
 	}
-
-	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/setWebhook?url=%s&drop_pending_updates=true", cfg.BotToken, url.QueryEscape(webhookURL))
+	client := s.getClient(&cfg)
+	baseURL := s.getApiBaseURL(&cfg)
+	apiURL := fmt.Sprintf("%s/bot%s/setWebhook?url=%s&drop_pending_updates=true", baseURL, cfg.BotToken, url.QueryEscape(webhookURL))
 	req, err := http.NewRequest("POST", apiURL, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := s.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("请求 Telegram setWebhook 失败: %w", err)
 	}
@@ -469,12 +529,14 @@ func (s *TelegramCrawlerService) DeleteWebhook() error {
 		return fmt.Errorf("Bot Token 为空")
 	}
 
-	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/deleteWebhook?drop_pending_updates=false", cfg.BotToken)
+	client := s.getClient(&cfg)
+	baseURL := s.getApiBaseURL(&cfg)
+	apiURL := fmt.Sprintf("%s/bot%s/deleteWebhook?drop_pending_updates=false", baseURL, cfg.BotToken)
 	req, err := http.NewRequest("POST", apiURL, nil)
 	if err != nil {
 		return err
 	}
-	resp, err := s.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("请求 Telegram deleteWebhook 失败: %w", err)
 	}
@@ -497,8 +559,10 @@ func (s *TelegramCrawlerService) GetWebhookInfo() (map[string]interface{}, error
 		return nil, fmt.Errorf("Bot Token 为空")
 	}
 
-	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/getWebhookInfo", cfg.BotToken)
-	resp, err := s.client.Get(apiURL)
+	client := s.getClient(&cfg)
+	baseURL := s.getApiBaseURL(&cfg)
+	apiURL := fmt.Sprintf("%s/bot%s/getWebhookInfo", baseURL, cfg.BotToken)
+	resp, err := client.Get(apiURL)
 	if err != nil {
 		return nil, err
 	}
