@@ -23,6 +23,8 @@ let resourcesList: any[] = [];
 const url = new URL(Astro.request.url);
 const stage = stageSlug || url.searchParams.get('stage') || '';
 const q = url.searchParams.get('q') || '';
+const school = url.searchParams.get('school') || '';
+const region = url.searchParams.get('region') || '';
 
 let isApiConnected = false;
 
@@ -55,6 +57,21 @@ try {
   console.warn("Fetch channels from Go API failed", e);
 }
 
+// 获取系统全局配置 (官方 QQ 群与加群链接)
+let siteSettings = {
+  qq_group: "625248438",
+  qq_group_url: "https://qm.qq.com/cgi-bin/qm/qr?k=&jump_from=webapi&authKey=&uin=625248438"
+};
+try {
+  const setRes = await fetch(`${apiBase}/api/v1/public/settings`, { signal: AbortSignal.timeout(6000) });
+  if (setRes.ok) {
+    const setJson = await setRes.json();
+    if (setJson.data) {
+      siteSettings = { ...siteSettings, ...setJson.data };
+    }
+  }
+} catch (e) {}
+
 // 仅在后端 API 离线连接失败时，使用本地静态备用频道
 if (!isApiConnected && channelsList.length === 0) {
   channelsList = [
@@ -69,7 +86,7 @@ if (!isAll && isApiConnected && !activeChannel) {
   return Astro.redirect('/', 302);
 }
 
-// 2. 从 Go Fiber API 动态拉取实时数据 (根据频道与关键词过滤)
+// 2. 从 Go Fiber API 动态拉取实时数据 (根据频道、学段、学校与关键词过滤)
 try {
   let fetchUrl = `${apiBase}/api/v1/public/resources?limit=24`;
   if (!isAll) {
@@ -77,6 +94,12 @@ try {
   }
   if (stage && stage !== 'all') {
     fetchUrl += `&stage=${encodeURIComponent(stage)}`;
+  }
+  if (school) {
+    fetchUrl += `&school=${encodeURIComponent(school)}`;
+  }
+  if (region) {
+    fetchUrl += `&region=${encodeURIComponent(region)}`;
   }
   if (q) {
     fetchUrl += `&q=${encodeURIComponent(q)}`;
@@ -99,7 +122,8 @@ try {
       coverImage: item.cover_image || "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=600&auto=format&fit=crop&q=80",
       fileType: item.file_type || "PDF",
       fileSize: item.file_size || "15 MB",
-      pageCount: item.page_count || 24,
+      pageCount: item.page_count || 0,
+      createdAt: item.created_at || '',
       viewCount: item.view_count || 0,
       saveCount: item.save_count || 0,
       isRecommended: item.is_recommended,
@@ -114,6 +138,28 @@ try {
   }
 } catch (e) {
   console.warn("Fetch from Go API failed, using fallback data", e);
+}
+
+// 3. 从 Go API 动态拉取当前专区的高频热搜标签 (支持后台实时配置)
+interface HotSearchItem {
+  id: string;
+  title: string;
+  keyword: string;
+  stage: string;
+  style_type: string;
+  sort_order: number;
+}
+let dynamicHotSearches: HotSearchItem[] = [];
+
+try {
+  const currentStageParam = stageSlug || (channelSlug !== 'all' ? channelSlug : 'all');
+  const hsRes = await fetch(`${apiBase}/api/v1/public/hot-searches?stage=${encodeURIComponent(currentStageParam)}`, { signal: AbortSignal.timeout(4000) });
+  if (hsRes.ok) {
+    const hsJson = await hsRes.json();
+    dynamicHotSearches = hsJson.data || [];
+  }
+} catch (e) {
+  console.warn("Fetch hot searches failed, fallback will be used", e);
 }
 
 // 仅在后端 API 离线连接失败时，使用兜底备用数据（保证离线与SSG构建绝对安全）
@@ -160,43 +206,43 @@ if (!isApiConnected && resourcesList.length === 0) {
       ]
     },
     {
-      slug: "2026-ppt-business-report-templates-pack",
-      channelSlug: "tools",
-      title: "2026精选商务述职与毕业答辩动态PPT模板整合包（超500套+含图表配色方案）",
-      subtitle: "开箱即用高逼格排版，职场述职、毕业答辩、项目申报与商业计划书必备",
-      stage: "通用",
-      grade: "生产力工具",
-      subject: "PPT模板",
-      edition: "Office/WPS通用",
-      coverImage: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=600&auto=format&fit=crop&q=80",
-      fileType: "PPTX/ZIP压缩包",
-      fileSize: "2.4 GB",
-      pageCount: 500,
+      slug: "2026-junior-math-geometry-breakthrough",
+      channelSlug: "edu",
+      title: "2026年中考数学几何辅助线添法压轴专题精讲（含圆与相似三角形12大解题模型）",
+      subtitle: "历年中考压轴得分利器，涵盖全等辅助线、旋转变换与隐形圆经典题型",
+      stage: "junior",
+      grade: "初三/中考",
+      subject: "数学",
+      edition: "人教版统编",
+      coverImage: "https://images.unsplash.com/photo-1596495578065-6e0763fa1178?w=600&auto=format&fit=crop&q=80",
+      fileType: "PDF",
+      fileSize: "18.6 MB",
+      pageCount: 64,
       viewCount: 3410,
       saveCount: 1280,
       isRecommended: true,
       links: [
-        { drive_type: "quark", share_url: "https://pan.quark.cn/s/demo_quark_tools_ppt", is_primary: true }
+        { drive_type: "quark", share_url: "https://pan.quark.cn/s/demo_quark_share", is_primary: true }
       ]
     },
     {
-      slug: "arcade-retro-games-500-in-1-simulator",
-      channelSlug: "games",
-      title: "经典怀旧街机/FC红白机500合1整合包（含全套模拟器+即开即玩即存档）",
-      subtitle: "拳皇、街霸、合金弹头、恐龙快打、魂斗罗经典全收录，电脑与手机双端通用",
-      stage: "通用",
-      grade: "模拟器游戏",
-      subject: "街机/FC",
-      edition: "免安装免解压直接运行",
-      coverImage: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80",
-      fileType: "ZIP绿色整合包",
-      fileSize: "1.85 GB",
-      pageCount: 500,
+      slug: "2026-senior-math-derivative-master",
+      channelSlug: "edu",
+      title: "2026年新高考数学导数切线与极值点偏移压轴大题深度破解手册（附全彩思维导图）",
+      subtitle: "百强名校命题组深度联合编写，彻底解决导数单调性分类讨论与不等式恒成立难题",
+      stage: "senior",
+      grade: "高三/高考",
+      subject: "数学",
+      edition: "新高考全国卷",
+      coverImage: "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=600&auto=format&fit=crop&q=80",
+      fileType: "PDF",
+      fileSize: "24.5 MB",
+      pageCount: 88,
       viewCount: 4890,
       saveCount: 1850,
       isRecommended: true,
       links: [
-        { drive_type: "quark", share_url: "https://pan.quark.cn/s/demo_quark_games_arcade", is_primary: true }
+        { drive_type: "quark", share_url: "https://pan.quark.cn/s/demo_quark_share", is_primary: true }
       ]
     }
   ];
@@ -279,6 +325,19 @@ const stages = [
 
 // 计算当前页面基础路径（用于搜索与过滤拼接，优先使用独立专区路径）
 const basePath = isAll ? '/' : (stageSlug ? `/${stageSlug}` : `/${channelSlug}`);
+
+// 若指定了名校或考区筛选，动态增强 SEO 与 H1 核心表意
+if (school) {
+  seoTitle = `${school}期中期末真题试卷与名校押题密卷 - 学霸网名校题库`;
+  seoDesc = `学霸网权威收录${school}最新历年期中、期末冲刺卷、月考及中高考模拟押题，包含名师手写规范作答与评分标准，原画免密下载。`;
+  heroTitle = `${school} · 重点名校试卷真题库`;
+  heroSubtitle = `精选${school}历年期中期末、月考摸底及专项拔高密卷，已聚合在库资源一键极速转存。`;
+  heroBadge = `🏫 名校专区 · ${school}`;
+} else if (region) {
+  seoTitle = `${region}中小学期中期末真题与备考资料 - 学霸网`;
+  heroTitle = `${region} · 属地真题与考点题库`;
+  heroBadge = `📍 属地专区 · ${region}`;
+}
 ---
 
 <Layout 
@@ -287,68 +346,52 @@ const basePath = isAll ? '/' : (stageSlug ? `/${stageSlug}` : `/${channelSlug}`)
   keywords={seoKeywords}
   canonicalUrl={`${url.origin}${basePath}`}>
   
-  <!-- 头部 Hero 区域：聚焦刚需、直达搜索 -->
-  <section class="bg-gradient-to-b from-blue-50/80 via-white to-slate-50 pt-10 pb-8 border-b border-slate-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
-      <div class="inline-flex items-center space-x-2 px-3 py-1 bg-blue-100/70 text-blue-700 rounded-full text-xs font-semibold tracking-wide">
-        <span>{heroBadge}</span>
-      </div>
-      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
-        {heroTitle}
+  <!-- 头部搜索区域：精简紧凑、聚焦搜索与高频热搜 -->
+  <section class="bg-gradient-to-b from-blue-50/70 via-white to-slate-50/80 pt-6 pb-5 sm:pt-7 sm:pb-6 border-b border-slate-200/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+      <!-- 语义化紧凑 H1：保留搜索引擎核心抓取权重，不占首屏视觉空间 -->
+      <h1 class="sr-only">
+        {heroTitle} - {heroSubtitle}
       </h1>
-      <p class="max-w-2xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed">
-        {heroSubtitle}
-      </p>
 
       <!-- 全局即时搜索条 (直达干净静态路径) -->
-      <div id="search-box" class="max-w-2xl mx-auto pt-2">
-        <form action={basePath} method="GET" class="relative flex items-center">
+      <div id="search-box" class="max-w-3xl mx-auto">
+        <form action={basePath} method="GET" class="relative flex items-center shadow-xs rounded-2xl">
           <input
             type="text"
             name="q"
             value={q}
             placeholder={searchPlaceholder}
-            class="w-full pl-12 pr-28 py-3.5 bg-white rounded-2xl border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none shadow-sm text-sm transition"
+            class="w-full pl-12 pr-28 py-3.5 bg-white rounded-2xl border-2 border-slate-200/90 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none text-sm transition text-slate-800 placeholder:text-slate-400 font-medium"
           />
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400 absolute left-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <button
             type="submit"
-            class="absolute right-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition"
+            class="absolute right-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center space-x-1"
           >
-            快速搜索
+            <span>快速搜索</span>
           </button>
         </form>
 
-        <!-- 热门搜索推荐词 (生成干净目录链接) -->
-        <div class="flex flex-wrap items-center justify-center gap-2 mt-3 text-xs text-slate-500">
-          <span class="font-medium text-slate-400">热搜推荐:</span>
-          {channelSlug === 'tools' ? (
-            <>
-              <a href="/tools?q=PPT" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">述职PPT模板</a>
-              <a href="/tools?q=音效" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">剪辑音效BGM</a>
-              <a href="/tools?q=免抠素材" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">电商免抠素材</a>
-            </>
-          ) : channelSlug === 'games' ? (
-            <>
-              <a href="/games?q=街机" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">街机500合1</a>
-              <a href="/games?q=模拟器" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">全能模拟器</a>
-              <a href="/games?q=FC" class="hover:text-blue-600 bg-white px-2 py-0.5 rounded border border-slate-200">FC经典全集</a>
-            </>
-          ) : (
-            <>
-              <a href="/primary?q=小升初" class="hot-search-pill highlight">🎯 小升初择校密卷</a>
-              <a href="/junior?q=压轴题" class="hot-search-pill">📐 初中几何压轴</a>
-              <a href="/senior?q=模拟卷" class="hot-search-pill hot">📈 2026新高考模考</a>
-              <a href="/cert?q=教师资格证" class="hot-search-pill">🧑‍🏫 教师资格证统考</a>
-              <a href="/exam?q=公务员" class="hot-search-pill">🏛️ 国考行测申论</a>
-              <a href="/primary?q=奥数" class="hot-search-pill">🧮 小学奥数培优</a>
-              <a href="/primary?q=期末冲刺" class="hot-search-pill">⚡ 名校期末押题</a>
-              <a href="/senior?q=导数" class="hot-search-pill">📝 高考导数大招</a>
-            </>
-          )}
-        </div>
+        <!-- 热门搜索推荐词 (100% 由后台高频热搜数据库管理驱动，停用或为空时完全隐藏，绝无硬编码) -->
+        {dynamicHotSearches.length > 0 && (
+          <div class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-3 text-xs text-slate-500">
+            <span class="font-bold text-slate-400 flex items-center space-x-1 text-[11px] shrink-0 mr-0.5 select-none">
+              <span>🔥</span>
+              <span>高频热搜:</span>
+            </span>
+            {dynamicHotSearches.map((item) => (
+              <a
+                href={`${basePath}${basePath.includes('?') ? '&' : '?'}q=${encodeURIComponent(item.keyword)}`}
+                class:list={['hot-search-pill', item.style_type]}
+              >
+                {item.title}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   </section>
@@ -415,6 +458,53 @@ const basePath = isAll ? '/' : (stageSlug ? `/${stageSlug}` : `/${channelSlug}`)
       })}
     </div>
 
+    <!-- 名校/考区筛选激活状态提示横幅 -->
+    {school && (
+      <div class="flex items-center justify-between p-3.5 sm:p-4 bg-indigo-50/80 border border-indigo-200/90 rounded-2xl shadow-xs">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-xl shrink-0">🏫</span>
+          <div class="min-w-0">
+            <div class="text-sm font-bold text-indigo-950 flex items-center gap-2">
+              <span>正在查阅「{school}」专区真题密卷</span>
+              <span class="text-[11px] bg-indigo-200/80 text-indigo-900 px-2 py-0.5 rounded-full font-semibold shrink-0">
+                {resourcesList.length} 份在库试卷
+              </span>
+            </div>
+            <p class="text-xs text-indigo-600/90 truncate">已聚合该校各年级、各学科期中期末真题及名校押题试卷</p>
+          </div>
+        </div>
+        <a
+          href={basePath}
+          class="shrink-0 ml-3 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs"
+        >
+          <span>✕</span>
+          <span>清除名校筛选</span>
+        </a>
+      </div>
+    )}
+    {!school && region && (
+      <div class="flex items-center justify-between p-3.5 sm:p-4 bg-sky-50/80 border border-sky-200/90 rounded-2xl shadow-xs">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-xl shrink-0">📍</span>
+          <div class="min-w-0">
+            <div class="text-sm font-bold text-sky-950 flex items-center gap-2">
+              <span>正在查阅「{region}」考区真题资源</span>
+              <span class="text-[11px] bg-sky-200/80 text-sky-900 px-2 py-0.5 rounded-full font-semibold shrink-0">
+                {resourcesList.length} 份在库资料
+              </span>
+            </div>
+          </div>
+        </div>
+        <a
+          href={basePath}
+          class="shrink-0 ml-3 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs"
+        >
+          <span>✕</span>
+          <span>清除地区筛选</span>
+        </a>
+      </div>
+    )}
+
     <!-- 3. 资源目录总控信息条 (增强专业站权威质感) -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1 text-xs">
       <div class="flex items-center space-x-2 font-medium text-slate-700">
@@ -445,9 +535,15 @@ const basePath = isAll ? '/' : (stageSlug ? `/${stageSlug}` : `/${channelSlug}`)
         <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
           该频道资源正在紧锣密鼓上架中，您可以切换其他频道浏览，或加入备考群联系管理员优先上架。
         </p>
-        <a href="/" class="inline-block px-5 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-md">
-          返回浏览全部资源 ➔
-        </a>
+        <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <a href="/" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">
+            返回浏览全部资源 ➔
+          </a>
+          <button type="button" class="btn-open-request-modal px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-1.5">
+            <span>📝</span>
+            <span>没找到？提交求资料心愿</span>
+          </button>
+        </div>
       </div>
     ) : (
       <div class="space-y-3">
@@ -457,28 +553,79 @@ const basePath = isAll ? '/' : (stageSlug ? `/${stageSlug}` : `/${channelSlug}`)
       </div>
     )}
 
-    <!-- 微信备考群 & 防走失沉淀卡片（私域引流利器） -->
-    <div class="mt-12 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-blue-600/10">
-      <div class="space-y-2 text-center md:text-left">
-        <div class="inline-block px-3 py-1 bg-white/10 rounded-full text-xs font-semibold backdrop-blur-md">
-          🔔 官方资源与备考交流社群
+    <!-- QQ 官方备考交流群 & 防走失温馨小贴士 (低调克制、不喧宾夺主) -->
+    <div class="mt-8 bg-slate-50/75 hover:bg-slate-50 border border-slate-200/80 rounded-2xl p-4 sm:p-4.5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 transition-colors">
+      <div class="flex items-center space-x-3 text-center sm:text-left">
+        <div class="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-sm text-blue-600 shrink-0">
+          🐧
         </div>
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight">
-          获取最新一手名校期末密卷、中高考冲刺与考证真题
-        </h2>
-        <p class="text-xs sm:text-sm text-blue-100 max-w-xl">
-          每日更新一手期末真题、学霸手撕笔记、微课视频与教师资格/公考考点总结，网盘链接每日自动巡检防失效。
-        </p>
+        <div class="space-y-0.5">
+          <div class="flex items-center space-x-2 justify-center sm:justify-start">
+            <span class="text-xs sm:text-sm font-bold text-slate-800">官方备考交流 & 补链防走失群</span>
+            <span class="text-[10px] text-slate-400 font-mono hidden md:inline">#防失联求档</span>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-normal">
+            若遇到网盘链接失效、需要特定试卷求档或反馈，可加入备考群即时沟通
+          </p>
+        </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row items-center gap-3">
-        <div class="px-5 py-3 bg-white text-blue-700 rounded-2xl font-bold text-xs sm:text-sm shadow-md text-center">
-          微信扫码加入「学霸网官方备考交流群」
-        </div>
+      <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-center">
+        <button
+          type="button"
+          id="btn-copy-qq-group"
+          data-group={siteSettings.qq_group}
+          class="px-3.5 py-1.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-600 active:scale-95 transition-all rounded-xl border border-slate-200/90 text-xs font-semibold shadow-2xs flex items-center space-x-1.5 cursor-pointer"
+          title="点击复制群号"
+        >
+          <span>📋</span>
+          <span>群号：<span class="font-mono font-bold text-slate-900">{siteSettings.qq_group}</span></span>
+        </button>
+        <a
+          href={siteSettings.qq_group_url || `https://qm.qq.com/cgi-bin/qm/qr?k=&jump_from=webapi&authKey=&uin=${siteSettings.qq_group}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          id="btn-join-qq-group"
+          class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-semibold border border-blue-100 transition-colors flex items-center space-x-1"
+        >
+          <span>一键加群 ➔</span>
+        </a>
       </div>
     </div>
   </section>
 </Layout>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    const copyBtn = document.getElementById('btn-copy-qq-group');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        const groupNum = copyBtn.getAttribute('data-group') || '625248438';
+        try {
+          await navigator.clipboard.writeText(groupNum);
+          if (window.showGlobalToast) {
+            window.showGlobalToast(`QQ群号 ${groupNum} 已复制，去QQ搜索即可加入！`, '🐧');
+          }
+          const originalHTML = copyBtn.innerHTML;
+          copyBtn.innerHTML = `<span>✓</span><span>群号已复制：${groupNum}</span>`;
+          setTimeout(() => {
+            copyBtn.innerHTML = originalHTML;
+          }, 2000);
+        } catch (err) {
+          const input = document.createElement('input');
+          input.value = groupNum;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          document.body.removeChild(input);
+          if (window.showGlobalToast) {
+            window.showGlobalToast(`QQ群号 ${groupNum} 已复制！`, '🐧');
+          }
+        }
+      });
+    }
+  });
+</script>
 
 <style>
   .hot-search-pill {

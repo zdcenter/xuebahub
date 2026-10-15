@@ -40,6 +40,7 @@ export interface ResourceItemDto {
   save_count?: number;
   is_published: boolean;
   is_recommended?: boolean;
+  cover_image?: string;
   file_tree?: any[];
   links?: ResourceLinkDto[];
 }
@@ -221,11 +222,18 @@ export class ResourceService {
     return null;
   }
 
-  // 获取后台全部资源列表（支持按频道过滤）
-  list(channel?: string): Observable<ResourceItemDto[]> {
+  // 获取后台全部资源列表（支持按频道和学段过滤）
+  list(channel?: string, stage?: string): Observable<ResourceItemDto[]> {
     let url = this.apiUrl;
+    const params: string[] = [];
     if (channel && channel !== 'all') {
-      url += `?channel=${encodeURIComponent(channel)}`;
+      params.push(`channel=${encodeURIComponent(channel)}`);
+    }
+    if (stage && stage !== 'all') {
+      params.push(`stage=${encodeURIComponent(stage)}`);
+    }
+    if (params.length > 0) {
+      url += `?${params.join('&')}`;
     }
     return this.http.get<{ code: number; data: { items: ResourceItemDto[] } }>(url).pipe(
       map(res => res.data?.items || [])
@@ -249,10 +257,38 @@ export class ResourceService {
     );
   }
 
+  // 批量上架/下架
+  batchTogglePublish(ids: string[], is_published: boolean): Observable<{ affected: number }> {
+    return this.http.post<{ code: number; data: { affected: number } }>(
+      `${this.apiUrl}/batch-toggle`,
+      { ids, is_published }
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  // 批量删除
+  batchDelete(ids: string[]): Observable<{ deleted_count: number }> {
+    return this.http.post<{ code: number; data: { deleted_count: number } }>(
+      `${this.apiUrl}/batch-delete`,
+      { ids }
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
   // 更新资源
   update(id: string, data: Partial<ResourceItemDto>): Observable<ResourceItemDto> {
     return this.http.put<{ code: number; data: ResourceItemDto }>(`${this.apiUrl}/${id}`, data).pipe(
       map(res => res.data)
+    );
+  }
+
+  // 快速更新资源统计量（浏览量与转存量）
+  updateStats(id: string, data: { view_count?: number; save_count?: number }): Observable<any> {
+    return this.http.patch<{ code: number; message: string; data: any }>(
+      `${this.apiUrl}/${id}/stats`,
+      data
     );
   }
 
@@ -496,7 +532,160 @@ export class ResourceService {
       map(res => res.data)
     );
   }
+
+  // --- 🔥 高频热搜管理 ---
+  getAdminHotSearches(stage?: string, keyword?: string): Observable<HotSearchDto[]> {
+    let url = `${this.baseUrl}/api/v1/admin/hot-searches`;
+    const params: string[] = [];
+    if (stage && stage !== 'all') params.push(`stage=${encodeURIComponent(stage)}`);
+    if (keyword) params.push(`keyword=${encodeURIComponent(keyword)}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
+    return this.http.get<{ code: number; data: HotSearchDto[] }>(url).pipe(map(r => r.data || []));
+  }
+
+  createHotSearch(item: Partial<HotSearchDto>): Observable<HotSearchDto> {
+    return this.http.post<{ code: number; data: HotSearchDto }>(`${this.baseUrl}/api/v1/admin/hot-searches`, item).pipe(map(r => r.data));
+  }
+
+  updateHotSearch(id: string, item: Partial<HotSearchDto>): Observable<HotSearchDto> {
+    return this.http.put<{ code: number; data: HotSearchDto }>(`${this.baseUrl}/api/v1/admin/hot-searches/${id}`, item).pipe(map(r => r.data));
+  }
+
+  deleteHotSearch(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/v1/admin/hot-searches/${id}`);
+  }
+
+  toggleHotSearch(id: string): Observable<{ id: string; is_active: boolean }> {
+    return this.http.patch<{ code: number; data: { id: string; is_active: boolean } }>(`${this.baseUrl}/api/v1/admin/hot-searches/${id}/toggle`, {}).pipe(map(r => r.data));
+  }
+
+  batchToggleHotSearches(ids: string[], isActive: boolean): Observable<{ affected: number }> {
+    return this.http.post<{ code: number; data: { affected: number } }>(
+      `${this.baseUrl}/api/v1/admin/hot-searches/batch-toggle`,
+      { ids, is_active: isActive }
+    ).pipe(map(r => r.data));
+  }
+
+  batchDeleteHotSearches(ids: string[]): Observable<{ affected: number }> {
+    return this.http.post<{ code: number; data: { affected: number } }>(
+      `${this.baseUrl}/api/v1/admin/hot-searches/batch-delete`,
+      { ids }
+    ).pipe(map(r => r.data));
+  }
+
+  getSettings(): Observable<SiteSettingDto> {
+    return this.http.get<{ code: number; data: SiteSettingDto }>(`${this.baseUrl}/api/v1/admin/settings`).pipe(map(r => r.data));
+  }
+
+  updateSettings(data: Partial<SiteSettingDto>): Observable<SiteSettingDto> {
+    return this.http.put<{ code: number; message: string; data: SiteSettingDto }>(`${this.baseUrl}/api/v1/admin/settings`, data).pipe(map(r => r.data));
+  }
+
+  getAdminRequests(params?: { status?: string; stage?: string; q?: string }): Observable<{ items: ResourceRequestDto[]; counts: Record<string, number> }> {
+    let url = `${this.baseUrl}/api/v1/admin/requests`;
+    const qList: string[] = [];
+    if (params?.status && params.status !== 'all') qList.push(`status=${encodeURIComponent(params.status)}`);
+    if (params?.stage && params.stage !== 'all') qList.push(`stage=${encodeURIComponent(params.stage)}`);
+    if (params?.q) qList.push(`q=${encodeURIComponent(params.q)}`);
+    if (qList.length > 0) url += `?${qList.join('&')}`;
+    return this.http.get<{ code: number; data: { items: ResourceRequestDto[]; counts: Record<string, number> } }>(url).pipe(map(r => r.data));
+  }
+
+  updateAdminRequest(id: string, data: Partial<ResourceRequestDto>): Observable<ResourceRequestDto> {
+    return this.http.put<{ code: number; message: string; data: ResourceRequestDto }>(`${this.baseUrl}/api/v1/admin/requests/${id}`, data).pipe(map(r => r.data));
+  }
+
+  deleteAdminRequest(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/v1/admin/requests/${id}`);
+  }
+
+  // --- 电报智能采集与草稿池 (Telegram Ingestion & Drafts) ---
+  getCrawlerConfig(): Observable<{ config: TelegramConfigDto; stats: CrawlerStatsDto }> {
+    return this.http.get<{ config: TelegramConfigDto; stats: CrawlerStatsDto }>(`${this.baseUrl}/api/v1/admin/crawler/config`);
+  }
+
+  updateCrawlerConfig(data: Partial<TelegramConfigDto>): Observable<any> {
+    return this.http.put(`${this.baseUrl}/api/v1/admin/crawler/config`, data);
+  }
+
+  syncCrawlerNow(): Observable<{ success: boolean; result: any }> {
+    return this.http.post<{ success: boolean; result: any }>(`${this.baseUrl}/api/v1/admin/crawler/sync`, {});
+  }
+
+  getCrawlerChannels(): Observable<{ channels: TelegramChannelDto[] }> {
+    return this.http.get<{ channels: TelegramChannelDto[] }>(`${this.baseUrl}/api/v1/admin/crawler/channels`);
+  }
+
+  createCrawlerChannel(data: { channel_id: string; name: string; drive_type: string; remark?: string }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/admin/crawler/channels`, data);
+  }
+
+  updateCrawlerChannel(id: string, data: Partial<TelegramChannelDto>): Observable<any> {
+    return this.http.put(`${this.baseUrl}/api/v1/admin/crawler/channels/${id}`, data);
+  }
+
+  toggleCrawlerChannel(id: string): Observable<{ message: string; is_active: boolean; channel: TelegramChannelDto }> {
+    return this.http.patch<{ message: string; is_active: boolean; channel: TelegramChannelDto }>(`${this.baseUrl}/api/v1/admin/crawler/channels/${id}/toggle`, {});
+  }
+
+  registerCrawlerWebhook(webhookUrl?: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/admin/crawler/webhook/register`, { webhook_url: webhookUrl });
+  }
+
+  removeCrawlerWebhook(): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/admin/crawler/webhook/remove`, {});
+  }
+
+  getCrawlerWebhookInfo(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/api/v1/admin/crawler/webhook/info`);
+  }
+
+  deleteCrawlerChannel(id: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/api/v1/admin/crawler/channels/${id}`);
+  }
+
+  getCrawlerDrafts(params?: { page?: number; page_size?: number; status?: string; drive_type?: string; search?: string }): Observable<{ items: ResourceDraftDto[]; total: number; page: number; limit: number }> {
+    let url = `${this.baseUrl}/api/v1/admin/crawler/drafts`;
+    const qList: string[] = [];
+    if (params?.page) qList.push(`page=${params.page}`);
+    if (params?.page_size) qList.push(`page_size=${params.page_size}`);
+    if (params?.status && params.status !== 'all') qList.push(`status=${encodeURIComponent(params.status)}`);
+    if (params?.drive_type && params.drive_type !== 'all') qList.push(`drive_type=${encodeURIComponent(params.drive_type)}`);
+    if (params?.search) qList.push(`search=${encodeURIComponent(params.search)}`);
+    if (qList.length > 0) url += `?${qList.join('&')}`;
+    return this.http.get<{ items: ResourceDraftDto[]; total: number; page: number; limit: number }>(url);
+  }
+
+  ingestCrawlerText(data: { raw_text: string; source_name?: string; drive_type?: string }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/admin/crawler/drafts/ingest-text`, data);
+  }
+
+  updateCrawlerDraftStatus(id: string, status: string): Observable<any> {
+    return this.http.patch(`${this.baseUrl}/api/v1/admin/crawler/drafts/${id}/status`, { status });
+  }
+
+  deleteCrawlerDraft(id: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/api/v1/admin/crawler/drafts/${id}`);
+  }
+
+  batchCrawlerDraftsAction(action: 'ignore' | 'delete', ids: string[]): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/admin/crawler/drafts/batch`, { action, ids });
+  }
 }
+
+export interface HotSearchDto {
+  id?: string;
+  title: string;
+  keyword: string;
+  stage: string;
+  style_type: 'default' | 'highlight' | 'hot';
+  sort_order: number;
+  is_active: boolean;
+  click_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 
 export interface SchoolDto {
   id?: number;
@@ -579,4 +768,95 @@ export interface TransferShareResultDto {
   saved_fid?: string;
   target_folder_fid?: string;
 }
+
+export interface SiteSettingDto {
+  id?: string;
+  site_name: string;
+  site_title: string;
+  site_subtitle: string;
+  keywords: string;
+  qq_group: string;
+  qq_group_url: string;
+  contact_email: string;
+  contact_wechat?: string;
+  icp_beian?: string;
+  gongan_beian?: string;
+  copyright_text: string;
+  disclaimer_text: string;
+  announcement_active: boolean;
+  announcement_text: string;
+  announcement_url?: string;
+  announcement_badge: string;
+  announcement_type: 'blue' | 'amber' | 'emerald' | 'rose';
+  updated_at?: string;
+}
+
+export interface ResourceRequestDto {
+  id: string;
+  title: string;
+  stage: string;
+  subject?: string;
+  note?: string;
+  contact?: string;
+  status: 'pending' | 'fulfilled' | 'rejected';
+  fulfilled_resource_id?: string | null;
+  fulfilled_note?: string;
+  vote_count: number;
+  client_ip?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TelegramConfigDto {
+  id?: number;
+  bot_token: string;
+  bot_username?: string;
+  sync_mode?: 'polling' | 'webhook';
+  webhook_url?: string;
+  auto_sync: boolean;
+  sync_interval_seconds: number;
+  last_update_id?: number;
+  last_sync_at?: string;
+  last_sync_status?: string;
+  last_sync_message?: string;
+}
+
+export interface TelegramChannelDto {
+  id: string;
+  channel_id: string;
+  name: string;
+  drive_type: string;
+  is_active: boolean;
+  item_count: number;
+  remark?: string;
+  created_at?: string;
+}
+
+export interface ResourceDraftDto {
+  id: string;
+  title: string;
+  source_name: string;
+  channel_id: string;
+  message_id: number;
+  drive_type: string;
+  share_url: string;
+  extract_code?: string;
+  file_size?: string;
+  raw_text: string;
+  status: 'pending' | 'approved' | 'ignored';
+  approved_resource_id?: string;
+  is_safe: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CrawlerStatsDto {
+  total_drafts: number;
+  pending_drafts: number;
+  approved_drafts: number;
+  ignored_drafts: number;
+  monitored_channels: number;
+}
+
+
 

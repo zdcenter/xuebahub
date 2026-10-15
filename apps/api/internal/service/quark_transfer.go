@@ -625,14 +625,14 @@ func (s *QuarkTransferService) TransferAndShare(cookie string, targetFolderFID s
 	detailBody, _ := io.ReadAll(detailResp.Body)
 
 	type FileItem struct {
-		FID           string `json:"fid"`
-		FileName      string `json:"file_name"`
-		FileType      string `json:"file_type"`
-		FormatType    string `json:"format_type"`
-		Size          int64  `json:"size"`
-		Dir           bool   `json:"dir"`
-		ShareFIDToken string `json:"share_fid_token"`
-		UpdatedAt     int64  `json:"updated_at"`
+		FID           string      `json:"fid"`
+		FileName      string      `json:"file_name"`
+		FileType      interface{} `json:"file_type"`
+		FormatType    string      `json:"format_type"`
+		Size          int64       `json:"size"`
+		Dir           bool        `json:"dir"`
+		ShareFIDToken string      `json:"share_fid_token"`
+		UpdatedAt     int64       `json:"updated_at"`
 	}
 
 	var detailResult struct {
@@ -643,7 +643,10 @@ func (s *QuarkTransferService) TransferAndShare(cookie string, targetFolderFID s
 		} `json:"data"`
 	}
 
-	if err := json.Unmarshal(detailBody, &detailResult); err != nil || len(detailResult.Data.List) == 0 {
+	if err := json.Unmarshal(detailBody, &detailResult); err != nil {
+		return nil, fmt.Errorf("解析夸克分享文件列表失败: %w", err)
+	}
+	if len(detailResult.Data.List) == 0 {
 		return nil, errors.New("未在源分享中找到有效文件，或文件已被原作者删除")
 	}
 

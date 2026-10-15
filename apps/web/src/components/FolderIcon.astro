@@ -1,0 +1,30 @@
+---
+interface Props {
+  open?: boolean;
+  class?: string;
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+}
+
+const { open = false, class: className = '', size = 'md' } = Astro.props;
+
+const sizeClass = size === 'xs' ? 'w-3.5 h-3.5' : size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-5 h-5' : 'w-4.5 h-4.5';
+---
+
+{open ? (
+  <svg class={`${sizeClass} shrink-0 inline-block drop-shadow-2xs ${className}`} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- 展开状态文件夹背板 -->
+    <path d="M2.5 5.5C2.5 4.39543 3.39543 3.5 4.5 3.5H9.2C9.73043 3.5 10.2391 3.71071 10.6142 4.08579L12.3 5.77157C12.6751 6.14665 13.1837 6.35736 13.7142 6.35736H19.5C20.6046 6.35736 21.5 7.25279 21.5 8.35736V18.5C21.5 19.6046 20.6046 20.5 19.5 20.5H4.5C3.39543 20.5 2.5 19.6046 2.5 18.5V5.5Z" fill="#D97706" />
+    <!-- 展开前盖 -->
+    <path d="M2 10.5C2.15 9.6 2.95 9 3.85 9H20.15C21.2 9 22 10 21.7 11L19.5 18.5C19.2 19.5 18.3 20.2 17.3 20.2H3.5C2.4 20.2 1.6 19.2 1.8 18.1L2 10.5Z" fill="#FBBF24" />
+    <path d="M3.5 10.5H20.5" stroke="#FEF3C7" stroke-width="0.8" stroke-linecap="round" opacity="0.8" />
+  </svg>
+) : (
+  <svg class={`${sizeClass} shrink-0 inline-block drop-shadow-2xs ${className}`} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- 经典金黄色文件夹背板 -->
+    <path d="M2.5 5.5C2.5 4.39543 3.39543 3.5 4.5 3.5H9.2C9.73043 3.5 10.2391 3.71071 10.6142 4.08579L12.3 5.77157C12.6751 6.14665 13.1837 6.35736 13.7142 6.35736H19.5C20.6046 6.35736 21.5 7.25279 21.5 8.35736V18.5C21.5 19.6046 20.6046 20.5 19.5 20.5H4.5C3.39543 20.5 2.5 19.6046 2.5 18.5V5.5Z" fill="#F59E0B" />
+    <!-- 明亮纯金黄前面板 -->
+    <path d="M2.5 8.75C2.5 7.64543 3.39543 6.75 4.5 6.75H19.5C20.6046 6.75 21.5 7.64543 21.5 8.75V18.5C21.5 19.6046 20.6046 20.5 19.5 20.5H4.5C3.39543 20.5 2.5 19.6046 2.5 18.5V8.75Z" fill="#FBBF24" />
+    <!-- 顶部高光微反光条 -->
+    <path d="M3.5 8H20.5" stroke="#FEF3C7" stroke-width="0.8" stroke-linecap="round" opacity="0.75" />
+  </svg>
+)}

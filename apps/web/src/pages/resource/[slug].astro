@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { getApiBaseUrl } from '../../lib/api';
 import QRCode from 'qrcode';
+import FolderIcon from '../../components/FolderIcon.astro';
 
 const { slug } = Astro.params;
 const apiBase = getApiBaseUrl(Astro.url);
@@ -75,6 +76,18 @@ try {
 } catch (e) {
   // 降级兜底
 }
+
+// 动态获取同名校 / 同学段 / 同科目关联精选试卷推荐
+let relatedResources: any[] = [];
+try {
+  const relResp = await fetch(`${apiBase}/api/v1/public/resources/${slug}/related`, { signal: AbortSignal.timeout(4000) });
+  if (relResp.ok) {
+    const relJson = await relResp.json();
+    if (Array.isArray(relJson.data)) {
+      relatedResources = relJson.data;
+    }
+  }
+} catch (e) {}
 
 if (!resource) {
   resource = {
@@ -225,6 +238,7 @@ function getFileIcon(ext: string, isDir?: boolean): string {
 
 function getFileBadgeClass(ext: string): string {
   const e = (ext || '').toUpperCase();
+  if (e === 'DIR') return 'bg-amber-50 text-amber-700 border-amber-200';
   if (['MP4', 'MKV', 'AVI', 'MOV', 'FLV', 'TS'].includes(e)) return 'bg-purple-50 text-purple-700 border-purple-200';
   if (['PDF'].includes(e)) return 'bg-rose-50 text-rose-700 border-rose-200';
   if (['DOC', 'DOCX', 'TXT', 'WPS'].includes(e)) return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -280,14 +294,26 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
           <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg">{resource.subject}</span>
           <span class="px-2.5 py-1 bg-slate-100 text-slate-700 font-medium text-xs rounded-lg">{resource.edition}</span>
           {resource.school && (
-            <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-lg flex items-center gap-1">
-              <span>🏫</span><span>{resource.school}</span>
-            </span>
+            <a
+              href={`/edu?school=${encodeURIComponent(resource.school)}`}
+              class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-900 border border-indigo-200 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors group/school cursor-pointer"
+              title={`点击查看「${resource.school}」全部真题密卷专区`}
+            >
+              <span>🏫</span>
+              <span>{resource.school}</span>
+              <span class="text-[10px] text-indigo-400 group-hover/school:text-indigo-600 font-normal">专区 →</span>
+            </a>
           )}
           {resource.region && !resource.school && (
-            <span class="px-2.5 py-1 bg-sky-50 text-sky-700 border border-sky-200 font-medium text-xs rounded-lg flex items-center gap-1">
-              <span>📍</span><span>{resource.region}</span>
-            </span>
+            <a
+              href={`/edu?region=${encodeURIComponent(resource.region)}`}
+              class="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 hover:text-sky-900 border border-sky-200 font-medium text-xs rounded-lg flex items-center gap-1.5 transition-colors group/region cursor-pointer"
+              title={`点击查看「${resource.region}」全部资料专区`}
+            >
+              <span>📍</span>
+              <span>{resource.region}</span>
+              <span class="text-[10px] text-sky-400 group-hover/region:text-sky-600 font-normal">专区 →</span>
+            </a>
           )}
           <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-medium text-xs rounded-lg">官方完整版 · 纯净无水印</span>
         </div>
@@ -340,6 +366,44 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
             <span>检测到部分网盘已失效，站长已安排补链。请优先选择标记为<strong>【✅ 正常存活】</strong>的可用网盘极速转存！</span>
           </div>
         )}
+
+        <!-- 网盘转存增效与高清无损提示横幅 (CRO转化率引擎) -->
+        <div class="mb-5 p-4 sm:p-5 bg-gradient-to-r from-amber-50/90 via-orange-50/50 to-blue-50/60 border border-amber-200/90 rounded-2xl shadow-xs">
+          <div class="flex items-start gap-3 sm:gap-3.5">
+            <div class="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-300/60 flex items-center justify-center text-lg sm:text-xl shadow-2xs">
+              💡
+            </div>
+            <div class="flex-1 min-w-0 space-y-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <h4 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-1.5">
+                  <span>学霸备考小窍门：</span>
+                  <span class="text-amber-700 underline decoration-amber-400 decoration-2 underline-offset-4 font-black">请务必先点击【保存到网盘 / 转存】！</span>
+                </h4>
+                <span class="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold text-[10px] sm:text-xs rounded-full border border-amber-300">
+                  关键提示
+                </span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                如果在网页直接预览，网盘通常会<strong>压缩画质与截断页数</strong>。建议先点击下方按钮<strong>【转存到您自己的网盘】</strong>再下载：不仅能拿到 <strong>100% 矢量无损高清真题</strong>（A4 纸打印超清晰、字体与公式绝不发虚模糊），微课视频还能直接解锁 <strong>1080P/4K 原画原声</strong>流畅播放，更享有<strong>永久保存防失效</strong>特权！
+              </p>
+              <!-- 三大核心利益微徽章 -->
+              <div class="flex flex-wrap items-center gap-2 pt-1 text-[11px] sm:text-xs font-medium">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-white/90 text-slate-700 rounded-lg border border-amber-200 shadow-2xs">
+                  <span class="text-emerald-600 font-bold">✓</span>
+                  <span>📄 <strong>无损 A4 极清打印</strong> (无噪点毛边)</span>
+                </span>
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-white/90 text-slate-700 rounded-lg border border-amber-200 shadow-2xs">
+                  <span class="text-blue-600 font-bold">✓</span>
+                  <span>🎬 <strong>4K 原画原声微课</strong> (免试看压缩卡顿)</span>
+                </span>
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-white/90 text-slate-700 rounded-lg border border-amber-200 shadow-2xs">
+                  <span class="text-purple-600 font-bold">✓</span>
+                  <span>🔒 <strong>存入个人网盘永久防丢</strong></span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="grid grid-cols-1 gap-4">
           {resource.links.map((link: any) => (
@@ -426,9 +490,15 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
                     暂不可用
                   </button>
                 ) : (
-                  <a href={link.share_url} target="_blank" rel="noopener noreferrer" class={`btn-track-save w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-sm text-center transition flex-shrink-0 flex items-center justify-center space-x-1 ${link.is_primary ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' : 'bg-slate-800 hover:bg-slate-900 text-white shadow-sm'}`} data-slug={resource.slug} data-link-id={link.id || ''}>
-                    <span>立即转存下载</span>
-                  </a>
+                  <div class="flex flex-col items-center sm:items-end gap-1.5 w-full sm:w-auto">
+                    <a href={link.share_url} target="_blank" rel="noopener noreferrer" class={`btn-track-save w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-sm text-center transition flex-shrink-0 flex items-center justify-center space-x-1.5 ${link.is_primary ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg hover:scale-[1.02]' : 'bg-slate-800 hover:bg-slate-900 text-white shadow-sm hover:scale-[1.02]'}`} data-slug={resource.slug} data-link-id={link.id || ''} title="先保存到网盘，下载即享无损高清原格式">
+                      <span>⚡ 立即转存到网盘</span>
+                    </a>
+                    <span class="text-[11px] text-amber-700 font-semibold flex items-center gap-1 select-none">
+                      <span class="text-amber-500">✨</span>
+                      <span>转存享无损A4打印与原画</span>
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
@@ -443,7 +513,9 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center space-x-2">
-                <span class="p-1.5 bg-blue-100 text-blue-700 rounded-xl">📂</span>
+                <span class="p-1.5 bg-amber-50 rounded-xl border border-amber-200/80 inline-flex items-center justify-center shadow-2xs">
+                  <FolderIcon size="md" open={true} />
+                </span>
                 <span>网盘内含文件清单与目录结构</span>
                 <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                   真实层级 · 所见即所得
@@ -463,8 +535,8 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
             <!-- 资源管理器工具栏 / 路径地址栏 -->
             <div class="bg-slate-50 border-b border-slate-200/80 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div class="flex items-center space-x-2 text-slate-600 min-w-0 font-medium">
-                <span class="text-blue-600 font-bold flex items-center space-x-1 shrink-0">
-                  <span>📁</span>
+                <span class="text-blue-600 font-bold flex items-center space-x-1.5 shrink-0">
+                  <FolderIcon size="sm" />
                   <span>根目录</span>
                 </span>
                 <span class="text-slate-300 shrink-0">/</span>
@@ -475,9 +547,11 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
                 <button
                   type="button"
                   id="btn-toggle-all-folders"
-                  class="text-[11px] font-medium text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50/60 border border-slate-200 px-2.5 py-1 rounded-lg transition-colors flex items-center space-x-1 cursor-pointer shadow-2xs"
+                  class="text-[11px] font-medium text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50/60 border border-slate-200 px-2.5 py-1 rounded-lg transition-colors flex items-center space-x-1.5 cursor-pointer shadow-2xs"
                 >
-                  <span id="btn-toggle-all-icon">📂</span>
+                  <span id="btn-toggle-all-icon" class="inline-flex items-center">
+                    <FolderIcon size="sm" open={true} />
+                  </span>
                   <span id="btn-toggle-all-text">全部折叠 / 展开</span>
                 </button>
               </div>
@@ -486,7 +560,7 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
             <!-- 资源管理器列名条 (类似 Windows/网盘 详情视图) -->
             <div class="bg-slate-100/70 border-b border-slate-200/60 px-4 py-1.5 flex items-center justify-between text-[11px] font-medium text-slate-400 select-none">
               <span class="flex-1 min-w-0 pl-1">文件名</span>
-              <span class="w-24 text-right pr-2 shrink-0">大小</span>
+              <span class="w-36 sm:w-44 text-right pr-2 shrink-0 whitespace-nowrap">大小</span>
             </div>
 
             <!-- 树形文件列表体 -->
@@ -502,13 +576,13 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
                           <span class="tree-caret w-4 text-[10px] text-slate-400 group-hover:text-blue-600 transition-transform duration-200 inline-block text-center select-none font-mono">
                             ▼
                           </span>
-                          <span class="text-base shrink-0">📁</span>
+                          <FolderIcon size="md" />
                           <span class="font-bold text-slate-800 group-hover:text-blue-700 truncate text-xs sm:text-sm" title={node.name}>
                             {node.name}
                           </span>
                         </div>
                         <div class="flex items-center space-x-2 shrink-0 pl-2">
-                          <span class="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200/80 shadow-2xs">
+                          <span class="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200/80 shadow-2xs whitespace-nowrap">
                             {node.size || `${children.length} 项`}
                           </span>
                         </div>
@@ -529,7 +603,11 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
                                   <span class="absolute -left-3 sm:-left-4 top-1/2 -mt-px w-2.5 sm:w-3.5 h-px bg-slate-200/90 pointer-events-none"></span>
 
                                   <div class="flex items-center space-x-2 min-w-0 flex-1">
-                                    <span class="text-sm shrink-0">{childIcon}</span>
+                                    {child.is_dir ? (
+                                      <FolderIcon size="sm" />
+                                    ) : (
+                                      <span class="text-sm shrink-0">{childIcon}</span>
+                                    )}
                                     <span class="font-medium text-slate-700 group-hover/file:text-blue-600 truncate text-xs" title={child.name}>
                                       {child.name}
                                     </span>
@@ -540,9 +618,9 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
                                     )}
                                   </div>
 
-                                  <div class="w-24 text-right pr-2 shrink-0">
+                                  <div class="w-36 sm:w-44 text-right pr-2 shrink-0">
                                     {child.size ? (
-                                      <span class="text-[11px] font-mono text-slate-400 group-hover/file:text-slate-600">
+                                      <span class="text-[11px] font-mono text-slate-400 group-hover/file:text-slate-600 whitespace-nowrap">
                                         {child.size}
                                       </span>
                                     ) : (
@@ -569,7 +647,11 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
                     <div class="flex items-center space-x-2 min-w-0 flex-1">
                       <!-- 占位对齐图标 -->
                       <span class="w-4 inline-block text-center text-slate-300 select-none text-[10px]">·</span>
-                      <span class="text-sm shrink-0">{fileIcon}</span>
+                      {node.is_dir ? (
+                        <FolderIcon size="sm" />
+                      ) : (
+                        <span class="text-sm shrink-0">{fileIcon}</span>
+                      )}
                       <span class="font-medium text-slate-800 group-hover/rootfile:text-blue-600 truncate text-xs sm:text-sm" title={node.name}>
                         {node.name}
                       </span>
@@ -580,9 +662,9 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
                       )}
                     </div>
 
-                    <div class="w-24 text-right pr-2 shrink-0">
+                    <div class="w-36 sm:w-44 text-right pr-2 shrink-0">
                       {node.size ? (
-                        <span class="text-[11px] font-mono text-slate-400 group-hover/rootfile:text-slate-600">
+                        <span class="text-[11px] font-mono text-slate-400 group-hover/rootfile:text-slate-600 whitespace-nowrap">
                           {node.size}
                         </span>
                       ) : (
@@ -644,6 +726,84 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
       </div>
     )}
 
+    <!-- 📚 同名校 / 同学段精选真题推荐（促进连续浏览与转存） -->
+    {relatedResources && relatedResources.length > 0 && (
+      <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div class="flex items-center space-x-2.5">
+            <span class="p-2 bg-blue-50 text-blue-600 rounded-xl text-base">📚</span>
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">
+                {resource.school ? `更多「${resource.school}」与精选推荐` : `更多「${stageLabel}」精选真题备考资料`}
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">下载了该资料的同学还转存了以下内容：</p>
+            </div>
+          </div>
+          <a
+            href={stageHref}
+            class="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center space-x-1"
+          >
+            <span>查看专区全部</span>
+            <span>➔</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {relatedResources.map((item: any) => {
+            const itemExt = (item.file_type || 'PDF').toUpperCase();
+            const isVideo = itemExt.includes('MP4') || itemExt.includes('视频') || (item.title && item.title.includes('视频'));
+            return (
+              <a
+                href={`/resource/${item.slug}`}
+                class="group p-4 bg-slate-50/70 hover:bg-blue-50/40 rounded-2xl border border-slate-200/80 hover:border-blue-300 transition duration-200 flex flex-col justify-between space-y-3"
+              >
+                <div class="space-y-2">
+                  <div class="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                    <span class={`px-2 py-0.5 text-[10px] font-bold rounded-lg ${
+                      isVideo 
+                        ? 'bg-purple-100 text-purple-700' 
+                        : 'bg-rose-100 text-rose-700'
+                    }`}>
+                      {isVideo ? '🎬 视频微课' : '📄 PDF试卷'}
+                    </span>
+                    {item.school && (
+                      <span class="px-2 py-0.5 text-[10px] font-semibold bg-blue-100 text-blue-700 rounded-lg">
+                        🏫 {item.school}
+                      </span>
+                    )}
+                    {item.subject && (
+                      <span class="px-2 py-0.5 text-[10px] font-medium bg-slate-200/80 text-slate-700 rounded-lg">
+                        {item.grade ? `${item.grade} ` : ''}{item.subject}
+                      </span>
+                    )}
+                  </div>
+                  <h3 class="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-blue-600 transition line-clamp-2 leading-snug">
+                    {item.title}
+                  </h3>
+                </div>
+
+                <div class="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-200/50">
+                  <div class="flex items-center space-x-3">
+                    <span class="flex items-center space-x-1">
+                      <span>🕒</span>
+                      <span>{item.created_at ? item.created_at.substring(0, 10) : '近期'}</span>
+                    </span>
+                    <span class="flex items-center space-x-1">
+                      <span>⚡</span>
+                      <span>{item.save_count || 0} 转存</span>
+                    </span>
+                  </div>
+                  <span class="text-blue-600 font-semibold group-hover:translate-x-0.5 transition-transform flex items-center space-x-0.5">
+                    <span>免费转存</span>
+                    <span>➔</span>
+                  </span>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    )}
 
   </div>
 
@@ -738,17 +898,21 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
       btn.addEventListener('click', (e) => {
         const code = btn.getAttribute('data-code');
         if (!code) return;
-        navigator.clipboard.writeText(code).then(() => {
-          showToast('📋 提取码已复制！');
-        }).catch(() => {
-          prompt('请手动复制提取码：', code);
-        });
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code).then(() => {
+            showToast('📋 提取码已复制：' + code);
+          }).catch(() => {
+            showToast('提取码：' + code);
+          });
+        } else {
+          showToast('提取码：' + code);
+        }
       });
     });
 
     // 绑定网盘失效报错按钮
     document.querySelectorAll('.btn-report-link').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         const linkId = btn.getAttribute('data-link-id');
         if (!linkId || linkId.startsWith('demo')) {
           showToast('⚠️ 示例链接暂不支持报错反馈');
@@ -760,7 +924,17 @@ const resourceCoverUrl = resource.coverUrl || `${imageBase}/covers/${resource.sl
           return;
         }
 
-        if (!confirm('确定该网盘链接已失效、被取消或无法打开？我们将安排管理员复核补链。')) {
+        if (window.showConfirmDialog) {
+          const ok = await window.showConfirmDialog({
+            title: '网盘链接失效报错',
+            message: '确定该网盘链接已失效、被取消或无法打开？我们将安排管理员复核并尽快补链。',
+            confirmText: '确认报错',
+            cancelText: '取消',
+            type: 'warning',
+            icon: '⚠️'
+          });
+          if (!ok) return;
+        } else if (!confirm('确定该网盘链接已失效、被取消或无法打开？我们将安排管理员复核补链。')) {
           return;
         }
 

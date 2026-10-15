@@ -12,6 +12,8 @@ import (
 	"netdisk/api/internal/database"
 	"netdisk/api/internal/model"
 	"netdisk/api/internal/service"
+	"encoding/base64"
+	"log"
 	"os"
 	"strings"
 )
@@ -20,13 +22,15 @@ type ResourceHandler struct {
 	parser   *service.NetdiskParserService
 	checker  *service.NetdiskCheckerService
 	coverGen *service.CoverGeneratorService
+	r2       *service.R2Service
 }
 
-func NewResourceHandler(parser *service.NetdiskParserService, checker *service.NetdiskCheckerService, coverGen *service.CoverGeneratorService) *ResourceHandler {
+func NewResourceHandler(parser *service.NetdiskParserService, checker *service.NetdiskCheckerService, coverGen *service.CoverGeneratorService, r2 *service.R2Service) *ResourceHandler {
 	return &ResourceHandler{
 		parser:   parser,
 		checker:  checker,
 		coverGen: coverGen,
+		r2:       r2,
 	}
 }
 
@@ -258,6 +262,115 @@ func (h *ResourceHandler) TrackResourceSave(c fiber.Ctx) error {
 	})
 }
 
+// GetPublicRelatedResources 获取同名校/同科目/同学段精选关联真题 (最多 6 条)
+func (h *ResourceHandler) GetPublicRelatedResources(c fiber.Ctx) error {
+	identifier := c.Params("id_or_slug")
+
+	var currentRes model.Resource
+	err := database.DB.Select("id, slug, stage, subject, grade, school, region").
+		Where("(slug = ? OR id::text = ?) AND is_published = ?", identifier, identifier, true).
+		First(&currentRes).Error
+
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"code":    404,
+			"message": "资源不存在",
+		})
+	}
+
+	var related []model.Resource
+	collectedIDs := []uuid.UUID{currentRes.ID}
+
+	// 1. 若有名校字段，优先匹配同一名校的其他资料 (排除自身)
+	if strings.TrimSpace(currentRes.School) != "" {
+		var schoolItems []model.Resource
+		database.DB.Model(&model.Resource{}).
+			Preload("Links").
+			Where("is_published = ? AND school = ? AND id != ?", true, currentRes.School, currentRes.ID).
+			Order("created_at DESC").
+			Limit(6).
+			Find(&schoolItems)
+
+		for _, item := range schoolItems {
+			related = append(related, item)
+			collectedIDs = append(collectedIDs, item.ID)
+		}
+	}
+
+	// 2. 若数量不足 6 条，同科目 + 同学段补充 (排除已收集)
+	if len(related) < 6 && currentRes.Subject != "" && currentRes.Stage != "" {
+		needed := 6 - len(related)
+		var subjectItems []model.Resource
+		database.DB.Model(&model.Resource{}).
+			Preload("Links").
+			Where("is_published = ? AND stage = ? AND subject = ? AND id NOT IN ?", true, currentRes.Stage, currentRes.Subject, collectedIDs).
+			Order("is_recommended DESC, view_count DESC, created_at DESC").
+			Limit(needed).
+			Find(&subjectItems)
+
+		for _, item := range subjectItems {
+			related = append(related, item)
+			collectedIDs = append(collectedIDs, item.ID)
+		}
+	}
+
+	// 3. 若仍不足 6 条，同学段最新推荐资料补充 (排除已收集)
+	if len(related) < 6 && currentRes.Stage != "" {
+		needed := 6 - len(related)
+		var stageItems []model.Resource
+		database.DB.Model(&model.Resource{}).
+			Preload("Links").
+			Where("is_published = ? AND stage = ? AND id NOT IN ?", true, currentRes.Stage, collectedIDs).
+			Order("is_recommended DESC, view_count DESC, created_at DESC").
+			Limit(needed).
+			Find(&stageItems)
+
+		for _, item := range stageItems {
+			related = append(related, item)
+			collectedIDs = append(collectedIDs, item.ID)
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"code": 200,
+		"data": related,
+	})
+}
+
+func (h *ResourceHandler) processCoverImage(slug string, coverImage string) string {
+	if coverImage == "" {
+		return ""
+	}
+	// 如果是 base64 格式图片，自动解码并直传至 Cloudflare R2
+	if strings.HasPrefix(coverImage, "data:image/") {
+		parts := strings.SplitN(coverImage, ",", 2)
+		if len(parts) == 2 {
+			decoded, err := base64.StdEncoding.DecodeString(parts[1])
+			if err != nil {
+				log.Printf("[CoverUpload] Base64 decode failed for %s: %v", slug, err)
+				return ""
+			}
+			if len(decoded) > 0 && h.r2 != nil && h.r2.IsConfigured() {
+				r2Key := fmt.Sprintf("covers/%s.png", slug)
+				r2URL, err := h.r2.UploadObject(r2Key, decoded, "image/png")
+				if err != nil {
+					log.Printf("[CoverUpload] R2 upload error for %s: %v", slug, err)
+					return ""
+				}
+				log.Printf("[CoverUpload] Successfully uploaded cover for %s to R2: %s", slug, r2URL)
+				return r2URL
+			}
+		}
+		// base64 绝对不可直接存入数据库 varchar(500)
+		return ""
+	}
+	if len(coverImage) > 500 {
+		log.Printf("[CoverUpload] Cover image URL too long (%d chars), skipping", len(coverImage))
+		return ""
+	}
+	return coverImage
+}
+
 // AdminCreateResource 后台创建资源
 func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 	var res model.Resource
@@ -275,6 +388,11 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 		res.Stage = NormalizeStage(res.Stage)
 	}
 
+	// 自动将 base64 封面直传至 Cloudflare R2 并替换为公网 CDN URL
+	if res.CoverImage != "" {
+		res.CoverImage = h.processCoverImage(res.Slug, res.CoverImage)
+	}
+
 	if err := database.DB.Create(&res).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "创建失败: " + err.Error()})
 	}
@@ -290,15 +408,19 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 	})
 }
 
-// AdminListResources 后台所有资源列表（支持按频道过滤）
+// AdminListResources 后台所有资源列表（支持按频道和学段过滤）
 func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 	channel := c.Query("channel")
+	stage := c.Query("stage")
 	page, _ := strconv.Atoi(c.Query("page", "1"))
-	pageSize, _ := strconv.Atoi(c.Query("limit", "50"))
+	pageSize, _ := strconv.Atoi(c.Query("limit", "100"))
 
 	query := database.DB.Model(&model.Resource{})
 	if channel != "" && channel != "all" {
 		query = query.Where("channel_slug = ?", channel)
+	}
+	if stage != "" && stage != "all" {
+		query = query.Where("stage = ?", NormalizeStage(stage))
 	}
 
 	var total int64
@@ -351,7 +473,9 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 	existing.FileType = req.FileType
 	existing.FileSize = req.FileSize
 	existing.PageCount = req.PageCount
-	existing.CoverImage = req.CoverImage
+	if req.CoverImage != "" {
+		existing.CoverImage = h.processCoverImage(existing.Slug, req.CoverImage)
+	}
 	existing.IsRecommended = req.IsRecommended
 	existing.IsPublished = req.IsPublished
 	if req.FileTree != nil {
@@ -384,6 +508,13 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 		existing.Links = req.Links
 	}
 
+	if req.ViewCount >= 0 {
+		existing.ViewCount = req.ViewCount
+	}
+	if req.SaveCount >= 0 {
+		existing.SaveCount = req.SaveCount
+	}
+
 	if err := database.DB.Save(&existing).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "更新失败: " + err.Error()})
 	}
@@ -396,6 +527,74 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 		"code":    200,
 		"message": "更新成功",
 		"data":    existing,
+	})
+}
+
+// AdminUpdateResourceStats 快速更新资源的浏览量和转存量（支持列表行内直接修改）
+func (h *ResourceHandler) AdminUpdateResourceStats(c fiber.Ctx) error {
+	idStr := c.Params("id")
+	resUUID, err := uuid.Parse(idStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效资源ID"})
+	}
+
+	var req struct {
+		ViewCount *int `json:"view_count"`
+		SaveCount *int `json:"save_count"`
+	}
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
+	}
+
+	updates := map[string]interface{}{}
+	if req.ViewCount != nil {
+		updates["view_count"] = *req.ViewCount
+	}
+	if req.SaveCount != nil {
+		updates["save_count"] = *req.SaveCount
+	}
+	if len(updates) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "未提供更新字段"})
+	}
+
+	if err := database.DB.Model(&model.Resource{}).Where("id = ?", resUUID).Updates(updates).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "更新失败: " + err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "更新成功",
+		"data":    updates,
+	})
+}
+
+// AdminUploadCover 后台直接上传或转存封面至 Cloudflare R2
+func (h *ResourceHandler) AdminUploadCover(c fiber.Ctx) error {
+	type UploadReq struct {
+		Slug      string `json:"slug"`
+		ImageData string `json:"image_data"`
+	}
+
+	var req UploadReq
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "请求格式错误"})
+	}
+
+	if req.ImageData == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "图片数据为空"})
+	}
+
+	if req.Slug == "" {
+		req.Slug = fmt.Sprintf("cover-%d", time.Now().UnixNano())
+	}
+
+	r2URL := h.processCoverImage(req.Slug, req.ImageData)
+	return c.JSON(fiber.Map{
+		"code": 200,
+		"data": fiber.Map{
+			"url":  r2URL,
+			"slug": req.Slug,
+		},
 	})
 }
 
@@ -441,6 +640,98 @@ func (h *ResourceHandler) AdminTogglePublish(c fiber.Ctx) error {
 		"data": fiber.Map{
 			"id":           res.ID,
 			"is_published": res.IsPublished,
+		},
+	})
+}
+
+// AdminBatchTogglePublish 后台批量上架/下架资料
+func (h *ResourceHandler) AdminBatchTogglePublish(c fiber.Ctx) error {
+	type Request struct {
+		IDs         []string `json:"ids"`
+		IsPublished bool     `json:"is_published"`
+	}
+
+	var req Request
+	if err := c.Bind().Body(&req); err != nil || len(req.IDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "请提供有效的资料ID列表",
+		})
+	}
+
+	var parsedIDs []uuid.UUID
+	for _, idStr := range req.IDs {
+		if id, err := uuid.Parse(idStr); err == nil {
+			parsedIDs = append(parsedIDs, id)
+		}
+	}
+
+	if len(parsedIDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "未找到有效的资料ID",
+		})
+	}
+
+	if err := database.DB.Model(&model.Resource{}).Where("id IN (?)", parsedIDs).Update("is_published", req.IsPublished).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code":    500,
+			"message": "批量切换状态失败: " + err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "批量切换状态成功",
+		"data": fiber.Map{
+			"affected": len(parsedIDs),
+		},
+	})
+}
+
+// AdminBatchDeleteResources 后台批量删除资料
+func (h *ResourceHandler) AdminBatchDeleteResources(c fiber.Ctx) error {
+	type Request struct {
+		IDs []string `json:"ids"`
+	}
+
+	var req Request
+	if err := c.Bind().Body(&req); err != nil || len(req.IDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "请提供需要删除的资料ID列表",
+		})
+	}
+
+	var parsedIDs []uuid.UUID
+	for _, idStr := range req.IDs {
+		if id, err := uuid.Parse(idStr); err == nil {
+			parsedIDs = append(parsedIDs, id)
+		}
+	}
+
+	if len(parsedIDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "未找到有效的资料ID",
+		})
+	}
+
+	// 1. 级联删除关联的链接
+	database.DB.Where("resource_id IN (?)", parsedIDs).Delete(&model.ResourceLink{})
+	// 2. 批量物理删除资料
+	if err := database.DB.Where("id IN (?)", parsedIDs).Delete(&model.Resource{}).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code":    500,
+			"message": "批量删除失败: " + err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "批量删除成功",
+		"data": fiber.Map{
+			"deleted_count": len(parsedIDs),
 		},
 	})
 }

@@ -23,6 +23,7 @@ interface Props {
   fileType?: string;
   fileSize?: string;
   pageCount?: number;
+  createdAt?: string | Date;
   viewCount: number;
   saveCount: number;
   isRecommended?: boolean;
@@ -44,17 +45,34 @@ const {
   school,
   fileType = "PDF",
   fileSize = "12.5 MB",
-  pageCount = 28,
+  pageCount = 0,
+  createdAt,
   viewCount = 1200,
   saveCount = 380,
   isRecommended = false,
   links = []
 } = Astro.props;
 
+// 格式化添加时间，格式：YYYY-MM-DD
+function formatAddedDate(val?: string | Date): string {
+  if (!val) return '近期';
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) {
+      return String(val).substring(0, 10);
+    }
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  } catch {
+    return '近期';
+  }
+}
+const formattedDate = formatAddedDate(createdAt);
+
 const channelInfo: Record<string, { name: string; icon: string; bg: string; text: string; border: string }> = {
-  edu: { name: '教辅备考', icon: '📚', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  tools: { name: '实用素材', icon: '🎨', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  games: { name: '怀旧单机', icon: '🎮', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' }
+  edu: { name: '教辅备考', icon: '📚', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' }
 };
 const currentCh = channelSlug ? channelInfo[channelSlug] : null;
 
@@ -76,7 +94,7 @@ const linkHasVideo = links.some(l =>
 const isVideo = rawType.includes('视频') || rawType.includes('MP4') || linkHasVideo;
 const isPdf = rawType.includes('PDF');
 const isPpt = rawType.includes('PPT');
-const isZip = rawType.includes('ZIP') || rawType.includes('RAR') || rawType.includes('7Z') || rawType.includes('游戏') || channelSlug === 'games';
+const isZip = rawType.includes('ZIP') || rawType.includes('RAR') || rawType.includes('7Z');
 ---
 
 <article class="resource-row-card bg-white rounded-2xl border border-slate-200/90 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06),0_4px_16px_-4px_rgba(15,23,42,0.04)] hover:shadow-[0_12px_28px_-6px_rgba(15,23,42,0.12),0_4px_12px_-2px_rgba(15,23,42,0.06)] hover:border-blue-400 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between group">
@@ -149,15 +167,25 @@ const isZip = rawType.includes('ZIP') || rawType.includes('RAR') || rawType.incl
           </span>
         )}
         {school ? (
-          <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 font-medium rounded-md flex items-center gap-0.5">
+          <a
+            href={`/edu?school=${encodeURIComponent(school)}`}
+            class="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-900 border border-indigo-200 font-medium rounded-md flex items-center gap-0.5 transition-colors cursor-pointer"
+            title={`点击查看「${school}」全部真题密卷`}
+            onclick="event.stopPropagation();"
+          >
             <span>🏫</span>
-            <span>{school}</span>
-          </span>
+            <span class="hover:underline">{school}</span>
+          </a>
         ) : region ? (
-          <span class="px-2 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 font-medium rounded-md flex items-center gap-0.5">
+          <a
+            href={`/edu?region=${encodeURIComponent(region)}`}
+            class="px-2 py-0.5 bg-sky-50 hover:bg-sky-100 text-sky-700 hover:text-sky-900 border border-sky-200 font-medium rounded-md flex items-center gap-0.5 transition-colors cursor-pointer"
+            title={`点击查看「${region}」全部资料`}
+            onclick="event.stopPropagation();"
+          >
             <span>📍</span>
-            <span>{region}</span>
-          </span>
+            <span class="hover:underline">{region}</span>
+          </a>
         ) : null}
         {isRecommended && (
           <span class="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 font-bold rounded-md flex items-center space-x-1">
@@ -191,12 +219,10 @@ const isZip = rawType.includes('ZIP') || rawType.includes('RAR') || rawType.incl
       <!-- 规格与社会认同数据 -->
       <div class="flex flex-wrap items-center gap-3 sm:gap-4 pt-1 text-xs text-slate-400 font-mono">
         <span class="text-slate-600 font-medium flex items-center gap-1">
-          <span>💾</span> 大小：<strong class="text-slate-700 font-semibold">{fileSize}</strong>
+          <span>🕒</span> 添加时间：<strong class="text-slate-700 font-semibold">{formattedDate}</strong>
         </span>
         <span class="text-slate-600 font-medium flex items-center gap-1">
-          <span>{isVideo ? '🎬' : '📄'}</span> 规格：<strong class="text-slate-700 font-semibold">
-            {isVideo ? (pageCount > 0 ? `${pageCount} 讲视频课` : '全套高清视频课') : (pageCount > 100 ? `${pageCount}+ 套` : `${pageCount} 页可打印`)}
-          </strong>
+          <span>💾</span> 大小：<strong class="text-slate-700 font-semibold">{fileSize}</strong>
         </span>
         <span class="hidden sm:inline-flex items-center gap-1">
           <span>👁️</span> {viewCount} 次查阅
@@ -215,19 +241,24 @@ const isZip = rawType.includes('ZIP') || rawType.includes('RAR') || rawType.incl
 
   <!-- 右侧：直达转化行动区 (桌面端垂直居中对齐；移动端作为独立底座卡片条，柔和淡雅不喧宾夺主) -->
   <div class="px-4 py-3 sm:px-5 sm:py-5 bg-slate-50/80 sm:bg-transparent border-t border-slate-100 sm:border-0 flex sm:flex-row lg:flex-col items-stretch lg:items-end justify-end gap-2 flex-shrink-0">
-    <a
-      href={primaryLink.share_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="btn-save-quark flex-1 lg:flex-initial py-2 px-3.5 sm:px-4 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 whitespace-nowrap shadow-2xs"
-      title="直接在新窗口打开夸克网盘极速转存"
-    >
-      <span class="text-amber-500 text-xs leading-none">⚡</span>
-      <span>夸克极速转存</span>
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-      </svg>
-    </a>
+    <div class="flex flex-col items-stretch lg:items-end gap-1 flex-1 lg:flex-initial">
+      <a
+        href={primaryLink.share_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn-save-quark flex-1 lg:flex-initial py-2 px-3.5 sm:px-4 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 whitespace-nowrap shadow-2xs hover:shadow-xs hover:scale-[1.02] transition-transform"
+        title="建议先保存到自己网盘：下载无损高清真题原件，可享 A4 极清打印与 4K 微课原画"
+      >
+        <span class="text-amber-500 text-xs leading-none">⚡</span>
+        <span>转存到网盘</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+      </a>
+      <span class="text-[10px] text-amber-700 font-medium text-center lg:text-right hidden sm:block select-none" title="在线预览会被压缩画质，转存到自己网盘可下载无损高清原格式">
+        💡 转存享无损A4打印&4K
+      </span>
+    </div>
 
     <div class="flex items-center gap-1.5 flex-1 lg:flex-initial">
       <a
@@ -236,6 +267,23 @@ const isZip = rawType.includes('ZIP') || rawType.includes('RAR') || rawType.incl
       >
         试看详情 ➔
       </a>
+      <button
+        type="button"
+        class="btn-bookmark-toggle p-2 text-slate-400 hover:text-amber-500 bg-slate-100/90 hover:bg-amber-50 border border-slate-200/60 hover:border-amber-200 rounded-xl transition text-center shadow-2xs sm:shadow-none shrink-0 cursor-pointer flex items-center justify-center group/bm"
+        title="加入/移出备考清单"
+        data-slug={slug}
+        data-title={title}
+        data-url={`/resource/${slug}`}
+        data-quark={primaryLink.share_url}
+        data-stage={stage}
+        data-grade={grade || ''}
+        data-subject={subject || ''}
+        data-size={fileSize}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 icon-bookmark-star" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+        </svg>
+      </button>
       <button
         type="button"
         class="btn-quick-share p-2 text-slate-400 hover:text-blue-600 bg-slate-100/90 hover:bg-blue-50 border border-slate-200/60 hover:border-blue-200 rounded-xl transition text-center shadow-2xs sm:shadow-none shrink-0 cursor-pointer flex items-center justify-center"

@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { getApiBaseUrl } from '../lib/api';
+import QRCode from 'qrcode';
 
 interface Props {
   title?: string;
@@ -12,9 +13,9 @@ interface Props {
 }
 
 const {
-  title = "学霸网 - 中小学同步教辅、网盘学习资源与考试真题平台",
-  description = "学霸网 (xuebaw.com) 免费提供中小学名校期末冲刺卷、人教版同步教辅、实用工具素材与精品网盘学习资料，支持A4高清打印与极速网盘转存。",
-  keywords = "学霸网,xuebaw.com,网盘资源,中小学试卷下载,期末冲刺卷,人教版同步教辅,夸克网盘学习资料,百度网盘资源,考试真题",
+  title,
+  description,
+  keywords,
   canonicalUrl,
   hasHeroSearch: propHasHeroSearch,
   image
@@ -89,7 +90,7 @@ try {
       eduNavStages = rawMenus.map((m: any) => ({
         id: m.id,
         title: m.title,
-        slug: m.id,
+        slug: m.link_url ? m.link_url.replace(/^\//, '').split('?')[0] : m.id,
         href: m.link_url,
         icon: m.icon || '📚',
         badgeText: m.badge_text || '',
@@ -155,10 +156,81 @@ const currentStage = isCleanStageRoute ? rawPathSlug : (currentUrl.searchParams.
 const currentQ = currentUrl.searchParams.get('q') || '';
 
 // 智能判定当前页面是否自带 Hero 大搜索框：
-// 若显式传入则优先遵从；若未传，则首页 ('/')、学段专区 ('/primary', '/junior', '/senior', '/cert', '/exam') 与各频道目录 ('/edu', '/tools', '/games') 自动判定为自带 Hero 搜索框
+// 若显式传入则优先遵从；若未传，则首页 ('/')、学段专区 ('/primary', '/junior', '/senior', '/cert', '/exam') 与教辅频道 ('/edu') 自动判定为自带 Hero 搜索框
 const hasHeroSearch = propHasHeroSearch !== undefined
   ? propHasHeroSearch
   : (currentPath === '/' || currentPath === '/edu' || STAGE_ROUTES.includes(currentPath) || navChannels.some(c => currentPath === `/${c.slug}`));
+
+// 动态拉取系统全局配置 (站点标题、全站公告、QQ交流群、客服邮箱、版权备案)
+interface SiteSettingsData {
+  site_name: string;
+  site_title: string;
+  site_subtitle: string;
+  keywords: string;
+  qq_group: string;
+  qq_group_url: string;
+  contact_email: string;
+  contact_wechat?: string;
+  icp_beian?: string;
+  gongan_beian?: string;
+  copyright_text: string;
+  disclaimer_text: string;
+  announcement_active: boolean;
+  announcement_text: string;
+  announcement_url?: string;
+  announcement_badge: string;
+  announcement_type: string;
+}
+
+let siteSettings: SiteSettingsData = {
+  site_name: "学霸网",
+  site_title: "学霸网 - 中小学同步教辅、网盘学习资源与考试真题平台",
+  site_subtitle: "中小学名校期末冲刺卷、人教版同步教辅、实用工具素材与精品网盘学习资料，支持A4高清打印与极速网盘转存。",
+  keywords: "学霸网,xuebaw.com,网盘资源,中小学试卷下载,期末冲刺卷,人教版同步教辅,夸克网盘学习资料,百度网盘资源,考试真题",
+  qq_group: "625248438",
+  qq_group_url: "https://qm.qq.com/cgi-bin/qm/qr?k=&jump_from=webapi&authKey=&uin=625248438",
+  contact_email: "support@xuebaw.com",
+  copyright_text: "© 2026 学霸网 (xuebaw.com). All rights reserved.",
+  disclaimer_text: "免责声明：本站所有资源均来自互联网公开平台与公开考试题型归纳整理，仅供个人学习研究交流使用，版权归原作者所有。",
+  announcement_active: false,
+  announcement_text: "",
+  announcement_badge: "HOT",
+  announcement_type: "blue"
+};
+
+try {
+  const setRes = await fetch(`${apiBase}/api/v1/public/settings`, { signal: AbortSignal.timeout(6000) });
+  if (setRes.ok) {
+    const setJson = await setRes.json();
+    if (setJson.data) {
+      siteSettings = { ...siteSettings, ...setJson.data };
+    }
+  }
+} catch (e) {}
+
+const defaultTitle = "学霸网 - 中小学同步教辅、网盘学习资源与考试真题平台";
+const defaultDesc = "学霸网 (xuebaw.com) 免费提供中小学名校期末冲刺卷、人教版同步教辅、实用工具素材与精品网盘学习资料，支持A4高清打印与极速网盘转存。";
+const defaultKeywords = "学霸网,xuebaw.com,网盘资源,中小学试卷下载,期末冲刺卷,人教版同步教辅,夸克网盘学习资料,百度网盘资源,考试真题";
+
+const pageTitle = title || siteSettings.site_title || defaultTitle;
+const pageDesc = description || siteSettings.site_subtitle || defaultDesc;
+const pageKeywords = keywords || siteSettings.keywords || defaultKeywords;
+
+// 构造全站分享专属二维码 (SVG 格式，高对比度免外部图片依赖)
+let siteQrSvg = '';
+try {
+  siteQrSvg = await QRCode.toString('https://xuebaw.com', {
+    type: 'svg',
+    margin: 1,
+    width: 140,
+    color: {
+      dark: '#0f172a',
+      light: '#ffffff'
+    }
+  });
+} catch (e) {
+  siteQrSvg = '';
+}
 ---
 
 <!doctype html>
@@ -170,16 +242,17 @@ const hasHeroSearch = propHasHeroSearch !== undefined
     <meta name="generator" content={Astro.generator} />
     
     <!-- SEO TDK 深度优化 -->
-    <title>{title}</title>
-    <meta name="description" content={description} />
-    <meta name="keywords" content={keywords} />
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDesc} />
+    <meta name="keywords" content={pageKeywords} />
     <link rel="canonical" href={canonicalUrl || Astro.url.href} />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     
     <!-- 微信/QQ/小红书/全社交平台 Open Graph 协议卡片与缩略图规范 -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="学霸网" />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content={siteSettings.site_name || "学霸网"} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDesc} />
     <meta property="og:url" content={canonicalUrl || Astro.url.href} />
     <meta property="og:image" content={ogImageUrl} />
     <meta property="og:image:width" content="600" />
@@ -188,8 +261,8 @@ const hasHeroSearch = propHasHeroSearch !== undefined
 
     <!-- Twitter / 现代社交媒体卡片标准 -->
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDesc} />
     <meta name="twitter:image" content={ogImageUrl} />
     
     <!-- 移动端防缩放与原生流畅渲染 -->
@@ -200,6 +273,74 @@ const hasHeroSearch = propHasHeroSearch !== undefined
     <div style="display:none;" aria-hidden="true">
       <img src={ogImageUrl} alt="学霸网资料分享缩略图" width="600" height="600" />
     </div>
+
+    <!-- 全站动态吸顶公告横幅 (由后台全局系统设置动态管控) -->
+    {siteSettings.announcement_active && siteSettings.announcement_text && (
+      <div 
+        id="top-announcement-banner"
+        data-banner-text={siteSettings.announcement_text}
+        class={`relative z-50 border-b text-xs sm:text-sm font-medium transition-all duration-300 ${
+          siteSettings.announcement_type === 'amber'
+            ? 'bg-amber-500/10 text-amber-800 border-amber-500/20'
+            : siteSettings.announcement_type === 'emerald'
+            ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20'
+            : siteSettings.announcement_type === 'rose'
+            ? 'bg-rose-500/10 text-rose-800 border-rose-500/20'
+            : 'bg-blue-600/10 text-blue-800 border-blue-600/20'
+        }`}
+      >
+        <div class="max-w-7xl mx-auto px-4 py-2 sm:py-2.5 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider bg-current/10 shrink-0">
+              {siteSettings.announcement_badge || 'HOT'}
+            </span>
+            {siteSettings.announcement_url ? (
+              <a 
+                href={siteSettings.announcement_url} 
+                class="truncate hover:underline flex items-center gap-1 font-semibold"
+              >
+                <span>{siteSettings.announcement_text}</span>
+                <span class="text-xs shrink-0">➔</span>
+              </a>
+            ) : (
+              <span class="truncate">{siteSettings.announcement_text}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            id="close-announcement-btn"
+            title="关闭公告通知"
+            class="p-1 rounded-full hover:bg-current/10 cursor-pointer shrink-0 transition-colors opacity-75 hover:opacity-100"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <script is:inline>
+        (function() {
+          try {
+            const banner = document.getElementById('top-announcement-banner');
+            const closeBtn = document.getElementById('close-announcement-btn');
+            if (!banner) return;
+            const bannerText = banner.getAttribute('data-banner-text');
+            const dismissed = localStorage.getItem('dismissed_announcement');
+            if (dismissed && dismissed === bannerText) {
+              banner.style.display = 'none';
+            }
+            if (closeBtn) {
+              closeBtn.addEventListener('click', function() {
+                banner.style.display = 'none';
+                if (bannerText) {
+                  localStorage.setItem('dismissed_announcement', bannerText);
+                }
+              });
+            }
+          } catch(e) {}
+        })();
+      </script>
+    )}
 
     <!-- 顶部导航栏 -->
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
@@ -242,29 +383,79 @@ const hasHeroSearch = propHasHeroSearch !== undefined
             <!-- 核心学段专区：小学、初中、高中、考证、公考升学 -->
             {eduNavStages.map((item) => {
               const isActive = (currentPath === item.href) || (currentStage === item.slug) || (currentPath === `/${item.slug}`);
+              const hasSubs = item.subItems && item.subItems.length > 0;
               return (
-                <a
-                  href={item.href}
-                  class={`whitespace-nowrap shrink-0 px-2.5 xl:px-3 py-1.5 rounded-xl text-xs xl:text-sm font-bold transition flex items-center space-x-1.5 ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'hover:text-blue-600 hover:bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  <span>{item.icon}</span>
-                  <span class="whitespace-nowrap">{item.title}</span>
-                  {item.badgeText && (
-                    <span class="px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded bg-red-500 text-white">
-                      {item.badgeText}
-                    </span>
+                <div class="relative group/nav">
+                  <a
+                    href={item.href}
+                    class={`whitespace-nowrap shrink-0 px-2.5 xl:px-3 py-1.5 rounded-xl text-xs xl:text-sm font-bold transition flex items-center space-x-1 ${
+                      isActive
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'hover:text-blue-600 hover:bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    <span>{item.icon}</span>
+                    <span class="whitespace-nowrap">{item.title}</span>
+                    {item.badgeText && (
+                      <span class="px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded bg-red-500 text-white">
+                        {item.badgeText}
+                      </span>
+                    )}
+                    {hasSubs && (
+                      <svg class="w-3 h-3 text-slate-400 group-hover/nav:text-blue-600 group-hover/nav:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </a>
+
+                  {hasSubs && (
+                    <div class="absolute left-0 top-full pt-1 hidden group-hover/nav:block z-50 min-w-[210px]">
+                      <div class="bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 text-xs divide-y divide-slate-50">
+                        {item.subItems!.map((sub) => (
+                          <a
+                            href={sub.href}
+                            class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-blue-50/80 hover:text-blue-600 text-slate-700 transition font-medium group/sub"
+                          >
+                            <span class="truncate">{sub.title}</span>
+                            {sub.badge && (
+                              <span class="ml-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded bg-amber-100 text-amber-700 group-hover/sub:bg-blue-100 group-hover/sub:text-blue-700">
+                                {sub.badge}
+                              </span>
+                            )}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </a>
+                </div>
               );
             })}
+
+            <!-- 求资料 / 找卷愿望池入口 -->
+            <button
+              type="button"
+              class="btn-open-request-modal whitespace-nowrap shrink-0 px-2.5 xl:px-3 py-1.5 rounded-xl text-xs xl:text-sm font-bold transition flex items-center space-x-1 text-slate-700 hover:text-blue-600 hover:bg-blue-50/80 cursor-pointer"
+              title="找不到想要的试卷资料？向平台和研友求助"
+            >
+              <span>📝</span>
+              <span class="whitespace-nowrap">求资料</span>
+            </button>
           </nav>
 
-          <!-- 顶部右侧：快捷检索框（仅在详情页等无 Hero 大搜索框的页面展示）与移动端菜单按钮 -->
+          <!-- 顶部右侧：备考清单、快捷检索框与移动端菜单按钮 -->
           <div class="flex items-center space-x-2 shrink-0">
+            <!-- 备考清单快捷打开入口 -->
+            <button
+              type="button"
+              id="header-open-bookmarks"
+              class="whitespace-nowrap shrink-0 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1 text-slate-700 hover:text-amber-600 hover:bg-amber-50 cursor-pointer border border-slate-200/80 hover:border-amber-200 shadow-2xs"
+              title="查看我的备考清单 / 本地收藏夹"
+            >
+              <span class="text-amber-500 text-sm leading-none">⭐️</span>
+              <span class="hidden sm:inline">清单</span>
+              <span class="bookmark-count-badge px-1.5 py-0.2 bg-amber-500 text-white text-[10px] font-black rounded-full hidden">0</span>
+            </button>
+
             {!hasHeroSearch && (
               <>
                 <!-- 详情页桌面端快速检索框 -->
@@ -308,6 +499,9 @@ const hasHeroSearch = propHasHeroSearch !== undefined
       <!-- 移动端学段横向平滑滚动条 -->
       <div class="lg:hidden bg-white/95 border-t border-slate-100 px-3 py-2 flex items-center space-x-1.5 overflow-x-auto no-scrollbar">
         <span class="text-[11px] font-bold text-slate-400 whitespace-nowrap">直达:</span>
+        <button type="button" class="btn-open-request-modal whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center space-x-0.5 cursor-pointer">
+          <span>📝</span><span>求资料</span>
+        </button>
         <a href="/" class={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold transition ${currentPath === '/' && !currentStage && !currentQ ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>全部</a>
         <a href="/primary?q=小升初" class="whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 flex items-center space-x-0.5">
           <span>🎯</span><span>小升初</span>
@@ -366,30 +560,50 @@ const hasHeroSearch = propHasHeroSearch !== undefined
       <div class="flex-1 overflow-y-auto p-4 space-y-4">
         <div>
           <div class="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1">
-            <span>🏷️</span><span>核心专区</span>
+            <span>🏷️</span><span>核心专区与精选分类</span>
           </div>
-          <div class="grid grid-cols-2 gap-2">
+          <div class="space-y-2.5">
             <a
               href="/"
-              class="p-3 bg-white hover:bg-blue-50 border border-slate-200/90 rounded-2xl flex flex-col justify-between shadow-2xs transition"
+              class="p-2.5 bg-white hover:bg-blue-50 border border-slate-200/90 rounded-xl flex items-center justify-between shadow-2xs transition"
             >
               <div class="flex items-center space-x-2">
-                <span class="text-xl">🌐</span>
+                <span class="text-base">🌐</span>
                 <span class="font-bold text-xs text-slate-900">全部资源</span>
               </div>
-              <span class="text-[10px] text-blue-600 font-medium mt-1">浏览全站 ➔</span>
+              <span class="text-[10px] text-blue-600 font-medium">浏览全站 ➔</span>
             </a>
+
             {eduNavStages.map((stage) => (
-              <a
-                href={stage.href}
-                class="p-3 bg-white hover:bg-blue-50 border border-slate-200/90 rounded-2xl flex flex-col justify-between shadow-2xs transition"
-              >
-                <div class="flex items-center space-x-2">
-                  <span class="text-xl">{stage.icon}</span>
-                  <span class="font-bold text-xs text-slate-900">{stage.title}</span>
-                </div>
-                <span class="text-[10px] text-blue-600 font-medium mt-1">进入专区 ➔</span>
-              </a>
+              <div class="bg-white border border-slate-200/90 rounded-xl p-2.5 space-y-2">
+                <a href={stage.href} class="flex items-center justify-between font-bold text-xs text-slate-900 hover:text-blue-600 transition">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="text-base">{stage.icon}</span>
+                    <span>{stage.title}</span>
+                    {stage.badgeText && (
+                      <span class="px-1.5 py-0.2 text-[9px] font-bold rounded bg-red-500 text-white">
+                        {stage.badgeText}
+                      </span>
+                    )}
+                  </div>
+                  <span class="text-[10px] text-blue-600 font-medium">进入专区 ➔</span>
+                </a>
+                {stage.subItems && stage.subItems.length > 0 && (
+                  <div class="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-100">
+                    {stage.subItems.map((sub) => (
+                      <a
+                        href={sub.href}
+                        class="px-2 py-1 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-[11px] text-slate-700 truncate transition flex items-center justify-between"
+                      >
+                        <span class="truncate">{sub.title}</span>
+                        {sub.badge && (
+                          <span class="ml-1 text-[8px] px-1 py-0.2 bg-amber-100 text-amber-700 rounded font-bold shrink-0">{sub.badge}</span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -451,21 +665,376 @@ const hasHeroSearch = propHasHeroSearch !== undefined
             </ul>
           </div>
           <div>
-            <div class="font-semibold text-slate-700 mb-2">版权保护与合规通道</div>
-            <p class="text-xs text-slate-500 leading-relaxed">
-              侵权投诉/下架建议：<br />
-              <span class="font-mono text-slate-700">support@xuebaw.com</span><br />
-              收到邮件后我们将在 24 小时内彻底核实并下架链接。
+            <div class="font-semibold text-slate-700 mb-2">官方交流与防走失</div>
+            <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1 mb-2.5">
+              <div class="text-[11px] text-slate-500">官方备考交流 QQ 群：</div>
+              <div class="font-mono font-bold text-blue-600 text-sm flex items-center justify-between">
+                <span>{siteSettings.qq_group}</span>
+                <button
+                  type="button"
+                  onclick={`navigator.clipboard.writeText('${siteSettings.qq_group}'); if(window.showGlobalToast) window.showGlobalToast('QQ群号 ${siteSettings.qq_group} 已复制！', '🐧');`}
+                  class="text-[10px] font-sans px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded cursor-pointer transition-colors"
+                >
+                  复制
+                </button>
+              </div>
+              <div class="text-[10px] text-slate-400">资源速递 · 补链反馈 · 永久防失联</div>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              侵权与下架：<span class="font-mono text-slate-600">{siteSettings.contact_email}</span>
             </p>
           </div>
         </div>
 
         <div class="border-t border-slate-100 pt-6 text-xs text-slate-400 text-center space-y-1">
-          <p>免责声明：本站所有资源均来自互联网公开平台与公开考试题型归纳整理，仅供个人学习研究交流使用，版权归原作者所有。</p>
-          <p>© 2026 学霸网 (xuebaw.com). All rights reserved.</p>
+          <p>{siteSettings.disclaimer_text}</p>
+          <p>{siteSettings.copyright_text}</p>
+          {(siteSettings.icp_beian || siteSettings.gongan_beian) && (
+            <div class="flex items-center justify-center gap-4 text-[11px] text-slate-400 font-mono pt-1">
+              {siteSettings.icp_beian && <span>{siteSettings.icp_beian}</span>}
+              {siteSettings.gongan_beian && <span>{siteSettings.gongan_beian}</span>}
+            </div>
+          )}
         </div>
       </div>
     </footer>
+
+    <!-- 悬浮快捷服务中心 (备考清单 + 找卷求助 + 推荐本站) -->
+    <div class="fixed bottom-6 right-5 z-40 flex flex-col items-end space-y-2 pointer-events-auto">
+      <button
+        type="button"
+        id="floating-bookmarks-btn"
+        class="group flex items-center space-x-1.5 px-3.5 py-2.5 bg-white/95 hover:bg-amber-50 text-slate-700 hover:text-amber-700 border border-slate-200/90 hover:border-amber-300 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer backdrop-blur-md"
+        title="打开备考清单 / 本地收藏夹"
+      >
+        <span class="text-amber-500 text-base leading-none">⭐️</span>
+        <span class="text-xs font-bold hidden sm:inline">备考清单</span>
+        <span class="bookmark-count-badge px-1.5 py-0.2 bg-amber-500 text-white text-[10px] font-black rounded-full hidden">0</span>
+      </button>
+
+      <button
+        type="button"
+        class="btn-open-request-modal group flex items-center space-x-1.5 px-3.5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+        title="没有找到想要的真题？点此提交求助"
+      >
+        <span class="text-sm leading-none">📝</span>
+        <span class="text-xs font-bold hidden sm:inline">找卷求助</span>
+      </button>
+
+      <!-- 🎁 推荐本站 (全站分享与大白话口碑引流，置于最下方方便随时点击) -->
+      <button
+        type="button"
+        id="floating-recommend-site-btn"
+        class="group flex items-center space-x-1.5 px-3.5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer select-none"
+        title="推荐学霸网给好友 / 班级群"
+      >
+        <span class="text-base leading-none">🎁</span>
+        <span class="text-xs font-bold hidden sm:inline">推荐本站</span>
+      </button>
+    </div>
+
+    <!-- 备考清单抽屉 (Slide-over Drawer) -->
+    <div id="bookmarks-backdrop" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    <aside id="bookmarks-drawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-sm sm:max-w-md bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+      <!-- 抽屉头部 -->
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-50/70 to-white">
+        <div class="flex items-center space-x-2.5">
+          <span class="w-8 h-8 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-base">
+            ⭐️
+          </span>
+          <div>
+            <div class="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+              <span>我的备考清单</span>
+              <span class="bookmark-count-badge px-1.5 py-0.2 bg-amber-500 text-white text-[10px] font-black rounded-full">0</span>
+            </div>
+            <div class="text-[11px] text-slate-400">本地免登录保存 · 一键直达极速转存</div>
+          </div>
+        </div>
+        <button id="close-bookmarks-drawer" type="button" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer" title="关闭清单">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- 抽屉内容列表 -->
+      <div id="bookmarks-list" class="flex-1 overflow-y-auto p-4 space-y-3">
+        <!-- 动态由 JS 填充 -->
+      </div>
+
+      <!-- 抽屉底部工具栏 -->
+      <div class="p-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          id="btn-clear-bookmarks"
+          class="px-3 py-2 text-xs font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer"
+        >
+          🗑️ 清空清单
+        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            id="btn-copy-bookmarks"
+            class="px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200/90 rounded-xl transition shadow-2xs cursor-pointer flex items-center gap-1"
+            title="一键复制清单链接发到微信/QQ"
+          >
+            <span>📋</span>
+            <span>复制清单</span>
+          </button>
+          <button
+            type="button"
+            id="btn-batch-open-quark"
+            class="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl transition shadow-xs cursor-pointer flex items-center gap-1"
+            title="在新标签页批量打开夸克转存"
+          >
+            <span>⚡ 全部转存</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 求资料 / 找卷愿望池弹窗 -->
+    <div id="request-modal-backdrop" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    <div id="request-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none opacity-0 transition-all duration-300">
+      <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden transform scale-95 transition-transform duration-300 pointer-events-auto flex flex-col max-h-[90vh]">
+        <!-- 弹窗顶栏 -->
+        <div class="p-5 pb-3 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50/70 to-indigo-50/40">
+          <div class="flex items-center space-x-2.5">
+            <span class="w-9 h-9 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-lg shadow-sm">
+              📝
+            </span>
+            <div>
+              <h3 class="font-extrabold text-slate-900 text-base">找卷求资料 · 互助愿望池</h3>
+              <p class="text-[11px] text-slate-500">没搜到想要的高清试卷或微课？提交心愿，平台研友帮您速寻！</p>
+            </div>
+          </div>
+          <button id="close-request-modal" type="button" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl cursor-pointer" title="关闭">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- 选项卡切换: 提交新心愿 / 查看大家都在找 -->
+        <div class="flex border-b border-slate-100 px-5 bg-slate-50/60 text-xs font-bold">
+          <button type="button" id="tab-req-form" class="py-2.5 px-3 border-b-2 border-blue-600 text-blue-600 cursor-pointer">
+            ✍️ 我要求资料
+          </button>
+          <button type="button" id="tab-req-trending" class="py-2.5 px-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 cursor-pointer flex items-center gap-1">
+            <span>🔥 大家都在找</span>
+            <span class="px-1.5 py-0.2 bg-red-100 text-red-600 text-[10px] rounded-full font-bold">HOT</span>
+          </button>
+        </div>
+
+        <!-- 内容区域 1: 提交表单 -->
+        <form id="request-form" class="p-5 overflow-y-auto space-y-3.5 flex-1">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">资料/试卷名称 <span class="text-red-500">*</span></label>
+            <input
+              type="text"
+              name="title"
+              required
+              placeholder="例如：2025海淀初二上学期期末数学试卷及答案"
+              class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
+            />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">所属学段/分类</label>
+              <select
+                name="stage"
+                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 outline-none transition"
+              >
+                <option value="小学">小学 (1-6年级)</option>
+                <option value="初中" selected>初中 (中考/初一至初三)</option>
+                <option value="高中">高中 (高考/高一至高三)</option>
+                <option value="考证">考证 (教师资格/四六级等)</option>
+                <option value="公考">公考 (国省考/事业单位)</option>
+                <option value="其它">其它优质学习资料</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">学科/科目</label>
+              <input
+                type="text"
+                name="subject"
+                placeholder="例如：数学 / 物理 / 行测"
+                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 outline-none transition"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">补充说明 (版本/题型/急需说明)</label>
+            <textarea
+              name="description"
+              rows="2"
+              placeholder="例如：人教版，最好附带手写详细解答过程，下周模拟考急用..."
+              class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none"
+            ></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              联系方式 <span class="text-slate-400 font-normal text-[11px]">(选填，仅用于上架后第一时间通知您)</span>
+            </label>
+            <input
+              type="text"
+              name="contact_info"
+              placeholder="QQ号 / 微信 / 邮箱 (系统隐私加密严格脱敏)"
+              class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 outline-none transition"
+            />
+            <p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+              <span>🔒</span>
+              <span>隐私保护承诺：联系方式仅后台内部核对，对外完全脱敏隐藏。</span>
+            </p>
+          </div>
+
+          <div class="pt-2 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              id="cancel-request-form"
+              class="px-4 py-2 text-xs font-medium text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              id="submit-request-btn"
+              class="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5"
+            >
+              <span>🚀</span>
+              <span>立即提交愿望</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- 内容区域 2: 热门心愿池列表 -->
+        <div id="request-trending-container" class="p-5 overflow-y-auto space-y-3 hidden flex-1">
+          <div id="trending-list-loading" class="text-center py-8 text-xs text-slate-400">
+            加载热门心愿中...
+          </div>
+          <div id="trending-list-items" class="space-y-2.5">
+            <!-- 动态渲染 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🎁 推荐学霸网给好友/班级群 专属模态弹窗 (Share Website Modal) -->
+    <div id="site-recommend-backdrop" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    <div id="site-recommend-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none opacity-0 transition-all duration-300">
+      <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden transform scale-95 transition-all duration-300 pointer-events-auto flex flex-col max-h-[90vh]">
+        <!-- 弹窗头部 -->
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white">
+          <div class="flex items-center space-x-3">
+            <span class="w-10 h-10 rounded-2xl bg-emerald-100/80 border border-emerald-200 flex items-center justify-center text-xl shadow-2xs">
+              🎁
+            </span>
+            <div>
+              <h3 class="font-extrabold text-slate-900 text-base">
+                分享学霸网给好友 / 班级群
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">好资料一起学，一键复制文案分享到微信群或好友</p>
+            </div>
+          </div>
+          <button id="close-site-recommend-modal" type="button" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl cursor-pointer" title="关闭弹窗">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-5 overflow-y-auto space-y-4">
+          <!-- 场景 Tab 切换 -->
+          <div class="flex p-1 bg-slate-100 rounded-2xl gap-1 text-xs font-bold">
+            <button
+              type="button"
+              class="site-rec-tab flex-1 py-2 rounded-xl text-center transition cursor-pointer bg-white text-emerald-700 shadow-xs"
+              data-tab="parent"
+            >
+              💬 发到班级/家长群
+            </button>
+            <button
+              type="button"
+              class="site-rec-tab flex-1 py-2 rounded-xl text-center text-slate-500 hover:text-slate-800 transition cursor-pointer"
+              data-tab="moments"
+            >
+              📕 发到朋友圈
+            </button>
+            <button
+              type="button"
+              class="site-rec-tab flex-1 py-2 rounded-xl text-center text-slate-500 hover:text-slate-800 transition cursor-pointer"
+              data-tab="direct"
+            >
+              ⚡ 一对一发给好友
+            </button>
+          </div>
+
+          <!-- 文案文本框 (支持自由修改) -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <label class="font-bold text-slate-700">推荐文案预览（可直接编辑）：</label>
+              <span class="text-slate-400">点击下方按钮一键复制</span>
+            </div>
+            <textarea
+              id="site-recommend-textarea"
+              rows="5"
+              class="w-full p-3.5 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition leading-relaxed resize-none font-sans"
+            ></textarea>
+          </div>
+
+          <!-- 手机扫码直达区域 -->
+          <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              {siteQrSvg && (
+                <div class="w-14 h-14 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs shrink-0 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full" set:html={siteQrSvg}></div>
+              )}
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span>📱 微信 / 手机直接扫码打开</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-0.5 truncate">
+                  支持拍照或发截图给好友直接扫码
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="btn-copy-site-url"
+              class="shrink-0 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs"
+            >
+              仅复制网址
+            </button>
+          </div>
+        </div>
+
+        <!-- 弹窗底部操作区 -->
+        <div class="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
+          <div class="text-[11px] text-slate-400 hidden sm:block">
+            <span>官方网址：https://xuebaw.com</span>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              id="btn-close-site-rec-bottom"
+              class="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              id="btn-copy-site-recommend"
+              class="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>📋</span>
+              <span>一键复制推荐文案</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 全局轻量微交互吐司 (Toast) 提示容器 -->
     <div id="global-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 -translate-y-2 transition-all duration-300 ease-out flex items-center space-x-2 px-4 py-2.5 bg-slate-900/90 text-white text-xs sm:text-sm font-semibold rounded-2xl shadow-xl backdrop-blur-md border border-slate-700/60 max-w-sm text-center">
@@ -473,8 +1042,46 @@ const hasHeroSearch = propHasHeroSearch !== undefined
       <span id="global-toast-msg">已复制！</span>
     </div>
 
-    <!-- 移动端全景分类抽屉交互逻辑与全局分享复制助手 -->
+    <!-- 全局现代高颜值沉浸式操作确认对话框 (Modern Glassmorphic Confirm Dialog) -->
+    <div id="global-confirm-backdrop" class="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-200"></div>
+    <div id="global-confirm-modal" class="fixed inset-0 z-[120] flex items-center justify-center p-4 pointer-events-none opacity-0 transition-all duration-200">
+      <div class="w-full max-w-sm sm:max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden transform scale-95 transition-all duration-200 pointer-events-auto p-6 space-y-4">
+        <div class="flex items-start space-x-3.5">
+          <div id="confirm-icon-box" class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80 flex items-center justify-center text-xl shrink-0 shadow-2xs">
+            ⚠️
+          </div>
+          <div class="min-w-0 flex-1 pt-0.5">
+            <h3 id="confirm-dialog-title" class="text-base font-extrabold text-slate-900 leading-snug">
+              确认操作
+            </h3>
+            <p id="confirm-dialog-message" class="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed whitespace-pre-line">
+              您确定要继续此操作吗？
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2">
+          <button
+            type="button"
+            id="confirm-btn-cancel"
+            class="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition cursor-pointer"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            id="confirm-btn-ok"
+            class="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 rounded-xl shadow-md transition cursor-pointer"
+          >
+            确定
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 客户端交互逻辑核心引擎 -->
     <script is:inline>
+      // 全局轻量微交互吐司
       window.showGlobalToast = function(msg, icon = '🎉', duration = 3000) {
         const toast = document.getElementById('global-toast');
         const msgEl = document.getElementById('global-toast-msg');
@@ -491,36 +1098,499 @@ const hasHeroSearch = propHasHeroSearch !== undefined
         }, duration);
       };
 
-      document.addEventListener('DOMContentLoaded', () => {
-        const openBtn = document.getElementById('open-mobile-drawer');
-        const openSubBtn = document.getElementById('open-mobile-drawer-sub');
-        const closeBtn = document.getElementById('close-mobile-drawer');
-        const drawer = document.getElementById('mobile-drawer');
-        const backdrop = document.getElementById('mobile-drawer-backdrop');
+      // 全局高颜值异步确认对话框 (彻底告别丑陋的原生 confirm)
+      window.showConfirmDialog = function(options = {}) {
+        return new Promise((resolve) => {
+          const backdrop = document.getElementById('global-confirm-backdrop');
+          const modal = document.getElementById('global-confirm-modal');
+          const titleEl = document.getElementById('confirm-dialog-title');
+          const msgEl = document.getElementById('confirm-dialog-message');
+          const okBtn = document.getElementById('confirm-btn-ok');
+          const cancelBtn = document.getElementById('confirm-btn-cancel');
+          const iconBox = document.getElementById('confirm-icon-box');
 
-        function openDrawer() {
-          drawer?.classList.remove('translate-x-full');
-          backdrop?.classList.remove('opacity-0', 'pointer-events-none');
+          if (!modal || !backdrop) {
+            resolve(confirm(options.message || ''));
+            return;
+          }
+
+          titleEl.textContent = options.title || '操作确认';
+          msgEl.textContent = options.message || '';
+          okBtn.textContent = options.confirmText || '确定';
+          cancelBtn.textContent = options.cancelText || '取消';
+
+          const type = options.type || 'warning';
+          if (type === 'danger') {
+            iconBox.className = 'w-11 h-11 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200/80 flex items-center justify-center text-xl shrink-0 shadow-2xs';
+            iconBox.textContent = options.icon || '🗑️';
+            okBtn.className = 'px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 rounded-xl shadow-md transition cursor-pointer';
+          } else if (type === 'warning') {
+            iconBox.className = 'w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80 flex items-center justify-center text-xl shrink-0 shadow-2xs';
+            iconBox.textContent = options.icon || '⚠️';
+            okBtn.className = 'px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 rounded-xl shadow-md transition cursor-pointer';
+          } else {
+            iconBox.className = 'w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200/80 flex items-center justify-center text-xl shrink-0 shadow-2xs';
+            iconBox.textContent = options.icon || 'ℹ️';
+            okBtn.className = 'px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-md transition cursor-pointer';
+          }
+
+          function cleanup(result) {
+            modal.classList.add('pointer-events-none', 'opacity-0');
+            modal.querySelector('div')?.classList.add('scale-95');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            backdrop.removeEventListener('click', onCancel);
+            window.removeEventListener('keydown', onKeyDown);
+            resolve(result);
+          }
+
+          function onOk() { cleanup(true); }
+          function onCancel() { cleanup(false); }
+          function onKeyDown(e) {
+            if (e.key === 'Escape') onCancel();
+          }
+
+          okBtn.addEventListener('click', onOk);
+          cancelBtn.addEventListener('click', onCancel);
+          backdrop.addEventListener('click', onCancel);
+          window.addEventListener('keydown', onKeyDown);
+
+          backdrop.classList.remove('opacity-0', 'pointer-events-none');
+          modal.classList.remove('pointer-events-none', 'opacity-0');
+          modal.querySelector('div')?.classList.remove('scale-95');
+        });
+      };
+
+      document.addEventListener('DOMContentLoaded', () => {
+        // ==========================================
+        // 1. 移动端分类抽屉
+        // ==========================================
+        const openMobileBtn = document.getElementById('open-mobile-drawer');
+        const openMobileSubBtn = document.getElementById('open-mobile-drawer-sub');
+        const closeMobileBtn = document.getElementById('close-mobile-drawer');
+        const mobileDrawer = document.getElementById('mobile-drawer');
+        const mobileBackdrop = document.getElementById('mobile-drawer-backdrop');
+
+        function openMobileDrawer() {
+          mobileDrawer?.classList.remove('translate-x-full');
+          mobileBackdrop?.classList.remove('opacity-0', 'pointer-events-none');
           document.body.style.overflow = 'hidden';
         }
+        function closeMobileDrawer() {
+          mobileDrawer?.classList.add('translate-x-full');
+          mobileBackdrop?.classList.add('opacity-0', 'pointer-events-none');
+          document.body.style.overflow = '';
+        }
+        openMobileBtn?.addEventListener('click', openMobileDrawer);
+        openMobileSubBtn?.addEventListener('click', openMobileDrawer);
+        closeMobileBtn?.addEventListener('click', closeMobileDrawer);
+        mobileBackdrop?.addEventListener('click', closeMobileDrawer);
+        mobileDrawer?.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMobileDrawer));
 
-        function closeDrawer() {
-          drawer?.classList.add('translate-x-full');
-          backdrop?.classList.add('opacity-0', 'pointer-events-none');
+        // ==========================================
+        // 2. 备考清单 / 本地收藏夹核心引擎 (LocalStorage)
+        // ==========================================
+        const BOOKMARK_STORAGE_KEY = 'xueba_bookmarks';
+        function getBookmarks() {
+          try {
+            const data = localStorage.getItem(BOOKMARK_STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+          } catch {
+            return [];
+          }
+        }
+        function setBookmarks(list) {
+          try {
+            localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify(list));
+            updateAllBookmarkUI();
+          } catch {}
+        }
+
+        const bDrawer = document.getElementById('bookmarks-drawer');
+        const bBackdrop = document.getElementById('bookmarks-backdrop');
+        const bListEl = document.getElementById('bookmarks-list');
+
+        function openBookmarksDrawer() {
+          renderBookmarksList();
+          bDrawer?.classList.remove('translate-x-full');
+          bBackdrop?.classList.remove('opacity-0', 'pointer-events-none');
+          document.body.style.overflow = 'hidden';
+        }
+        function closeBookmarksDrawer() {
+          bDrawer?.classList.add('translate-x-full');
+          bBackdrop?.classList.add('opacity-0', 'pointer-events-none');
           document.body.style.overflow = '';
         }
 
-        openBtn?.addEventListener('click', openDrawer);
-        openSubBtn?.addEventListener('click', openDrawer);
-        closeBtn?.addEventListener('click', closeDrawer);
-        backdrop?.addEventListener('click', closeDrawer);
+        document.getElementById('header-open-bookmarks')?.addEventListener('click', openBookmarksDrawer);
+        document.getElementById('floating-bookmarks-btn')?.addEventListener('click', openBookmarksDrawer);
+        document.getElementById('close-bookmarks-drawer')?.addEventListener('click', closeBookmarksDrawer);
+        bBackdrop?.addEventListener('click', closeBookmarksDrawer);
 
-        // 点击抽屉内任意链接后自动平滑收起抽屉
-        drawer?.querySelectorAll('a').forEach(link => {
-          link.addEventListener('click', closeDrawer);
+        function updateAllBookmarkUI() {
+          const list = getBookmarks();
+          const count = list.length;
+          // 更新所有角标
+          document.querySelectorAll('.bookmark-count-badge').forEach(badge => {
+            badge.textContent = count;
+            if (count > 0) {
+              badge.classList.remove('hidden');
+            } else {
+              badge.classList.add('hidden');
+            }
+          });
+
+          // 更新卡片星星图标状态
+          const slugSet = new Set(list.map(item => item.slug));
+          document.querySelectorAll('.btn-bookmark-toggle').forEach(btn => {
+            const slug = btn.getAttribute('data-slug');
+            const svg = btn.querySelector('.icon-bookmark-star');
+            if (!slug || !svg) return;
+            if (slugSet.has(slug)) {
+              btn.classList.add('text-amber-500', 'bg-amber-50', 'border-amber-300');
+              btn.classList.remove('text-slate-400');
+              svg.setAttribute('fill', 'currentColor');
+            } else {
+              btn.classList.remove('text-amber-500', 'bg-amber-50', 'border-amber-300');
+              btn.classList.add('text-slate-400');
+              svg.setAttribute('fill', 'none');
+            }
+          });
+        }
+
+        function renderBookmarksList() {
+          if (!bListEl) return;
+          const list = getBookmarks();
+          if (list.length === 0) {
+            bListEl.innerHTML = `
+              <div class="text-center py-16 space-y-3">
+                <div class="text-4xl">⭐️</div>
+                <div class="font-bold text-slate-800 text-sm">备考清单空空如也</div>
+                <p class="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+                  在任意试卷卡片右侧点击“⭐️”图标，即可将资料收藏到此处，备考前集中转存不迷路！
+                </p>
+              </div>
+            `;
+            return;
+          }
+
+          bListEl.innerHTML = list.map((item, idx) => `
+            <div class="p-3.5 bg-slate-50/80 hover:bg-slate-50 border border-slate-200/80 rounded-2xl transition space-y-2 group" data-idx="${idx}">
+              <div class="flex items-start justify-between gap-2">
+                <a href="${item.url}" class="text-xs font-bold text-slate-900 hover:text-blue-600 transition line-clamp-2 leading-snug">
+                  ${item.title}
+                </a>
+                <button type="button" class="btn-remove-single-bm text-slate-400 hover:text-red-600 p-1 rounded-lg text-xs transition cursor-pointer" data-slug="${item.slug}" title="移出清单">
+                  ✕
+                </button>
+              </div>
+              <div class="flex items-center justify-between gap-2 pt-1">
+                <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono">
+                  ${item.grade ? `<span class="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-slate-600">${item.grade}</span>` : ''}
+                  ${item.subject ? `<span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">${item.subject}</span>` : ''}
+                  <span>${item.size || ''}</span>
+                </div>
+                <a
+                  href="${item.quark || item.url}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                >
+                  <span>⚡</span><span>极速转存</span>
+                </a>
+              </div>
+            </div>
+          `).join('');
+
+          // 绑定单个删除事件
+          bListEl.querySelectorAll('.btn-remove-single-bm').forEach(delBtn => {
+            delBtn.addEventListener('click', (e) => {
+              const slug = delBtn.getAttribute('data-slug');
+              const curList = getBookmarks();
+              const nextList = curList.filter(item => item.slug !== slug);
+              setBookmarks(nextList);
+              renderBookmarksList();
+              window.showGlobalToast('已移出备考清单', '🗑️');
+            });
+          });
+        }
+
+        // 清空备考清单
+        document.getElementById('btn-clear-bookmarks')?.addEventListener('click', async () => {
+          if (getBookmarks().length === 0) return;
+          const ok = await window.showConfirmDialog({
+            title: '清空备考清单',
+            message: '确定要清空全部备考清单吗？清空后当前已保存的全部真题资料将被移除。',
+            confirmText: '确定清空',
+            cancelText: '取消',
+            type: 'danger',
+            icon: '🗑️'
+          });
+          if (ok) {
+            setBookmarks([]);
+            renderBookmarksList();
+            window.showGlobalToast('备考清单已清空', '🧹');
+          }
         });
 
-        // 全局绑定列表卡片快捷分享推荐按钮
+        // 一键复制备考清单
+        document.getElementById('btn-copy-bookmarks')?.addEventListener('click', () => {
+          const list = getBookmarks();
+          if (list.length === 0) {
+            window.showGlobalToast('清单为空，快去添加资料吧！', 'ℹ️');
+            return;
+          }
+          let text = `【学霸网 · 我的备考资料清单】共 ${list.length} 份精品真题资料：\n\n`;
+          list.forEach((item, i) => {
+            text += `${i + 1}. 《${item.title}》\n直达转存：${item.quark || (window.location.origin + item.url)}\n\n`;
+          });
+          text += `学霸网 (xuebaw.com) - 高清中小学名校冲刺密卷与备考资料库`;
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+              window.showGlobalToast('全部备考清单链接已复制到剪贴板！', '📋');
+            });
+          } else {
+            window.showGlobalToast('复制成功！', '📋');
+          }
+        });
+
+        // 批量打开转存
+        document.getElementById('btn-batch-open-quark')?.addEventListener('click', () => {
+          const list = getBookmarks();
+          if (list.length === 0) {
+            window.showGlobalToast('清单为空，请先添加资料！', 'ℹ️');
+            return;
+          }
+          const links = list.map(item => item.quark).filter(url => url && url.startsWith('http'));
+          if (links.length === 0) {
+            window.showGlobalToast('清单内无有效网盘直达链接', '⚠️');
+            return;
+          }
+          // 打开第一个或提示用户
+          window.open(links[0], '_blank');
+          if (links.length > 1) {
+            window.showGlobalToast(`已打开第 1 份资料，请允许浏览器弹出窗口以继续打开其余 ${links.length - 1} 份`, '⚡');
+            for (let i = 1; i < Math.min(links.length, 5); i++) {
+              setTimeout(() => { window.open(links[i], '_blank'); }, i * 400);
+            }
+          }
+        });
+
+        // 全局代理点击卡片收藏按钮
+        document.addEventListener('click', (e) => {
+          const toggleBtn = e.target.closest('.btn-bookmark-toggle');
+          if (!toggleBtn) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          const slug = toggleBtn.getAttribute('data-slug');
+          const title = toggleBtn.getAttribute('data-title');
+          const url = toggleBtn.getAttribute('data-url');
+          const quark = toggleBtn.getAttribute('data-quark');
+          const stage = toggleBtn.getAttribute('data-stage');
+          const grade = toggleBtn.getAttribute('data-grade');
+          const subject = toggleBtn.getAttribute('data-subject');
+          const size = toggleBtn.getAttribute('data-size');
+
+          const curList = getBookmarks();
+          const exists = curList.some(item => item.slug === slug);
+
+          if (exists) {
+            const nextList = curList.filter(item => item.slug !== slug);
+            setBookmarks(nextList);
+            window.showGlobalToast(`已从备考清单移出`, '⭐️');
+          } else {
+            curList.push({
+              slug,
+              title,
+              url,
+              quark,
+              stage,
+              grade,
+              subject,
+              size,
+              addedAt: new Date().toISOString()
+            });
+            setBookmarks(curList);
+            window.showGlobalToast(`已加入备考清单！点击右下角可随时查看`, '⭐️');
+          }
+        });
+
+        // 初始化加载一次本地收藏 UI
+        updateAllBookmarkUI();
+
+        // ==========================================
+        // 3. 求资料 / 找卷愿望池弹窗流程
+        // ==========================================
+        const reqModal = document.getElementById('request-modal');
+        const reqBackdrop = document.getElementById('request-modal-backdrop');
+        const reqForm = document.getElementById('request-form');
+        const closeReqBtn = document.getElementById('close-request-modal');
+        const cancelReqBtn = document.getElementById('cancel-request-form');
+        const tabReqForm = document.getElementById('tab-req-form');
+        const tabReqTrending = document.getElementById('tab-req-trending');
+        const trendingContainer = document.getElementById('request-trending-container');
+        const trendingLoading = document.getElementById('trending-list-loading');
+        const trendingItems = document.getElementById('trending-list-items');
+
+        function openRequestModal() {
+          reqModal?.classList.remove('pointer-events-none', 'opacity-0');
+          reqModal?.querySelector('div')?.classList.remove('scale-95');
+          reqBackdrop?.classList.remove('opacity-0', 'pointer-events-none');
+          document.body.style.overflow = 'hidden';
+          switchRequestTab('form');
+        }
+
+        function closeRequestModal() {
+          reqModal?.classList.add('pointer-events-none', 'opacity-0');
+          reqModal?.querySelector('div')?.classList.add('scale-95');
+          reqBackdrop?.classList.add('opacity-0', 'pointer-events-none');
+          document.body.style.overflow = '';
+        }
+
+        document.querySelectorAll('.btn-open-request-modal').forEach(btn => {
+          btn.addEventListener('click', openRequestModal);
+        });
+        closeReqBtn?.addEventListener('click', closeRequestModal);
+        cancelReqBtn?.addEventListener('click', closeRequestModal);
+        reqBackdrop?.addEventListener('click', closeRequestModal);
+
+        function switchRequestTab(tab) {
+          if (tab === 'form') {
+            tabReqForm?.classList.add('border-blue-600', 'text-blue-600');
+            tabReqForm?.classList.remove('border-transparent', 'text-slate-500');
+            tabReqTrending?.classList.remove('border-blue-600', 'text-blue-600');
+            tabReqTrending?.classList.add('border-transparent', 'text-slate-500');
+            reqForm?.classList.remove('hidden');
+            trendingContainer?.classList.add('hidden');
+          } else {
+            tabReqTrending?.classList.add('border-blue-600', 'text-blue-600');
+            tabReqTrending?.classList.remove('border-transparent', 'text-slate-500');
+            tabReqForm?.classList.remove('border-blue-600', 'text-blue-600');
+            tabReqForm?.classList.add('border-transparent', 'text-slate-500');
+            reqForm?.classList.add('hidden');
+            trendingContainer?.classList.remove('hidden');
+            loadTrendingRequests();
+          }
+        }
+
+        tabReqForm?.addEventListener('click', () => switchRequestTab('form'));
+        tabReqTrending?.addEventListener('click', () => switchRequestTab('trending'));
+
+        // 提交表单逻辑
+        reqForm?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const submitBtn = document.getElementById('submit-request-btn');
+          const formData = new FormData(reqForm);
+          const payload = {
+            title: formData.get('title')?.trim(),
+            stage: formData.get('stage')?.trim(),
+            subject: formData.get('subject')?.trim(),
+            description: formData.get('description')?.trim(),
+            contact_info: formData.get('contact_info')?.trim()
+          };
+
+          if (!payload.title) {
+            window.showGlobalToast('请填写您想要查找的资料名称！', '⚠️');
+            return;
+          }
+
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '提交中...';
+          }
+
+          try {
+            const res = await fetch('/api/v1/public/requests', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            const resJson = await res.json();
+            if (res.ok && resJson.code === 200) {
+              window.showGlobalToast('求资料心愿已提交！平台会尽快安排采编上架~', '🎉', 4000);
+              reqForm.reset();
+              closeRequestModal();
+            } else {
+              window.showGlobalToast(resJson.message || '提交失败，请稍后重试', '❌');
+            }
+          } catch (err) {
+            window.showGlobalToast('网络请求异常，请检查连接', '❌');
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = `<span>🚀</span><span>立即提交愿望</span>`;
+            }
+          }
+        });
+
+        // 加载大家都在找的心愿
+        async function loadTrendingRequests() {
+          if (!trendingLoading || !trendingItems) return;
+          trendingLoading.classList.remove('hidden');
+          trendingItems.innerHTML = '';
+          try {
+            const res = await fetch('/api/v1/public/requests?page=1&pageSize=10');
+            const resJson = await res.json();
+            trendingLoading.classList.add('hidden');
+            const items = Array.isArray(resJson.data) ? resJson.data : (resJson.data?.items || []);
+            if (items.length === 0) {
+              trendingItems.innerHTML = `<div class="text-center py-8 text-xs text-slate-400">暂无心愿，快去提交第一个求资料吧！</div>`;
+              return;
+            }
+
+            trendingItems.innerHTML = items.map(item => `
+              <div class="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between gap-3 transition hover:bg-white hover:shadow-xs">
+                <div class="min-w-0 flex-1 space-y-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="px-1.5 py-0.2 bg-blue-50 text-blue-700 text-[10px] font-bold rounded">
+                      ${item.stage || '资料'}
+                    </span>
+                    ${item.subject ? `<span class="px-1.5 py-0.2 bg-slate-100 text-slate-600 text-[10px] rounded">${item.subject}</span>` : ''}
+                    ${item.status === 'fulfilled' ? `<span class="px-1.5 py-0.2 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded">🟢 已上架</span>` : ''}
+                  </div>
+                  <h4 class="text-xs font-bold text-slate-800 truncate">${item.title}</h4>
+                  ${(item.note || item.description) ? `<p class="text-[11px] text-slate-400 truncate">${item.note || item.description}</p>` : ''}
+                </div>
+                <button
+                  type="button"
+                  class="btn-vote-request shrink-0 px-3 py-1.5 bg-white hover:bg-red-50 text-slate-700 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                  data-id="${item.id}"
+                >
+                  <span>👍</span>
+                  <span>我也想要</span>
+                  <span class="vote-count text-red-600 font-mono">${item.vote_count ?? item.upvotes ?? 0}</span>
+                </button>
+              </div>
+            `).join('');
+
+            // 附议投票按钮绑定
+            trendingItems.querySelectorAll('.btn-vote-request').forEach(vBtn => {
+              vBtn.addEventListener('click', async () => {
+                const id = vBtn.getAttribute('data-id');
+                try {
+                  const voteRes = await fetch(`/api/v1/public/requests/${id}/vote`, { method: 'POST' });
+                  const voteJson = await voteRes.json();
+                  if (voteRes.ok && voteJson.code === 200) {
+                    const countSpan = vBtn.querySelector('.vote-count');
+                    if (countSpan) countSpan.textContent = voteJson.data?.upvotes || (parseInt(countSpan.textContent || '0') + 1);
+                    vBtn.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+                    window.showGlobalToast('已为该心愿投出 +1 附议！', '👍');
+                  }
+                } catch {
+                  window.showGlobalToast('点赞失败，请重试', '❌');
+                }
+              });
+            });
+          } catch {
+            trendingLoading.classList.remove('hidden');
+            trendingLoading.textContent = '网络异常，无法加载心愿池';
+          }
+        }
+
+        // 绑定全局卡片快速分享助手
         document.addEventListener('click', (e) => {
           const btn = e.target.closest('.btn-quick-share');
           if (!btn) return;
@@ -543,6 +1613,107 @@ const hasHeroSearch = propHasHeroSearch !== undefined
             });
           } else {
             window.showGlobalToast('直达链接：' + fullUrl, '🔗');
+          }
+        });
+
+        // --- 🎁 推荐本站模态弹窗交互逻辑 ---
+        const siteRecModal = document.getElementById('site-recommend-modal');
+        const siteRecBackdrop = document.getElementById('site-recommend-backdrop');
+        const openSiteRecBtn = document.getElementById('floating-recommend-site-btn');
+        const closeSiteRecBtn = document.getElementById('close-site-recommend-modal');
+        const closeSiteRecBottomBtn = document.getElementById('btn-close-site-rec-bottom');
+        const siteRecTextarea = document.getElementById('site-recommend-textarea');
+        const btnCopySiteRec = document.getElementById('btn-copy-site-recommend');
+        const btnCopySiteUrl = document.getElementById('btn-copy-site-url');
+        const siteRecTabs = document.querySelectorAll('.site-rec-tab');
+
+        const recTemplates = {
+          parent: `群里的家长们好，分享一个很实用的免费真题网站【学霸网】(https://xuebaw.com)，涵盖小学到高中的期中期末试卷、真题密卷，都是A4高清版可直接打印，有需要的可以自取或存到网盘备用~`,
+          moments: `发现一个挺好用的试卷真题网站【学霸网】(https://xuebaw.com)，中小学各年级真题和微课解析挺全的，可以免费保存和A4直接打印，家里有娃备考的推荐收藏下~`,
+          direct: `推荐你一个找真题试卷的网站：https://xuebaw.com （学霸网），期末考卷和解析视频都有，A4直接打印很清晰，顺手存网盘备用哈。`
+        };
+
+        let currentRecTab = 'parent';
+
+        function updateRecText(tab) {
+          currentRecTab = tab;
+          if (siteRecTextarea) {
+            siteRecTextarea.value = recTemplates[tab] || recTemplates.parent;
+          }
+          siteRecTabs.forEach(t => {
+            const isCur = t.getAttribute('data-tab') === tab;
+            if (isCur) {
+              t.classList.add('bg-white', 'text-emerald-700', 'shadow-xs');
+              t.classList.remove('text-slate-500');
+            } else {
+              t.classList.remove('bg-white', 'text-emerald-700', 'shadow-xs');
+              t.classList.add('text-slate-500');
+            }
+          });
+        }
+
+        function openSiteRecModal() {
+          if (!siteRecModal || !siteRecBackdrop) return;
+          updateRecText(currentRecTab);
+          siteRecBackdrop.classList.remove('opacity-0', 'pointer-events-none');
+          siteRecBackdrop.classList.add('opacity-100', 'pointer-events-auto');
+          siteRecModal.classList.remove('opacity-0', 'pointer-events-none');
+          siteRecModal.classList.add('opacity-100', 'pointer-events-auto');
+          siteRecModal.querySelector('.transform')?.classList.remove('scale-95');
+          siteRecModal.querySelector('.transform')?.classList.add('scale-100');
+          document.body.style.overflow = 'hidden';
+        }
+
+        function closeSiteRecModal() {
+          if (!siteRecModal || !siteRecBackdrop) return;
+          siteRecBackdrop.classList.remove('opacity-100', 'pointer-events-auto');
+          siteRecBackdrop.classList.add('opacity-0', 'pointer-events-none');
+          siteRecModal.classList.remove('opacity-100', 'pointer-events-auto');
+          siteRecModal.classList.add('opacity-0', 'pointer-events-none');
+          siteRecModal.querySelector('.transform')?.classList.remove('scale-100');
+          siteRecModal.querySelector('.transform')?.classList.add('scale-95');
+          document.body.style.overflow = '';
+        }
+
+        openSiteRecBtn?.addEventListener('click', openSiteRecModal);
+        closeSiteRecBtn?.addEventListener('click', closeSiteRecModal);
+        closeSiteRecBottomBtn?.addEventListener('click', closeSiteRecModal);
+        siteRecBackdrop?.addEventListener('click', closeSiteRecModal);
+
+        siteRecTabs.forEach(t => {
+          t.addEventListener('click', () => {
+            const tab = t.getAttribute('data-tab');
+            if (tab) updateRecText(tab);
+          });
+        });
+
+        btnCopySiteRec?.addEventListener('click', () => {
+          const text = siteRecTextarea ? siteRecTextarea.value : recTemplates[currentRecTab];
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+              window.showGlobalToast('推荐文案已复制！感谢您把学霸网分享给身边的人～', '🎉');
+              closeSiteRecModal();
+            }).catch(() => {
+              window.showGlobalToast('复制失败，请手动全选复制', '📋');
+            });
+          } else {
+            if (siteRecTextarea) {
+              siteRecTextarea.select();
+              document.execCommand('copy');
+              window.showGlobalToast('推荐文案已复制！感谢您把学霸网分享给身边的人～', '🎉');
+              closeSiteRecModal();
+            }
+          }
+        });
+
+        btnCopySiteUrl?.addEventListener('click', () => {
+          const url = 'https://xuebaw.com';
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(() => {
+              window.showGlobalToast('官方网址已复制：' + url, '🔗');
+            });
+          } else {
+            window.showGlobalToast('官方网址：' + url, '🔗');
           }
         });
       });

@@ -1,7 +1,9 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ResourceService, ResourceItemDto, NetdiskAccountDto, TransferShareResultDto, ChannelDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto } from './services/resource.service';
+import { ResourceService, ResourceItemDto, NetdiskAccountDto, TransferShareResultDto, ChannelDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto, HotSearchDto, SiteSettingDto, ResourceRequestDto, TelegramConfigDto, TelegramChannelDto, ResourceDraftDto, CrawlerStatsDto } from './services/resource.service';
+import { CoverGeneratorService } from './services/cover-generator.service';
+import { I18nService } from './services/i18n.service';
 
 export interface StageConfigItem {
   key: string;
@@ -58,6 +60,52 @@ export const STAGE_OPTIONS: Record<string, StageConfigItem> = {
 })
 export class App implements OnInit {
   private resService = inject(ResourceService);
+  private coverGen = inject(CoverGeneratorService);
+  i18n = inject(I18nService);
+
+  // ⚡ 列表行内直接修改转存数与浏览量
+  editingStatsId = signal<string | null>(null);
+  quickStatsSave = signal<number>(0);
+  quickStatsView = signal<number>(0);
+  savingStats = signal<boolean>(false);
+
+  startEditStats(item: ResourceItemDto, event?: any) {
+    if (event?.stopPropagation) event.stopPropagation();
+    this.editingStatsId.set(item.id);
+    this.quickStatsSave.set(item.save_count || 0);
+    this.quickStatsView.set(item.view_count || 0);
+  }
+
+  cancelEditStats(event?: any) {
+    if (event?.stopPropagation) event.stopPropagation();
+    this.editingStatsId.set(null);
+  }
+
+  saveInlineStats(item: ResourceItemDto, event?: any) {
+    if (event?.stopPropagation) event.stopPropagation();
+    if (this.savingStats()) return;
+    this.savingStats.set(true);
+
+    const saveVal = Math.max(0, Number(this.quickStatsSave()) || 0);
+    const viewVal = Math.max(0, Number(this.quickStatsView()) || 0);
+
+    this.resService.updateStats(item.id, {
+      save_count: saveVal,
+      view_count: viewVal
+    }).subscribe({
+      next: () => {
+        item.save_count = saveVal;
+        item.view_count = viewVal;
+        this.savingStats.set(false);
+        this.editingStatsId.set(null);
+        this.showToast(this.i18n.t('stats.editSuccess'), 'success');
+      },
+      error: (err) => {
+        this.savingStats.set(false);
+        this.showToast(this.i18n.t('stats.editFailed') + ': ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
 
   readonly stageOptions = STAGE_OPTIONS;
   readonly stageKeys = Object.keys(STAGE_OPTIONS);
@@ -83,11 +131,63 @@ export class App implements OnInit {
     confirm_password: ''
   };
 
+  // --- 全局现代高质感确认对话框状态 ---
+  confirmDialogState = signal<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    type: 'danger' | 'warning' | 'info';
+    icon: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: '确定',
+    cancelText: '取消',
+    type: 'danger',
+    icon: '⚠️',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
+
+  confirmDialog(options: {
+    title?: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    type?: 'danger' | 'warning' | 'info';
+    icon?: string;
+  }): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.confirmDialogState.set({
+        isOpen: true,
+        title: options.title || this.i18n.t('common.confirmTitle'),
+        message: options.message,
+        confirmText: options.confirmText || this.i18n.t('common.confirm'),
+        cancelText: options.cancelText || this.i18n.t('common.cancel'),
+        type: options.type || 'danger',
+        icon: options.icon || (options.type === 'danger' ? '🗑️' : (options.type === 'info' ? 'ℹ️' : '⚠️')),
+        onConfirm: () => {
+          this.confirmDialogState.update(s => ({ ...s, isOpen: false }));
+          resolve(true);
+        },
+        onCancel: () => {
+          this.confirmDialogState.update(s => ({ ...s, isOpen: false }));
+          resolve(false);
+        }
+      });
+    });
+  }
+
   // --- 数据统计与全站转存监控看板 ---
   dashboardStats = signal<DashboardStatsDto | null>(null);
   statsLoading = signal<boolean>(false);
 
-  currentTab = signal<'list' | 'add' | 'stats' | 'crawler' | 'accounts' | 'channels' | 'navmenus' | 'schools'>('list');
+  currentTab = signal<'list' | 'add' | 'stats' | 'crawler' | 'accounts' | 'channels' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests'>('list');
   loading = signal<boolean>(false);
   resources = signal<ResourceItemDto[]>([]);
 
@@ -102,9 +202,79 @@ export class App implements OnInit {
     return this.resources().filter(r => r.links?.some(l => l.status === 'reported')).length;
   });
 
+  // 列表学段快捷筛选
+  currentStageFilter = signal<string>('all');
+
+  matchStage(actual?: string, target?: string): boolean {
+    if (!target || target === 'all') return true;
+    const a = (actual || '').toLowerCase();
+    const t = target.toLowerCase();
+    if (a === t) return true;
+    if (t === 'primary' && (a.includes('小学') || a === 'primary')) return true;
+    if (t === 'junior' && (a.includes('初中') || a === 'junior')) return true;
+    if (t === 'senior' && (a.includes('高中') || a === 'senior')) return true;
+    if (t === 'cert' && (a.includes('考证') || a.includes('教资') || a === 'cert')) return true;
+    if (t === 'exam' && (a.includes('公考') || a.includes('考研') || a === 'exam')) return true;
+    return false;
+  }
+
+  stageCount(stage: string): number {
+    if (stage === 'all') return this.resources().length;
+    return this.resources().filter(r => this.matchStage(r.stage, stage)).length;
+  }
+
+  filterByStage(stage: string) {
+    this.currentStageFilter.set(stage);
+  }
+
+  currentSchoolFilter = signal<string>('');
+  adminKeyword = signal<string>('');
+
+  availableSchools = computed(() => {
+    const schoolCountMap = new Map<string, number>();
+    for (const r of this.resources()) {
+      const s = (r.school || '').trim();
+      if (s) {
+        schoolCountMap.set(s, (schoolCountMap.get(s) || 0) + 1);
+      }
+    }
+    return Array.from(schoolCountMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  });
+
+  filterBySchool(school: string) {
+    this.currentSchoolFilter.set(school);
+  }
+
+  clearAllFilters() {
+    this.currentStageFilter.set('all');
+    this.currentSchoolFilter.set('');
+    this.adminKeyword.set('');
+  }
+
   filteredResources = computed(() => {
     const filter = this.listFilter();
-    const list = this.resources();
+    const stage = this.currentStageFilter();
+    const school = this.currentSchoolFilter().trim();
+    const kw = this.adminKeyword().trim().toLowerCase();
+
+    let list = this.resources();
+    if (stage !== 'all') {
+      list = list.filter(r => this.matchStage(r.stage, stage));
+    }
+    if (school) {
+      list = list.filter(r => r.school && r.school.includes(school));
+    }
+    if (kw) {
+      list = list.filter(r => 
+        (r.title && r.title.toLowerCase().includes(kw)) ||
+        (r.school && r.school.toLowerCase().includes(kw)) ||
+        (r.region && r.region.toLowerCase().includes(kw)) ||
+        (r.subject && r.subject.toLowerCase().includes(kw)) ||
+        (r.grade && r.grade.toLowerCase().includes(kw))
+      );
+    }
     if (filter === 'invalid') {
       return list.filter(r => r.links?.some(l => l.status === 'invalid'));
     }
@@ -122,6 +292,432 @@ export class App implements OnInit {
     return Boolean(res.links?.some(l => l.status === 'reported'));
   }
 
+  // --- 全网资源监控与智能采集中台 ---
+  crawlerRawText = signal<string>('');
+  isParsingCrawler = signal<boolean>(false);
+  crawlerParsedResults = signal<any[]>([]);
+  isCheckingDeadlinks = signal<boolean>(false);
+  lastCheckResult = signal<string>('');
+
+  // 全库网盘监控统计
+  totalMonitoredLinks = computed(() => {
+    let count = 0;
+    for (const r of this.resources()) {
+      count += (r.links || []).length;
+    }
+    return count;
+  });
+
+  invalidLinksCount = computed(() => {
+    let count = 0;
+    for (const r of this.resources()) {
+      for (const l of r.links || []) {
+        if (l.status === 'invalid' || l.status === 'reported') {
+          count++;
+        }
+      }
+    }
+    return count;
+  });
+
+  healthRate = computed(() => {
+    const total = this.totalMonitoredLinks();
+    if (total === 0) return 100;
+    const invalid = this.invalidLinksCount();
+    const rate = ((total - invalid) / total) * 100;
+    return Math.max(0, Math.min(100, Math.round(rate * 10) / 10));
+  });
+
+  deadOrReportedResources = computed(() => {
+    return this.resources().filter(r => r.links?.some(l => l.status === 'invalid' || l.status === 'reported'));
+  });
+
+  // 立即触发全站存活批量巡检
+  runFullSiteCheck() {
+    this.isCheckingDeadlinks.set(true);
+    this.lastCheckResult.set('');
+    this.resService.batchCheckLinks({ force: true, min_interval_hours: 0 }).subscribe({
+      next: (res: any) => {
+        this.isCheckingDeadlinks.set(false);
+        this.lastCheckResult.set(`✅ 巡检完成！已检测 ${res.checked_count} 个网盘链接：存活 ${res.active_count} 个，失效/异常 ${res.invalid_count} 个。`);
+        this.loadResources();
+        this.loadDashboardStats();
+      },
+      error: (err: any) => {
+        this.isCheckingDeadlinks.set(false);
+        this.lastCheckResult.set('❌ 巡检失败: ' + (err.error?.message || err.message));
+      }
+    });
+  }
+
+  // --- Telegram 智能采集中台与草稿池 (Telegram Ingestion & Drafts Pool) ---
+  crawlerDrafts = signal<ResourceDraftDto[]>([]);
+  crawlerDraftsTotal = signal<number>(0);
+  crawlerDraftsPage = signal<number>(1);
+  crawlerDraftsPageSize = signal<number>(20);
+  crawlerDraftsStatus = signal<string>('pending'); // 'pending', 'all', 'approved', 'ignored'
+  crawlerDraftsDrive = signal<string>('all');
+  crawlerDraftsSearch = signal<string>('');
+  isLoadingDrafts = signal<boolean>(false);
+  isSyncingCrawler = signal<boolean>(false);
+  selectedDraftIds = signal<string[]>([]);
+  crawlerStats = signal<CrawlerStatsDto>({
+    total_drafts: 0,
+    pending_drafts: 0,
+    approved_drafts: 0,
+    ignored_drafts: 0,
+    monitored_channels: 0
+  });
+  crawlerConfig = signal<TelegramConfigDto | null>(null);
+  crawlerChannels = signal<TelegramChannelDto[]>([]);
+  isRegisteringWebhook = signal<boolean>(false);
+  activeChannelsCount = computed(() => this.crawlerChannels().filter(c => c.is_active).length);
+  pausedChannelsCount = computed(() => this.crawlerChannels().filter(c => !c.is_active).length);
+
+  // 模态框控制
+  showCrawlerSettingsModal = signal<boolean>(false);
+  showCrawlerPasteModal = signal<boolean>(false);
+  showCrawlerRawModal = signal<boolean>(false);
+  currentRawDraft = signal<ResourceDraftDto | null>(null);
+
+  // 粘贴采集表单
+  pasteForm = {
+    rawText: '',
+    sourceName: '',
+    driveType: 'auto'
+  };
+
+  // 频道新增表单
+  newChannelForm = {
+    channelId: '',
+    name: '',
+    driveType: 'auto',
+    remark: ''
+  };
+
+  // 记录从哪个草稿一键导入，发布成功后自动更新草稿状态为 approved
+  currentImportingDraftId: string | null = null;
+
+  loadCrawlerConfigAndStats() {
+    this.resService.getCrawlerConfig().subscribe({
+      next: (res) => {
+        this.crawlerConfig.set(res.config);
+        this.crawlerStats.set(res.stats);
+      },
+      error: () => {}
+    });
+    this.resService.getCrawlerChannels().subscribe({
+      next: (res) => {
+        this.crawlerChannels.set(res.channels);
+      },
+      error: () => {}
+    });
+  }
+
+  loadCrawlerDrafts() {
+    this.isLoadingDrafts.set(true);
+    this.resService.getCrawlerDrafts({
+      page: this.crawlerDraftsPage(),
+      page_size: this.crawlerDraftsPageSize(),
+      status: this.crawlerDraftsStatus(),
+      drive_type: this.crawlerDraftsDrive(),
+      search: this.crawlerDraftsSearch()
+    }).subscribe({
+      next: (res) => {
+        this.crawlerDrafts.set(res.items || []);
+        this.crawlerDraftsTotal.set(res.total || 0);
+        this.isLoadingDrafts.set(false);
+        this.selectedDraftIds.set([]);
+      },
+      error: () => {
+        this.isLoadingDrafts.set(false);
+      }
+    });
+  }
+
+  triggerCrawlerSync() {
+    this.isSyncingCrawler.set(true);
+    this.resService.syncCrawlerNow().subscribe({
+      next: (res) => {
+        this.isSyncingCrawler.set(false);
+        const msg = res.result?.message || '同步完成';
+        this.showToast(`✅ ${msg}`, 'success');
+        this.loadCrawlerDrafts();
+        this.loadCrawlerConfigAndStats();
+      },
+      error: (err) => {
+        this.isSyncingCrawler.set(false);
+        this.showToast(`❌ 同步失败: ${err.error?.error || err.message}`, 'error');
+      }
+    });
+  }
+
+  openCrawlerPasteModal() {
+    this.pasteForm = { rawText: '', sourceName: '', driveType: 'auto' };
+    this.showCrawlerPasteModal.set(true);
+  }
+
+  closeCrawlerPasteModal() {
+    this.showCrawlerPasteModal.set(false);
+  }
+
+  submitPasteIngest() {
+    if (!this.pasteForm.rawText.trim()) {
+      this.showToast(this.i18n.lang() === 'zh-CN' ? '请粘贴消息内容' : 'Please paste message content', 'error');
+      return;
+    }
+    this.resService.ingestCrawlerText({
+      raw_text: this.pasteForm.rawText,
+      source_name: this.pasteForm.sourceName,
+      drive_type: this.pasteForm.driveType
+    }).subscribe({
+      next: (res) => {
+        this.showToast(res.message || '✅ 成功提取并录入草稿', 'success');
+        this.closeCrawlerPasteModal();
+        this.loadCrawlerDrafts();
+        this.loadCrawlerConfigAndStats();
+      },
+      error: (err) => {
+        this.showToast(`❌ ${err.error?.error || '解析失败'}`, 'error');
+      }
+    });
+  }
+
+  openCrawlerSettingsModal() {
+    this.showCrawlerSettingsModal.set(true);
+    this.loadCrawlerConfigAndStats();
+  }
+
+  closeCrawlerSettingsModal() {
+    this.showCrawlerSettingsModal.set(false);
+  }
+
+  saveCrawlerConfig() {
+    const cfg = this.crawlerConfig();
+    if (!cfg) return;
+    this.resService.updateCrawlerConfig(cfg).subscribe({
+      next: () => {
+        this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 机器人配置已保存' : '✅ Settings saved', 'success');
+        this.loadCrawlerConfigAndStats();
+      },
+      error: () => {
+        this.showToast(this.i18n.lang() === 'zh-CN' ? '❌ 保存失败' : '❌ Save failed', 'error');
+      }
+    });
+  }
+
+  addCrawlerChannel() {
+    if (!this.newChannelForm.channelId.trim()) {
+      this.showToast(this.i18n.lang() === 'zh-CN' ? '请输入频道 ID' : 'Please enter Channel ID', 'error');
+      return;
+    }
+    this.resService.createCrawlerChannel({
+      channel_id: this.newChannelForm.channelId.trim(),
+      name: this.newChannelForm.name.trim() || `频道 ${this.newChannelForm.channelId}`,
+      drive_type: this.newChannelForm.driveType,
+      remark: this.newChannelForm.remark
+    }).subscribe({
+      next: () => {
+        this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 监控频道已添加' : '✅ Channel added', 'success');
+        this.newChannelForm = { channelId: '', name: '', driveType: 'auto', remark: '' };
+        this.loadCrawlerConfigAndStats();
+      },
+      error: (err) => {
+        this.showToast(`❌ ${err.error?.error || '添加失败'}`, 'error');
+      }
+    });
+  }
+
+  async deleteCrawlerChannel(id: string) {
+    const ok = await this.confirmDialog({
+      title: this.i18n.lang() === 'zh-CN' ? '移除监控频道' : 'Remove Monitored Channel',
+      message: this.i18n.lang() === 'zh-CN' ? '确定要移除该监控频道吗？移除后将不再接收该频道的资源推送。' : 'Are you sure you want to remove this monitored channel?',
+      confirmText: this.i18n.lang() === 'zh-CN' ? '确定移除' : 'Remove',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+    this.resService.deleteCrawlerChannel(id).subscribe({
+      next: () => {
+        this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 频道已移除' : '✅ Channel removed', 'success');
+        this.loadCrawlerConfigAndStats();
+      }
+    });
+  }
+
+  toggleCrawlerChannel(ch: TelegramChannelDto) {
+    this.resService.toggleCrawlerChannel(ch.id).subscribe({
+      next: (res) => {
+        ch.is_active = res.is_active;
+        this.showToast(res.message || '✅ 频道状态已更新', 'success');
+        this.loadCrawlerConfigAndStats();
+      },
+      error: (err) => {
+        this.showToast(`❌ 切换失败: ${err.error?.error || err.message}`, 'error');
+      }
+    });
+  }
+
+  registerCrawlerWebhook() {
+    this.isRegisteringWebhook.set(true);
+    this.resService.registerCrawlerWebhook().subscribe({
+      next: (res) => {
+        this.isRegisteringWebhook.set(false);
+        this.showToast(res.message || '✅ Telegram Webhook 实时触发已成功注册！', 'success');
+        this.loadCrawlerConfigAndStats();
+      },
+      error: (err) => {
+        this.isRegisteringWebhook.set(false);
+        this.showToast(`❌ 注册 Webhook 失败: ${err.error?.error || err.message}`, 'error');
+      }
+    });
+  }
+
+  async removeCrawlerWebhook() {
+    const ok = await this.confirmDialog({
+      title: this.i18n.lang() === 'zh-CN' ? '切换工作模式' : 'Switch Mode',
+      message: this.i18n.lang() === 'zh-CN' ? '确定注销 Webhook 并切换回后台定时轮询模式吗？' : 'Are you sure you want to remove the webhook and switch back to polling mode?',
+      confirmText: this.i18n.lang() === 'zh-CN' ? '确定切换' : 'Switch',
+      cancelText: this.i18n.lang() === 'zh-CN' ? '取消' : 'Cancel',
+      type: 'warning',
+      icon: '🔄'
+    });
+    if (!ok) return;
+    this.resService.removeCrawlerWebhook().subscribe({
+      next: (res) => {
+        this.showToast(res.message || '✅ 已切换为定时轮询模式', 'success');
+        this.loadCrawlerConfigAndStats();
+      },
+      error: (err) => {
+        this.showToast(`❌ 注销失败: ${err.error?.error || err.message}`, 'error');
+      }
+    });
+  }
+
+  updateDraftStatus(draft: ResourceDraftDto, status: 'pending' | 'approved' | 'ignored') {
+    this.resService.updateCrawlerDraftStatus(draft.id, status).subscribe({
+      next: () => {
+        draft.status = status;
+        this.loadCrawlerConfigAndStats();
+        this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 状态已更新' : '✅ Status updated', 'success');
+      }
+    });
+  }
+
+  async deleteDraft(draft: ResourceDraftDto) {
+    const ok = await this.confirmDialog({
+      title: this.i18n.lang() === 'zh-CN' ? '删除采集草稿' : 'Delete Draft',
+      message: this.i18n.lang() === 'zh-CN' ? `确定要删除草稿【${draft.title}】吗？` : 'Are you sure you want to delete this draft?',
+      confirmText: this.i18n.lang() === 'zh-CN' ? '确定删除' : 'Delete',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+    this.resService.deleteCrawlerDraft(draft.id).subscribe({
+      next: () => {
+        this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 草稿已删除' : '✅ Draft deleted', 'success');
+        this.loadCrawlerDrafts();
+        this.loadCrawlerConfigAndStats();
+      }
+    });
+  }
+
+  batchIgnoreDrafts() {
+    const ids = this.selectedDraftIds();
+    if (ids.length === 0) return;
+    this.resService.batchCrawlerDraftsAction('ignore', ids).subscribe({
+      next: (res) => {
+        this.showToast(res.message || '✅ 已批量忽略', 'success');
+        this.loadCrawlerDrafts();
+        this.loadCrawlerConfigAndStats();
+      }
+    });
+  }
+
+  async batchDeleteDrafts() {
+    const ids = this.selectedDraftIds();
+    if (ids.length === 0) return;
+    const ok = await this.confirmDialog({
+      title: this.i18n.lang() === 'zh-CN' ? '批量删除草稿' : 'Batch Delete',
+      message: this.i18n.lang() === 'zh-CN' ? `确定要批量删除选中的 ${ids.length} 条草稿吗？此操作无法撤销。` : `Are you sure you want to delete ${ids.length} selected drafts?`,
+      confirmText: this.i18n.lang() === 'zh-CN' ? '彻底删除' : 'Delete All',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+    this.resService.batchCrawlerDraftsAction('delete', ids).subscribe({
+      next: (res) => {
+        this.showToast(res.message || '✅ 已批量删除', 'success');
+        this.loadCrawlerDrafts();
+        this.loadCrawlerConfigAndStats();
+      }
+    });
+  }
+
+  toggleSelectAllDrafts(event: any) {
+    if (event.target.checked) {
+      this.selectedDraftIds.set(this.crawlerDrafts().map(d => d.id));
+    } else {
+      this.selectedDraftIds.set([]);
+    }
+  }
+
+  toggleDraftSelect(id: string) {
+    const current = [...this.selectedDraftIds()];
+    const idx = current.indexOf(id);
+    if (idx > -1) {
+      current.splice(idx, 1);
+    } else {
+      current.push(id);
+    }
+    this.selectedDraftIds.set(current);
+  }
+
+  isDraftSelected(id: string): boolean {
+    return this.selectedDraftIds().includes(id);
+  }
+
+  openDraftRawModal(draft: ResourceDraftDto) {
+    this.currentRawDraft.set(draft);
+    this.showCrawlerRawModal.set(true);
+  }
+
+  closeDraftRawModal() {
+    this.showCrawlerRawModal.set(false);
+  }
+
+  importDraftToResource(draft: ResourceDraftDto) {
+    this.currentImportingDraftId = draft.id;
+    this.switchTab('add');
+    this.newResource.title = draft.title;
+    this.newResource.file_size = draft.file_size && draft.file_size !== '未知' ? draft.file_size : '15.0 MB';
+    
+    // 智能推断学段
+    const title = draft.title;
+    if (title.includes('小学') || title.includes('小升初') || (title.includes('年级') && (title.includes('一') || title.includes('二') || title.includes('三') || title.includes('四') || title.includes('五') || title.includes('六')))) {
+      this.newResource.stage = 'primary';
+    } else if (title.includes('初中') || title.includes('中考') || title.includes('七年级') || title.includes('八年级') || title.includes('九年级') || title.includes('初一') || title.includes('初二') || title.includes('初三')) {
+      this.newResource.stage = 'junior';
+    } else if (title.includes('高中') || title.includes('高考') || title.includes('高一') || title.includes('高二') || title.includes('高三')) {
+      this.newResource.stage = 'senior';
+    } else if (title.includes('教资') || title.includes('教师资格')) {
+      this.newResource.stage = 'cert';
+    } else if (title.includes('公考') || title.includes('行测') || title.includes('申论') || title.includes('考研')) {
+      this.newResource.stage = 'exam';
+    }
+
+    if (draft.drive_type === 'quark') {
+      this.newResource.quarkUrl = draft.share_url;
+    } else if (draft.drive_type === 'baidu') {
+      this.newResource.baiduUrl = draft.share_url;
+      this.newResource.baiduCode = draft.extract_code || '';
+    } else {
+      this.newResource.quarkUrl = draft.share_url;
+    }
+
+    this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 已将草稿数据填入表单，核对完善后保存即可正式入库！' : 'Draft imported to form!', 'success');
+  }
+
   // 新增表单数据绑定（支持智能联动、精细与通用）
   newResource = {
     channel_slug: 'edu',
@@ -136,6 +732,8 @@ export class App implements OnInit {
     file_type: 'PDF',
     file_size: '15.0 MB',
     page_count: 24,
+    view_count: 0,
+    save_count: 0,
     has_video: false,
     quarkUrl: '',
     quarkFileSize: '15.0 MB',
@@ -166,6 +764,8 @@ export class App implements OnInit {
     file_type: 'PDF',
     file_size: '15.0 MB',
     page_count: 24,
+    view_count: 0,
+    save_count: 0,
     has_video: false,
     is_published: true,
     quarkUrl: '',
@@ -219,6 +819,32 @@ export class App implements OnInit {
   parsingNetdisk = signal<boolean>(false);
   parsingBaidu = signal<boolean>(false);
 
+  // 🎨 浏览器端 HTML5 Canvas 自动生成封面预览状态
+  newCoverPreview = signal<string>('');
+  editCoverPreview = signal<string>('');
+
+  async generatePreview(target: 'new' | 'edit') {
+    const form = target === 'new' ? this.newResource : this.editForm;
+    if (!form.title && !form.quarkUrl) return;
+    try {
+      const dataUrl = await this.coverGen.generateCoverDataUrl({
+        title: form.title || '精选学习资料合集',
+        grade: form.grade,
+        subject: form.subject,
+        edition: form.edition,
+        file_size: form.quarkFileSize || form.file_size,
+        file_tree: (form as any).file_tree || []
+      });
+      if (target === 'new') {
+        this.newCoverPreview.set(dataUrl);
+      } else {
+        this.editCoverPreview.set(dataUrl);
+      }
+    } catch (e) {
+      console.warn('Canvas cover generation error:', e);
+    }
+  }
+
   autoDetectNetdiskInfo(target: 'new' | 'edit') {
     const form = target === 'new' ? this.newResource : this.editForm;
     const url = form.quarkUrl?.trim();
@@ -257,6 +883,7 @@ export class App implements OnInit {
           const timeTip = info.file_time ? ` · ${info.file_time}` : '';
           const countTip = (info.file_count || info.file_list?.length) ? ` · 内含 ${info.file_count || info.file_list?.length} 个真实文件` : '';
           this.showToast(`⚡ 夸克网盘解析成功: ${info.file_size || ''} (${info.file_type || 'PDF'}${timeTip}${countTip})`);
+          this.generatePreview(target);
         } else {
           (form as any).file_tree = [];
           this.showToast(info?.message || '夸克网盘解析失败，未能读取到文件', 'error');
@@ -597,16 +1224,23 @@ export class App implements OnInit {
     };
   }
 
-  deleteAccount(id: string) {
-    if (confirm('确认删除该网盘账号配置吗？删除后将无法使用该账号执行自动转存。')) {
-      this.resService.deleteAccount(id).subscribe({
-        next: () => {
-          this.showToast('🗑️ 账号已删除');
-          this.loadAccounts();
-        },
-        error: (err) => this.showToast('删除失败: ' + err.message, 'error')
-      });
-    }
+  async deleteAccount(id: string) {
+    const ok = await this.confirmDialog({
+      title: '删除网盘账号',
+      message: '确认删除该网盘账号配置吗？删除后将无法使用该账号执行自动转存。',
+      confirmText: '确定删除',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+
+    this.resService.deleteAccount(id).subscribe({
+      next: () => {
+        this.showToast('🗑️ 账号已删除');
+        this.loadAccounts();
+      },
+      error: (err) => this.showToast('删除失败: ' + err.message, 'error')
+    });
   }
 
   verifyAccount(acc: NetdiskAccountDto) {
@@ -741,14 +1375,19 @@ export class App implements OnInit {
     });
   }
 
-  deleteFolderInPicker(folder: { fid: string; file_name: string }, event: Event) {
+  async deleteFolderInPicker(folder: { fid: string; file_name: string }, event: Event) {
     event.stopPropagation();
     const accId = this.folderPickerAccountId();
     if (!accId) return;
 
-    if (!confirm(`确定要在网盘中彻底删除文件夹【${folder.file_name}】吗？\n请注意：此操作将在夸克网盘中移除该目录！`)) {
-      return;
-    }
+    const ok = await this.confirmDialog({
+      title: '删除网盘文件夹',
+      message: `确定要在网盘中彻底删除文件夹【${folder.file_name}】吗？\n请注意：此操作将在夸克网盘中移除该目录！`,
+      confirmText: '确定删除',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
 
     this.showToast(`正在从网盘删除【${folder.file_name}】...`);
     const currentFid = this.currentPdirFid();
@@ -1004,6 +1643,7 @@ export class App implements OnInit {
     this.loadNavMenus();
     this.loadRegions();
     this.loadDashboardStats();
+    this.loadCrawlerConfigAndStats();
   }
 
   onLogin() {
@@ -1138,6 +1778,8 @@ export class App implements OnInit {
       file_type: item.file_type || 'PDF',
       file_size: item.file_size || '15 MB',
       page_count: item.page_count || 24,
+      view_count: item.view_count || 0,
+      save_count: item.save_count || 0,
       has_video: Boolean(item.file_type?.includes('视频') || item.file_type?.includes('MP4') || quarkLink?.file_type?.includes('视频')),
       is_published: item.is_published ?? true,
       quarkUrl: quarkLink?.share_url || '',
@@ -1152,6 +1794,10 @@ export class App implements OnInit {
       description: item.description || '',
       file_tree: (item as any).file_tree || []
     };
+    this.editCoverPreview.set(item.cover_image || '');
+    if (!item.cover_image) {
+      this.generatePreview('edit');
+    }
     this.isEditModalOpen.set(true);
   }
 
@@ -1173,15 +1819,34 @@ export class App implements OnInit {
     }, 2200);
   }
 
-  saveEdit() {
+  async saveEdit() {
     if (!this.editForm.title || !this.editForm.quarkUrl) {
       this.showToast('请至少填写资料标题和夸克推广链接！', 'error');
       return;
     }
 
+    // 自动在浏览器中绘制 600×600 海报，保存时由后端直传 Cloudflare R2
+    let coverDataUrl = this.editCoverPreview();
+    if (!coverDataUrl || !coverDataUrl.startsWith('data:image/')) {
+      try {
+        coverDataUrl = await this.coverGen.generateCoverDataUrl({
+          title: this.editForm.title,
+          grade: this.editForm.grade,
+          subject: this.editForm.subject,
+          edition: this.editForm.edition,
+          file_size: this.editForm.quarkFileSize || this.editForm.file_size,
+          file_tree: (this.editForm as any).file_tree || []
+        });
+        this.editCoverPreview.set(coverDataUrl);
+      } catch (e) {
+        console.warn('Canvas cover generation error:', e);
+      }
+    }
+
     const payload: Partial<ResourceItemDto> = {
       channel_slug: this.editForm.channel_slug || 'edu',
       title: this.editForm.title,
+      cover_image: coverDataUrl || undefined,
       subtitle: this.editForm.subtitle || (this.editForm.has_video ? '【含高清精讲视频】' : '【含手写解析】'),
       description: this.editForm.description || this.editForm.title,
       stage: this.editForm.stage,
@@ -1193,6 +1858,8 @@ export class App implements OnInit {
       file_type: this.editForm.has_video ? 'PDF+MP4视频' : this.editForm.file_type,
       file_size: this.editForm.quarkFileSize || this.editForm.baiduFileSize || this.editForm.file_size || '15.0 MB',
       page_count: Number(this.editForm.page_count) || 20,
+      view_count: Number(this.editForm.view_count) || 0,
+      save_count: Number(this.editForm.save_count) || 0,
       file_tree: (this.editForm as any).file_tree || [],
       is_published: this.editForm.is_published,
       links: [
@@ -1245,7 +1912,7 @@ export class App implements OnInit {
     });
   }
 
-  switchTab(tab: 'list' | 'add' | 'stats' | 'crawler' | 'accounts' | 'channels' | 'navmenus' | 'schools') {
+  switchTab(tab: 'list' | 'add' | 'stats' | 'crawler' | 'accounts' | 'channels' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests') {
     this.currentTab.set(tab);
     if (tab === 'list') {
       this.loadResources();
@@ -1259,6 +1926,15 @@ export class App implements OnInit {
       this.loadNavMenus();
     } else if (tab === 'schools') {
       this.loadRegions();
+    } else if (tab === 'hotsearches') {
+      this.loadHotSearches();
+    } else if (tab === 'settings') {
+      this.loadSettings();
+    } else if (tab === 'requests') {
+      this.loadRequests();
+    } else if (tab === 'crawler') {
+      this.loadCrawlerDrafts();
+      this.loadCrawlerConfigAndStats();
     }
   }
 
@@ -1372,18 +2048,25 @@ export class App implements OnInit {
     });
   }
 
-  deleteChannel(ch: ChannelDto, event?: Event) {
+  async deleteChannel(ch: ChannelDto, event?: Event) {
     if (event) event.stopPropagation();
     if (!ch.id) return;
-    if (confirm(`确定删除频道【${ch.name}】吗？删除前请确保该频道下没有关联资源。`)) {
-      this.resService.deleteChannel(ch.id).subscribe({
-        next: () => {
-          this.showToast(`🗑️ 频道【${ch.name}】已删除`);
-          this.loadChannels();
-        },
-        error: (err) => this.showToast(err.error?.message || '删除失败: ' + err.message, 'error')
-      });
-    }
+    const ok = await this.confirmDialog({
+      title: '删除频道',
+      message: `确定删除频道【${ch.name}】吗？删除前请确保该频道下没有关联资源。`,
+      confirmText: '确定删除',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+
+    this.resService.deleteChannel(ch.id).subscribe({
+      next: () => {
+        this.showToast(`🗑️ 频道【${ch.name}】已删除`);
+        this.loadChannels();
+      },
+      error: (err) => this.showToast(err.error?.message || '删除失败: ' + err.message, 'error')
+    });
   }
 
   togglePublish(item: ResourceItemDto) {
@@ -1396,15 +2079,34 @@ export class App implements OnInit {
     });
   }
 
-  saveNewResource() {
+  async saveNewResource() {
     if (!this.newResource.title || !this.newResource.quarkUrl) {
       this.showToast('请至少填写资料标题和夸克推广链接！', 'error');
       return;
     }
 
+    // 自动在浏览器中绘制 600×600 海报，保存时由后端直传 Cloudflare R2
+    let coverDataUrl = this.newCoverPreview();
+    if (!coverDataUrl || !coverDataUrl.startsWith('data:image/')) {
+      try {
+        coverDataUrl = await this.coverGen.generateCoverDataUrl({
+          title: this.newResource.title,
+          grade: this.newResource.grade,
+          subject: this.newResource.subject,
+          edition: this.newResource.edition,
+          file_size: this.newResource.quarkFileSize || this.newResource.file_size,
+          file_tree: (this.newResource as any).file_tree || []
+        });
+        this.newCoverPreview.set(coverDataUrl);
+      } catch (e) {
+        console.warn('Canvas cover generation error:', e);
+      }
+    }
+
     const payload: Partial<ResourceItemDto> = {
       channel_slug: this.newResource.channel_slug || 'edu',
       title: this.newResource.title,
+      cover_image: coverDataUrl || undefined,
       subtitle: this.newResource.subtitle || (this.newResource.has_video ? '【含高清精讲视频】' : '【含手写解析】'),
       description: this.newResource.description || this.newResource.title,
       stage: this.newResource.stage,
@@ -1416,6 +2118,8 @@ export class App implements OnInit {
       file_type: this.newResource.has_video ? 'PDF+MP4视频' : this.newResource.file_type,
       file_size: this.newResource.quarkFileSize || this.newResource.baiduFileSize || this.newResource.file_size || '15.0 MB',
       page_count: Number(this.newResource.page_count) || 20,
+      view_count: Number(this.newResource.view_count) || 0,
+      save_count: Number(this.newResource.save_count) || 0,
       file_tree: (this.newResource as any).file_tree || [],
       is_published: true,
       is_recommended: true,
@@ -1446,8 +2150,15 @@ export class App implements OnInit {
     }
 
     this.resService.create(payload).subscribe({
-      next: () => {
+      next: (createdRes: any) => {
         this.showToast('🎉 资料发布成功！已实时落库。');
+        if (this.currentImportingDraftId) {
+          const draftId = this.currentImportingDraftId;
+          this.resService.updateCrawlerDraftStatus(draftId, 'approved').subscribe(() => {
+            this.loadCrawlerConfigAndStats();
+          });
+          this.currentImportingDraftId = null;
+        }
         this.newResource.title = '';
         this.newResource.subtitle = '';
         this.newResource.description = '';
@@ -1456,6 +2167,8 @@ export class App implements OnInit {
         this.newResource.quarkUrl = '';
         this.newResource.baiduUrl = '';
         this.newResource.baiduCode = '';
+        this.newResource.view_count = 0;
+        this.newResource.save_count = 0;
         (this.newResource as any).file_tree = [];
         this.loadResources();
         this.switchTab('list');
@@ -1464,16 +2177,23 @@ export class App implements OnInit {
     });
   }
 
-  deleteResource(id: string) {
-    if (confirm('确认彻底删除该学习资料吗？关联的网盘链接也将一并清理。')) {
-      this.resService.delete(id).subscribe({
-        next: () => {
-          this.resources.update(list => list.filter(r => r.id !== id));
-          this.showToast('🗑️ 资料已删除');
-        },
-        error: (err) => this.showToast('删除失败: ' + err.message, 'error')
-      });
-    }
+  async deleteResource(id: string) {
+    const ok = await this.confirmDialog({
+      title: '彻底删除资料',
+      message: '确认彻底删除该学习资料吗？关联的网盘链接也将一并永久清理。',
+      confirmText: '确定彻底删除',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+
+    this.resService.delete(id).subscribe({
+      next: () => {
+        this.resources.update(list => list.filter(r => r.id !== id));
+        this.showToast('🗑️ 资料已删除');
+      },
+      error: (err) => this.showToast('删除失败: ' + err.message, 'error')
+    });
   }
 
   // 批量巡检状态与方法
@@ -1652,18 +2372,25 @@ export class App implements OnInit {
     });
   }
 
-  deleteNavMenu(id?: string, title?: string, event?: Event) {
+  async deleteNavMenu(id?: string, title?: string, event?: Event) {
     if (event) event.stopPropagation();
     if (!id) return;
-    if (confirm(`确认删除导航【${title || ''}】吗？若包含子菜单将同步清理。`)) {
-      this.resService.deleteNavMenu(id).subscribe({
-        next: () => {
-          this.loadNavMenus();
-          this.showToast(`🗑️ 导航【${title || ''}】已删除`);
-        },
-        error: (err) => this.showToast('删除失败: ' + err.message, 'error')
-      });
-    }
+    const ok = await this.confirmDialog({
+      title: '删除导航项',
+      message: `确认删除导航【${title || ''}】吗？若包含子菜单将同步清理。`,
+      confirmText: '确定删除',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+
+    this.resService.deleteNavMenu(id).subscribe({
+      next: () => {
+        this.loadNavMenus();
+        this.showToast(`🗑️ 导航【${title || ''}】已删除`);
+      },
+      error: (err) => this.showToast('删除失败: ' + err.message, 'error')
+    });
   }
 
   // --- 地区与重点名校字典库管理 ---
@@ -1737,16 +2464,741 @@ export class App implements OnInit {
     });
   }
 
-  deleteSchool(id?: number, name?: string) {
+  async deleteSchool(id?: number, name?: string) {
     if (!id) return;
-    if (confirm(`确认从字典库中移除名校【${name}】吗？`)) {
-      this.resService.deleteSchool(id).subscribe({
+    const ok = await this.confirmDialog({
+      title: '移除名校',
+      message: `确认从字典库中移除名校【${name}】吗？`,
+      confirmText: '确定移除',
+      type: 'danger',
+      icon: '🏫'
+    });
+    if (!ok) return;
+
+    this.resService.deleteSchool(id).subscribe({
+      next: () => {
+        this.loadRegions();
+        this.showToast(`🗑️ 已移除名校【${name}】`);
+      },
+      error: (err) => this.showToast('删除失败: ' + err.message, 'error')
+    });
+  }
+
+  // --- 🔥 高频热搜关键词配置管理 ---
+  hotSearches = signal<HotSearchDto[]>([]);
+  hotSearchLoading = signal<boolean>(false);
+  hotSearchFilterStage = signal<string>('all');
+  isHotSearchModalOpen = signal<boolean>(false);
+  hotSearchForm: {
+    id: string;
+    title: string;
+    keyword: string;
+    stage: string;
+    style_type: 'default' | 'highlight' | 'hot';
+    sort_order: number;
+    is_active: boolean;
+  } = {
+    id: '',
+    title: '',
+    keyword: '',
+    stage: 'all',
+    style_type: 'default',
+    sort_order: 1,
+    is_active: true
+  };
+
+  loadHotSearches() {
+    this.hotSearchLoading.set(true);
+    const stage = this.hotSearchFilterStage();
+    this.resService.getAdminHotSearches(stage).subscribe({
+      next: (list) => {
+        this.hotSearches.set(list);
+        this.hotSearchLoading.set(false);
+      },
+      error: (err) => {
+        this.hotSearchLoading.set(false);
+        console.error('加载高频热搜失败:', err);
+      }
+    });
+  }
+
+  onHotSearchFilterChange(stage: string) {
+    this.hotSearchFilterStage.set(stage);
+    this.loadHotSearches();
+  }
+
+  openAddHotSearchModal() {
+    this.hotSearchForm = {
+      id: '',
+      title: '',
+      keyword: '',
+      stage: this.hotSearchFilterStage() === 'all' ? 'all' : this.hotSearchFilterStage(),
+      style_type: 'default',
+      sort_order: (this.hotSearches().length + 1),
+      is_active: true
+    };
+    this.isHotSearchModalOpen.set(true);
+  }
+
+  openEditHotSearchModal(item: HotSearchDto) {
+    this.hotSearchForm = {
+      id: item.id || '',
+      title: item.title,
+      keyword: item.keyword,
+      stage: item.stage,
+      style_type: item.style_type || 'default',
+      sort_order: item.sort_order || 0,
+      is_active: item.is_active
+    };
+    this.isHotSearchModalOpen.set(true);
+  }
+
+  closeHotSearchModal() {
+    this.isHotSearchModalOpen.set(false);
+  }
+
+  saveHotSearch() {
+    if (!this.hotSearchForm.title) {
+      this.showToast('请填写热搜展示标题！', 'error');
+      return;
+    }
+    if (!this.hotSearchForm.keyword) {
+      this.hotSearchForm.keyword = this.hotSearchForm.title;
+    }
+    this.hotSearchLoading.set(true);
+    if (this.hotSearchForm.id) {
+      this.resService.updateHotSearch(this.hotSearchForm.id, this.hotSearchForm).subscribe({
         next: () => {
-          this.loadRegions();
-          this.showToast(`🗑️ 已移除名校【${name}】`);
+          this.hotSearchLoading.set(false);
+          this.closeHotSearchModal();
+          this.loadHotSearches();
+          this.showToast(this.i18n.t('hotsearch.saveSuccess'));
         },
-        error: (err) => this.showToast('删除失败: ' + err.message, 'error')
+        error: (err) => {
+          this.hotSearchLoading.set(false);
+          this.showToast('更新热搜失败: ' + err.message, 'error');
+        }
+      });
+    } else {
+      this.resService.createHotSearch(this.hotSearchForm).subscribe({
+        next: () => {
+          this.hotSearchLoading.set(false);
+          this.closeHotSearchModal();
+          this.loadHotSearches();
+          this.showToast(this.i18n.t('hotsearch.saveSuccess'));
+        },
+        error: (err) => {
+          this.hotSearchLoading.set(false);
+          this.showToast('创建热搜失败: ' + err.message, 'error');
+        }
       });
     }
   }
+
+  toggleHotSearchActive(item: HotSearchDto, event?: Event) {
+    if (event) event.stopPropagation();
+    if (!item.id) return;
+    this.resService.toggleHotSearch(item.id).subscribe({
+      next: (res) => {
+        item.is_active = res.is_active;
+        this.showToast(item.is_active ? `👁️ 【${item.title}】已在前台展示` : `🙈 【${item.title}】已隐藏`);
+      },
+      error: (err) => this.showToast('切换状态失败: ' + err.message, 'error')
+    });
+  }
+
+  async deleteHotSearch(item: HotSearchDto, event?: Event) {
+    if (event) event.stopPropagation();
+    if (!item.id) return;
+    const ok = await this.confirmDialog({
+      title: this.i18n.t('hotsearch.delete'),
+      message: this.i18n.t('hotsearch.deleteConfirm') + `【${item.title}】`,
+      confirmText: this.i18n.t('common.confirm'),
+      type: 'danger',
+      icon: '🔥'
+    });
+    if (!ok) return;
+
+    this.resService.deleteHotSearch(item.id).subscribe({
+      next: () => {
+        this.loadHotSearches();
+        this.showToast(this.i18n.t('hotsearch.deleteSuccess'));
+      },
+      error: (err) => this.showToast('删除失败: ' + err.message, 'error')
+    });
+  }
+
+  // --- 批量多选管理逻辑 ---
+  selectedHotSearchIds = signal<string[]>([]);
+
+  isAllHotSearchesSelected(): boolean {
+    const list = this.hotSearches();
+    if (list.length === 0) return false;
+    const selected = this.selectedHotSearchIds();
+    return list.every(item => item.id && selected.includes(item.id));
+  }
+
+  toggleSelectAllHotSearches() {
+    const list = this.hotSearches();
+    if (this.isAllHotSearchesSelected()) {
+      this.selectedHotSearchIds.set([]);
+    } else {
+      const allIds = list.map(item => item.id).filter((id): id is string => !!id);
+      this.selectedHotSearchIds.set(allIds);
+    }
+  }
+
+  toggleHotSearchSelection(id?: string, event?: Event) {
+    if (event) event.stopPropagation();
+    if (!id) return;
+    const current = this.selectedHotSearchIds();
+    if (current.includes(id)) {
+      this.selectedHotSearchIds.set(current.filter(i => i !== id));
+    } else {
+      this.selectedHotSearchIds.set([...current, id]);
+    }
+  }
+
+  isHotSearchSelected(id?: string): boolean {
+    if (!id) return false;
+    return this.selectedHotSearchIds().includes(id);
+  }
+
+  clearHotSearchSelection() {
+    this.selectedHotSearchIds.set([]);
+  }
+
+  batchToggleHotSearches(isActive: boolean) {
+    const ids = this.selectedHotSearchIds();
+    if (ids.length === 0) return;
+
+    this.hotSearchLoading.set(true);
+    this.resService.batchToggleHotSearches(ids, isActive).subscribe({
+      next: () => {
+        this.hotSearchLoading.set(false);
+        this.clearHotSearchSelection();
+        this.loadHotSearches();
+        this.showToast(this.i18n.t('hotsearch.batchSuccess'));
+      },
+      error: (err) => {
+        this.hotSearchLoading.set(false);
+        this.showToast('批量操作失败: ' + err.message, 'error');
+      }
+    });
+  }
+
+  async batchDeleteHotSearches() {
+    const ids = this.selectedHotSearchIds();
+    if (ids.length === 0) return;
+
+    const confirmMsg = this.i18n.t('hotsearch.batchDeleteConfirm').replace('{count}', String(ids.length));
+    const ok = await this.confirmDialog({
+      title: '批量删除热搜',
+      message: confirmMsg,
+      confirmText: this.i18n.t('common.confirm'),
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+
+    this.hotSearchLoading.set(true);
+    this.resService.batchDeleteHotSearches(ids).subscribe({
+      next: () => {
+        this.hotSearchLoading.set(false);
+        this.clearHotSearchSelection();
+        this.loadHotSearches();
+        this.showToast(this.i18n.t('hotsearch.batchSuccess'));
+      },
+      error: (err) => {
+        this.hotSearchLoading.set(false);
+        this.showToast('批量删除失败: ' + err.message, 'error');
+      }
+    });
+  }
+
+  // --- 资料库批量多选管理逻辑 ---
+  selectedResourceIds = signal<string[]>([]);
+
+  isAllResourcesSelected(): boolean {
+    const list = this.filteredResources();
+    if (list.length === 0) return false;
+    const selected = this.selectedResourceIds();
+    return list.every(item => item.id && selected.includes(item.id));
+  }
+
+  toggleSelectAllResources() {
+    const list = this.filteredResources();
+    if (this.isAllResourcesSelected()) {
+      this.selectedResourceIds.set([]);
+    } else {
+      const allIds = list.map(item => item.id).filter((id): id is string => !!id);
+      this.selectedResourceIds.set(allIds);
+    }
+  }
+
+  toggleResourceSelection(id?: string, event?: Event) {
+    if (event) event.stopPropagation();
+    if (!id) return;
+    const current = this.selectedResourceIds();
+    if (current.includes(id)) {
+      this.selectedResourceIds.set(current.filter(i => i !== id));
+    } else {
+      this.selectedResourceIds.set([...current, id]);
+    }
+  }
+
+  isResourceSelected(id?: string): boolean {
+    if (!id) return false;
+    return this.selectedResourceIds().includes(id);
+  }
+
+  clearResourceSelection() {
+    this.selectedResourceIds.set([]);
+  }
+
+  batchToggleResources(isPublished: boolean) {
+    const ids = this.selectedResourceIds();
+    if (ids.length === 0) return;
+
+    this.loading.set(true);
+    this.resService.batchTogglePublish(ids, isPublished).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.clearResourceSelection();
+        this.loadResources();
+        this.showToast(this.i18n.t('resource.batchSuccess'));
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.showToast('批量操作失败: ' + (err.message || '网络错误'), 'error');
+      }
+    });
+  }
+
+  async batchDeleteResources() {
+    const ids = this.selectedResourceIds();
+    if (ids.length === 0) return;
+
+    const confirmMsg = this.i18n.t('resource.batchDeleteConfirm').replace('{count}', String(ids.length));
+    const ok = await this.confirmDialog({
+      title: '批量彻底删除',
+      message: confirmMsg,
+      confirmText: '确定彻底删除',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+
+    this.loading.set(true);
+    this.resService.batchDelete(ids).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.clearResourceSelection();
+        this.loadResources();
+        this.showToast(this.i18n.t('resource.batchSuccess'));
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.showToast('批量删除失败: ' + (err.message || '网络错误'), 'error');
+      }
+    });
+  }
+
+  // --- 系统全局配置 (Site Settings) ---
+  siteSettings = signal<SiteSettingDto>({
+    site_name: '学霸网',
+    site_title: '学霸网 - 中小学同步教辅、网盘学习资源与考试真题平台',
+    site_subtitle: '中小学名校期末冲刺卷、人教版同步教辅、实用工具素材与精品网盘学习资料，支持A4高清打印与极速网盘转存。',
+    keywords: '学霸网,xuebaw.com,网盘资源,中小学试卷下载,期末冲刺卷,人教版同步教辅,夸克网盘学习资料,百度网盘资源,考试真题',
+    qq_group: '625248438',
+    qq_group_url: 'https://qm.qq.com/cgi-bin/qm/qr?k=&jump_from=webapi&authKey=&uin=625248438',
+    contact_email: 'support@xuebaw.com',
+    contact_wechat: '',
+    icp_beian: '',
+    gongan_beian: '',
+    copyright_text: '© 2026 学霸网 (xuebaw.com). All rights reserved.',
+    disclaimer_text: '免责声明：本站所有资源均来自互联网公开平台与公开考试题型归纳整理，仅供个人学习研究交流使用，版权归原作者所有。',
+    announcement_active: false,
+    announcement_text: '📢 欢迎来到学霸网！2026 最新各省中考高三一模二模卷及人教版教辅资料正在每日批量更新中，建议收藏本站防走失。',
+    announcement_url: '',
+    announcement_badge: 'HOT',
+    announcement_type: 'blue'
+  });
+  settingsLoading = signal<boolean>(false);
+  settingsSaving = signal<boolean>(false);
+  settingsSaveMsg = signal<string>('');
+  settingsActiveSubTab = signal<'brand' | 'social' | 'notice' | 'legal'>('brand');
+
+  loadSettings() {
+    this.settingsLoading.set(true);
+    this.resService.getSettings().subscribe({
+      next: (data) => {
+        if (data) {
+          this.siteSettings.set({
+            ...data,
+            announcement_type: (data.announcement_type || 'blue') as any
+          });
+        }
+        this.settingsLoading.set(false);
+      },
+      error: (err) => {
+        console.error('加载系统设置失败:', err);
+        this.settingsLoading.set(false);
+      }
+    });
+  }
+
+  saveSettings() {
+    if (this.settingsSaving()) return;
+    this.settingsSaving.set(true);
+    this.settingsSaveMsg.set('');
+
+    this.resService.updateSettings(this.siteSettings()).subscribe({
+      next: (res) => {
+        this.settingsSaving.set(false);
+        this.siteSettings.set(res);
+        this.settingsSaveMsg.set(this.i18n.t('settings.saveSuccess'));
+        this.showToast(this.i18n.t('settings.saveSuccess'));
+        setTimeout(() => this.settingsSaveMsg.set(''), 4000);
+      },
+      error: (err) => {
+        this.settingsSaving.set(false);
+        const failMsg = this.i18n.t('settings.saveFailed') + ': ' + (err.error?.message || err.message);
+        this.settingsSaveMsg.set(failMsg);
+        this.showToast(failMsg, 'error');
+      }
+    });
+  }
+
+  // --- 求资料需求池 (Demand Pool) ---
+  requests = signal<ResourceRequestDto[]>([]);
+  requestsCounts = signal<{ all: number; pending: number; fulfilled: number; rejected: number }>({ all: 0, pending: 0, fulfilled: 0, rejected: 0 });
+  requestsFilter = signal<'all' | 'pending' | 'fulfilled' | 'rejected'>('all');
+  requestsStageFilter = signal<string>('all');
+  requestsSearchKeyword = signal<string>('');
+  requestsLoading = signal<boolean>(false);
+  isFulfillModalOpen = signal<boolean>(false);
+  fulfillTargetRequest = signal<ResourceRequestDto | null>(null);
+  fulfillNoteInput = signal<string>('');
+  submittingFulfill = signal<boolean>(false);
+
+  loadRequests() {
+    this.requestsLoading.set(true);
+    this.resService.getAdminRequests({
+      status: this.requestsFilter(),
+      stage: this.requestsStageFilter(),
+      q: this.requestsSearchKeyword()
+    }).subscribe({
+      next: (data) => {
+        this.requests.set(data?.items || []);
+        if (data?.counts) {
+          this.requestsCounts.set({
+            all: Number(data.counts['all']) || 0,
+            pending: Number(data.counts['pending']) || 0,
+            fulfilled: Number(data.counts['fulfilled']) || 0,
+            rejected: Number(data.counts['rejected']) || 0
+          });
+        }
+        this.requestsLoading.set(false);
+      },
+      error: (err) => {
+        console.error('加载求资料需求失败:', err);
+        this.requestsLoading.set(false);
+      }
+    });
+  }
+
+  filterRequestsByStatus(status: 'all' | 'pending' | 'fulfilled' | 'rejected') {
+    this.requestsFilter.set(status);
+    this.loadRequests();
+  }
+
+  onRequestsStageChange(stage: string) {
+    this.requestsStageFilter.set(stage);
+    this.loadRequests();
+  }
+
+  searchRequests() {
+    this.loadRequests();
+  }
+
+  openFulfillModal(req: ResourceRequestDto) {
+    this.fulfillTargetRequest.set(req);
+    this.fulfillNoteInput.set(req.fulfilled_note || `已在相关学段专区上架《${req.title}》，欢迎转存学习！`);
+    this.isFulfillModalOpen.set(true);
+  }
+
+  closeFulfillModal() {
+    this.isFulfillModalOpen.set(false);
+    this.fulfillTargetRequest.set(null);
+  }
+
+  submitFulfill() {
+    const target = this.fulfillTargetRequest();
+    if (!target || this.submittingFulfill()) return;
+
+    this.submittingFulfill.set(true);
+    this.resService.updateAdminRequest(target.id, {
+      status: 'fulfilled',
+      fulfilled_note: this.fulfillNoteInput()
+    }).subscribe({
+      next: (updated) => {
+        this.submittingFulfill.set(false);
+        this.closeFulfillModal();
+        this.showToast(this.i18n.t('requests.fulfillSuccess'));
+        this.loadRequests();
+      },
+      error: (err) => {
+        this.submittingFulfill.set(false);
+        this.showToast('处置失败: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
+
+  quickRejectRequest(req: ResourceRequestDto) {
+    this.resService.updateAdminRequest(req.id, {
+      status: 'rejected',
+      fulfilled_note: '暂未搜集到有效版本'
+    }).subscribe({
+      next: () => {
+        this.showToast(this.i18n.t('requests.rejectSuccess'));
+        this.loadRequests();
+      },
+      error: (err) => this.showToast('操作失败: ' + (err.error?.message || err.message), 'error')
+    });
+  }
+
+  async deleteRequest(req: ResourceRequestDto, event?: any) {
+    if (event?.stopPropagation) event.stopPropagation();
+    const ok = await this.confirmDialog({
+      title: this.i18n.t('requests.delete'),
+      message: this.i18n.t('requests.deleteConfirm'),
+      confirmText: this.i18n.t('common.confirm'),
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+
+    this.resService.deleteAdminRequest(req.id).subscribe({
+      next: () => {
+        this.showToast(this.i18n.t('requests.deleteSuccess'));
+        this.loadRequests();
+      },
+      error: (err) => this.showToast('删除失败: ' + (err.error?.message || err.message), 'error')
+    });
+  }
+
+  publishForThisRequest(req: ResourceRequestDto) {
+    // 自动切换到“上架发布资料”标签页，并智能预填标题与学段科目！
+    this.newResource.title = req.title;
+    if (req.stage && req.stage !== 'all') {
+      this.newResource.stage = req.stage;
+      this.onStageChange('new');
+    }
+    if (req.subject) {
+      this.newResource.subject = req.subject;
+    }
+    this.switchTab('add');
+    this.showToast(`已为您将《${req.title}》自动填入发布表单！`);
+  }
+
+  // --- 📢 一键引流宣发文案生成器状态与逻辑 ---
+  isCopyModalOpen = signal<boolean>(false);
+  copyModalMode = signal<'single' | 'batch'>('single');
+  copyActiveTab = signal<'xiaohongshu' | 'wechat' | 'forum'>('xiaohongshu');
+  copyLinkTarget = signal<'landing' | 'direct'>('landing');
+  currentCopyResource = signal<ResourceItemDto | null>(null);
+  batchCopyResources = signal<ResourceItemDto[]>([]);
+  generatedCopyText = signal<string>('');
+
+  openCopyWriterModal(res: ResourceItemDto) {
+    this.copyModalMode.set('single');
+    this.currentCopyResource.set(res);
+    this.batchCopyResources.set([]);
+    this.generateCopyText();
+    this.isCopyModalOpen.set(true);
+  }
+
+  openBatchCopyModal() {
+    const selectedIds = this.selectedResourceIds();
+    if (selectedIds.length === 0) {
+      this.showToast('请先勾选需要生成合集文案的资料', 'error');
+      return;
+    }
+    const items = this.resources().filter(r => r.id && selectedIds.includes(r.id));
+    if (items.length === 0) return;
+    this.copyModalMode.set('batch');
+    this.batchCopyResources.set(items);
+    this.currentCopyResource.set(items[0]);
+    this.generateCopyText();
+    this.isCopyModalOpen.set(true);
+  }
+
+  closeCopyModal() {
+    this.isCopyModalOpen.set(false);
+  }
+
+  setCopyTab(tab: 'xiaohongshu' | 'wechat' | 'forum') {
+    this.copyActiveTab.set(tab);
+    this.generateCopyText();
+  }
+
+  setCopyLinkTarget(target: 'landing' | 'direct') {
+    this.copyLinkTarget.set(target);
+    this.generateCopyText();
+  }
+
+  generateCopyText() {
+    const mode = this.copyModalMode();
+    const tab = this.copyActiveTab();
+    const target = this.copyLinkTarget();
+    
+    if (mode === 'single') {
+      const res = this.currentCopyResource();
+      if (!res) return;
+      const primaryLink = (res.links && res.links.length > 0) 
+        ? (res.links.find(l => l.is_primary) || res.links[0]) 
+        : null;
+      
+      const landingUrl = `https://xuebaw.com/resource/${res.slug}`;
+      let linkText = '';
+      if (target === 'landing') {
+        linkText = `🔗 站内极速直达通道：${landingUrl}`;
+      } else {
+        if (primaryLink && primaryLink.share_url) {
+          linkText = `🔗 网盘直达链接：${primaryLink.share_url}` + (primaryLink.extract_code ? ` (提取码: ${primaryLink.extract_code})` : '');
+        } else {
+          linkText = `🔗 站内直达通道：${landingUrl}`;
+        }
+      }
+
+      const stageName = this.stageOptions[res.stage]?.label?.split(' ')[0] || res.stage || '全学段';
+      const grade = res.grade && res.grade !== '通用' ? res.grade : '';
+      const subject = res.subject && res.subject !== '通用' ? res.subject : '';
+      const fileSize = res.file_size || '高清完整版';
+      const fileType = res.file_type || 'PDF/视频';
+
+      let text = '';
+      if (tab === 'xiaohongshu') {
+        text = `整理到半夜！终于把这套【${grade}${subject} ${res.title}】整理齐了😭\n\n真的太全了！内含 100% 矢量无损高清真题（A4 纸打印超清晰、字体与公式绝不发虚模糊），配有手写详细解析步骤和名师高清微课，备考冲刺直接省下大几百辅导费！\n\n📁 资料已经打包放进网盘啦：\n${linkText}\n\n💡 划重点提醒：直接在线看会被网盘压缩画质，强烈建议点开后先【保存到网盘 / 转存】再下载，才是无损原版，微课还能直接解锁 1080P/4K 原画原声不卡顿，而且存入自己网盘永久防失效哦！\n\n需要的同学/家长赶紧存，避免以后链接失效！👇\n#备考冲刺 #${subject || '真题'} #${grade || '试卷'} #学霸秘籍 #考点复习 #夸克网盘`;
+      } else if (tab === 'wechat') {
+        text = `各位家长/同学们好，刚在学霸网找到了这套【${res.title}】优质资料，整理得很扎实：\n内含完整 A4 可打印高清试卷 + 名师视频微课解析，打印出来字迹非常清楚。\n\n大家各取所需，需要的直接点链接取走：\n${linkText}\n\n⚠️ 温馨提示：网盘在线预览会压低画质，建议点进去后一定要先点【保存到网盘 / 转存】再下载，这样拿到的才是 100% 无损原画文件，微课也能流畅看高清原画，还能永久防丢。\n\n祝孩子们复习顺利，考出理想好成绩！💪`;
+      } else {
+        text = `【优质教辅资源分享】${res.title}\n━━━━━━━━━━━━━━━━━━━\n📌 适用学段：${stageName} · ${grade} · ${subject}\n💾 文件规格：${fileSize} · ${fileType}\n✨ 资源特色：100% A4 矢量可打印无损真题 + 名师微课原画解析\n\n📥 获取链接：\n${linkText}\n\n💡 转存说明：网盘直链预览通常会被压缩画质，建议先【转存到个人网盘】后下载使用，即享无损原画及永久保存特权。\n来源：学霸网 (xuebaw.com)`;
+      }
+      this.generatedCopyText.set(text);
+    } else {
+      // 批量合集模式
+      const items = this.batchCopyResources();
+      const count = items.length;
+      const itemsList = items.map((it, idx) => `${idx + 1}. 【${it.grade || ''}${it.subject || ''}】${it.title}`).join('\n');
+      
+      let batchLinksText = '';
+      if (target === 'landing') {
+        batchLinksText = items.map((it, idx) => `${idx + 1}. ${it.title} ➔ https://xuebaw.com/resource/${it.slug}`).join('\n');
+      } else {
+        batchLinksText = items.map((it, idx) => {
+          const l = (it.links && it.links.length > 0) ? (it.links.find(x => x.is_primary) || it.links[0]) : null;
+          return `${idx + 1}. ${it.title} ➔ ${l?.share_url || `https://xuebaw.com/resource/${it.slug}`}${l?.extract_code ? ` (密码:${l.extract_code})` : ''}`;
+        }).join('\n');
+      }
+
+      let text = '';
+      if (tab === 'xiaohongshu') {
+        text = `🔥 熬夜整理！【${count} 套精选考点与名校真题密卷合集】免费分享！\n━━━━━━━━━━━━━━━━━━━\n全部涵盖完整 PDF 试卷与名师精讲微课，资料清单：\n${itemsList}\n\n📥 完整资料包传送门（建议先点转存防失效）：\n${batchLinksText}\n\n💡 学霸提醒：直接在线试看网盘会压缩画质，强烈建议点进去先点击【保存到网盘 / 转存】！转存后再下载才是 100% 矢量高清原画，A4 打印字迹绝不发虚，永久私存再也不怕链接被删啦～\n\n需要的家长和同学抓紧存，祝冲刺高分！💪\n#期末真题 #考前冲刺 #学霸笔记 #中小学试卷 #资料合集`;
+      } else if (tab === 'wechat') {
+        text = `各位家长/老师好，整理了一批很实用的备考资料合集，包含【${count} 套试卷与微课视频】：\n\n${itemsList}\n\n已汇总在网盘，需要的可以先转存到自己网盘慢慢看：\n${batchLinksText}\n\n⚠️ 提醒：建议先点【保存到网盘/转存】再下载，这样是高清无损格式，A4 打印超清晰，视频也是原画。祝孩子们学习进步！`;
+      } else {
+        text = `【${count} 套教辅与试卷精选合集包】\n━━━━━━━━━━━━━━━━━━━\n收录明细：\n${itemsList}\n\n📥 获取链接：\n${batchLinksText}\n\n💡 说明：建议先转存至个人网盘后再行下载，方可享受无损 A4 打印与高清原画微课。\n整理分享自：学霸网 (xuebaw.com)`;
+      }
+      this.generatedCopyText.set(text);
+    }
+  }
+
+  async copyGeneratedText() {
+    const text = this.generatedCopyText();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.showToast(this.i18n.t('copyWriter.copied'), 'success');
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      this.showToast(this.i18n.t('copyWriter.copied'), 'success');
+    }
+  }
+
+  // --- 📢 推广主站与整站宣发中心状态与逻辑 ---
+  isSitePromoModalOpen = signal<boolean>(false);
+  sitePromoActiveTab = signal<'xiaohongshu' | 'wechat' | 'forum' | 'bio'>('xiaohongshu');
+  generatedSitePromoText = signal<string>('');
+
+  openSitePromoModal() {
+    this.generateSitePromoText();
+    this.isSitePromoModalOpen.set(true);
+  }
+
+  closeSitePromoModal() {
+    this.isSitePromoModalOpen.set(false);
+  }
+
+  setSitePromoTab(tab: 'xiaohongshu' | 'wechat' | 'forum' | 'bio') {
+    this.sitePromoActiveTab.set(tab);
+    this.generateSitePromoText();
+  }
+
+  generateSitePromoText() {
+    const tab = this.sitePromoActiveTab();
+    const count = this.resources().length || 3000;
+    const countStr = count.toLocaleString();
+
+    let text = '';
+    if (tab === 'xiaohongshu') {
+      text = `家有中小学/备考的速存！终于找到了这个良心教辅真题站😭\n\n挖到了宝藏学习资源库：【学霸网】(https://xuebaw.com)！\n\n📌 为什么一定要收藏？\n1. 超全收录：目前已整理 ${countStr}+ 套真题密卷，涵盖小学 1-6 年级、初中中考、高中高考、教师资格证、公务员省考国考！\n2. 100% 矢量无损排版：A4 纸直接打印超级清晰，公式和手写笔迹绝不模糊，内含名校名师高清微课解析视频。\n3. 免解压密码：直接一键转存到自己网盘，永久私存防失效！\n\n💡 备考冲刺直接省下几百块买试卷辅导书的费用，赶紧存到浏览器书签/网盘备用，随时随地调阅！\n#中小学试卷 #备考资料 #名校期末卷 #初中中考 #高考冲刺 #教师资格证 #学霸网`;
+    } else if (tab === 'wechat') {
+      text = `各位家长/考友们好，给大家分享一个非常实用的真题资源网站【学霸网】(https://xuebaw.com)。\n\n网站已收录整理了 ${countStr}+ 套中小学名校期末真题、中高考冲刺密卷、教资及公考备考资料，全部是 A4 矢量排版，打印出来字迹清晰，还配有名校名师微课讲解。\n\n全站资料免费调阅，建议大家点开后顺手先保存到自己的网盘备用，免去平时到处找试卷买资料的繁琐。祝孩子们学习进步！💪`;
+    } else if (tab === 'forum') {
+      text = `【资源汇总】中小学各学段名校真题密卷与备考微课全套免费调阅（持续更新中）\n━━━━━━━━━━━━━━━━━━━\n📚 站点名称：学霸网 (https://xuebaw.com)\n📊 在库规模：${countStr}+ 套精选题库，每日自动化巡检\n🎯 覆盖专区：小学(1-6年级) / 初中中考 / 高中高考 / 教师资格证 / 考公升学\n✨ 核心优势：100% 矢量 A4 纸极清可打印原版、名师微课原画、免解压密码、网盘一键极速转存\n\n📥 官网直达通道：https://xuebaw.com\n官方备考交流群：625248438\n建议收藏到浏览器书签备用！`;
+    } else {
+      text = `学霸网 (https://xuebaw.com) - 专注中小学名校期末真题与教资公考刚需教辅，收录 ${countStr}+ 套真题，支持无损 A4 极清打印与原画微课一键转存！`;
+    }
+    this.generatedSitePromoText.set(text);
+  }
+
+  async copySitePromoText() {
+    const text = this.generatedSitePromoText();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.showToast(this.i18n.t('sitePromo.copied'), 'success');
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      this.showToast(this.i18n.t('sitePromo.copied'), 'success');
+    }
+  }
+
+  async copySiteUrlOnly() {
+    const url = 'https://xuebaw.com';
+    try {
+      await navigator.clipboard.writeText(url);
+      this.showToast(this.i18n.t('sitePromo.urlCopied'), 'success');
+    } catch {
+      this.showToast('官方网址：' + url, 'success');
+    }
+  }
 }
+
+
