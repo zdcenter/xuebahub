@@ -1,7 +1,7 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ResourceService, ResourceItemDto, NetdiskAccountDto, TransferShareResultDto, ChannelDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto, HotSearchDto, SiteSettingDto, ResourceRequestDto, TelegramConfigDto, TelegramChannelDto, ResourceDraftDto, CrawlerStatsDto } from './services/resource.service';
+import { ResourceService, ResourceItemDto, NetdiskAccountDto, TransferShareResultDto, ChannelDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto, HotSearchDto, SiteSettingDto, ResourceRequestDto, TelegramConfigDto, TelegramChannelDto, TelegramBroadcastChannelDto, ResourceDraftDto, CrawlerStatsDto } from './services/resource.service';
 import { CoverGeneratorService } from './services/cover-generator.service';
 import { I18nService } from './services/i18n.service';
 
@@ -51,12 +51,14 @@ export const STAGE_OPTIONS: Record<string, StageConfigItem> = {
   }
 };
 
+import { EmailHubComponent } from './components/email-hub/email-hub.component';
+import { SeoHubComponent } from './components/seo-hub/seo-hub.component';
+
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './app.html',
-  styleUrl: './app.css'
+  imports: [CommonModule, FormsModule, EmailHubComponent, SeoHubComponent],
+  templateUrl: './app.html'
 })
 export class App implements OnInit {
   private resService = inject(ResourceService);
@@ -187,7 +189,70 @@ export class App implements OnInit {
   dashboardStats = signal<DashboardStatsDto | null>(null);
   statsLoading = signal<boolean>(false);
 
-  currentTab = signal<'list' | 'add' | 'stats' | 'crawler' | 'accounts' | 'channels' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests'>('list');
+  currentTab = signal<'list' | 'add' | 'stats' | 'crawler' | 'email' | 'seo' | 'accounts' | 'channels' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests'>('list');
+  emailPreselectedResource = signal<any>(null);
+
+  // --- 侧边栏折叠/展开系统（支持记忆） ---
+  isSidebarCollapsed = signal<boolean>(typeof window !== 'undefined' && localStorage.getItem('xueba_sidebar_collapsed') === 'true');
+
+  toggleSidebar() {
+    const nextState = !this.isSidebarCollapsed();
+    this.isSidebarCollapsed.set(nextState);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('xueba_sidebar_collapsed', String(nextState));
+    }
+  }
+
+  // --- 资料列表行专属：宣发推广矩阵快捷下拉浮层 (TG / 邮件 / 文案) ---
+  activePromoDropdownId = signal<string | null>(null);
+
+  togglePromoDropdown(resId: string, event: MouseEvent) {
+    event.stopPropagation();
+    this.activePromoDropdownId.set(this.activePromoDropdownId() === resId ? null : resId);
+  }
+
+  closePromoDropdown() {
+    this.activePromoDropdownId.set(null);
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    if (this.activePromoDropdownId()) {
+      this.activePromoDropdownId.set(null);
+    }
+  }
+
+  openEmailHubWithResource(res: any) {
+    this.closePromoDropdown();
+    this.emailPreselectedResource.set(res);
+    this.currentTab.set('email');
+  }
+
+  handleEmailHubNotification(event: { message: string; type: 'success' | 'error' | 'info' }) {
+    this.showToast(event.message, event.type === 'error' ? 'error' : 'success');
+  }
+
+  handleSeoHubNotification(event: { message: string; type: 'success' | 'error' | 'info' }) {
+    this.showToast(event.message, event.type === 'error' ? 'error' : 'success');
+  }
+
+  batchPushSelectedToSeo() {
+    const ids = this.selectedResourceIds();
+    if (ids.length === 0) {
+      this.showToast('请先勾选需要推送到搜索引擎的资料', 'error');
+      return;
+    }
+    this.showToast(`正在将选中的 ${ids.length} 套资料推送到百度与必应...`, 'success');
+    this.resService.batchPushSeo('all', ids, []).subscribe({
+      next: (summary) => {
+        const msg = `搜索引擎推送完成！${summary.summary_message}`;
+        this.showToast(msg, summary.status === 'failed' ? 'error' : 'success');
+      },
+      error: (err) => {
+        this.showToast('推送失败: ' + (err.error?.error || err.message), 'error');
+      }
+    });
+  }
   loading = signal<boolean>(false);
   resources = signal<ResourceItemDto[]>([]);
 
@@ -374,8 +439,33 @@ export class App implements OnInit {
   activeChannelsCount = computed(() => this.crawlerChannels().filter(c => c.is_active).length);
   pausedChannelsCount = computed(() => this.crawlerChannels().filter(c => !c.is_active).length);
 
+  // Telegram 工作台 Sub-Tab 控制 (方案 1：4大模块平铺切换)
+  crawlerSubTab = signal<'drafts' | 'ingestion' | 'broadcast' | 'settings'>('drafts');
+  activeBroadcastChannelsCount = computed(() => this.broadcastChannels().filter(c => c.is_active).length);
+  pausedBroadcastChannelsCount = computed(() => this.broadcastChannels().filter(c => !c.is_active).length);
+
+  switchCrawlerSubTab(tab: 'drafts' | 'ingestion' | 'broadcast' | 'settings') {
+    this.crawlerSubTab.set(tab);
+    if (tab === 'ingestion') {
+      this.loadCrawlerChannels();
+    } else if (tab === 'broadcast') {
+      this.loadBroadcastChannels();
+    } else if (tab === 'drafts') {
+      this.loadCrawlerDrafts();
+    } else if (tab === 'settings') {
+      this.loadCrawlerConfigAndStats();
+    }
+  }
+
   // 模态框控制
   showCrawlerSettingsModal = signal<boolean>(false);
+  crawlerSettingsTab = signal<'ingestion' | 'broadcast'>('ingestion');
+  smartChannelInput = '';
+  isResolvingChannel = signal<boolean>(false);
+  isTestingBroadcast = signal<boolean>(false);
+  broadcastChannels = signal<TelegramBroadcastChannelDto[]>([]);
+  smartBroadcastChannelInput = '';
+  isResolvingBroadcastChannel = signal<boolean>(false);
   showCrawlerPasteModal = signal<boolean>(false);
   showCrawlerRawModal = signal<boolean>(false);
   currentRawDraft = signal<ResourceDraftDto | null>(null);
@@ -406,6 +496,9 @@ export class App implements OnInit {
       },
       error: () => {}
     });
+  }
+
+  loadCrawlerChannels() {
     this.resService.getCrawlerChannels().subscribe({
       next: (res) => {
         this.crawlerChannels.set(res.channels);
@@ -413,6 +506,7 @@ export class App implements OnInit {
       error: () => {}
     });
   }
+
 
   loadCrawlerDrafts() {
     this.isLoadingDrafts.set(true);
@@ -452,13 +546,32 @@ export class App implements OnInit {
     });
   }
 
+  isPastingCrawler = signal<boolean>(false);
+
   openCrawlerPasteModal() {
-    this.pasteForm = { rawText: '', sourceName: '', driveType: 'auto' };
-    this.showCrawlerPasteModal.set(true);
+    this.switchCrawlerSubTab('drafts');
+    setTimeout(() => {
+      const el = document.getElementById('fast-paste-textarea') as HTMLTextAreaElement | null;
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
   }
 
   closeCrawlerPasteModal() {
     this.showCrawlerPasteModal.set(false);
+  }
+
+  onFastPasteKeyDown(event: KeyboardEvent) {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      this.submitPasteIngest();
+    }
+  }
+
+  clearFastPaste() {
+    this.pasteForm.rawText = '';
   }
 
   submitPasteIngest() {
@@ -466,26 +579,30 @@ export class App implements OnInit {
       this.showToast(this.i18n.lang() === 'zh-CN' ? '请粘贴消息内容' : 'Please paste message content', 'error');
       return;
     }
+    this.isPastingCrawler.set(true);
     this.resService.ingestCrawlerText({
       raw_text: this.pasteForm.rawText,
       source_name: this.pasteForm.sourceName,
       drive_type: this.pasteForm.driveType
     }).subscribe({
       next: (res) => {
-        this.showToast(res.message || '✅ 成功提取并录入草稿', 'success');
-        this.closeCrawlerPasteModal();
+        this.isPastingCrawler.set(false);
+        this.showToast(res.message || (this.i18n.lang() === 'zh-CN' ? '✅ 成功提取并录入草稿' : '✅ Draft parsed successfully'), 'success');
+        this.pasteForm.rawText = '';
+        this.showCrawlerPasteModal.set(false);
         this.loadCrawlerDrafts();
         this.loadCrawlerConfigAndStats();
       },
       error: (err) => {
-        this.showToast(`❌ ${err.error?.error || '解析失败'}`, 'error');
+        this.isPastingCrawler.set(false);
+        this.showToast(`❌ ${err.error?.error || (this.i18n.lang() === 'zh-CN' ? '解析失败' : 'Parsing failed')}`, 'error');
       }
     });
   }
 
-  openCrawlerSettingsModal() {
-    this.showCrawlerSettingsModal.set(true);
-    this.loadCrawlerConfigAndStats();
+  openCrawlerSettingsModal(tab: 'ingestion' | 'broadcast' | 'settings' = 'ingestion') {
+    this.currentTab.set('crawler');
+    this.switchCrawlerSubTab(tab);
   }
 
   closeCrawlerSettingsModal() {
@@ -558,6 +675,18 @@ export class App implements OnInit {
     });
   }
 
+  toggleCrawlerMasterSwitch() {
+    this.resService.toggleCrawlerMasterSwitch().subscribe({
+      next: (res) => {
+        this.showToast(res.message || '✅ 采集监控总开关状态已更新', 'success');
+        this.loadCrawlerConfigAndStats();
+      },
+      error: (err) => {
+        this.showToast(`❌ 切换失败: ${err.error?.error || err.message}`, 'error');
+      }
+    });
+  }
+
   registerCrawlerWebhook() {
     this.isRegisteringWebhook.set(true);
     this.resService.registerCrawlerWebhook().subscribe({
@@ -573,25 +702,129 @@ export class App implements OnInit {
     });
   }
 
-  async removeCrawlerWebhook() {
-    const ok = await this.confirmDialog({
-      title: this.i18n.lang() === 'zh-CN' ? '切换工作模式' : 'Switch Mode',
-      message: this.i18n.lang() === 'zh-CN' ? '确定注销 Webhook 并切换回后台定时轮询模式吗？' : 'Are you sure you want to remove the webhook and switch back to polling mode?',
-      confirmText: this.i18n.lang() === 'zh-CN' ? '确定切换' : 'Switch',
-      cancelText: this.i18n.lang() === 'zh-CN' ? '取消' : 'Cancel',
-      type: 'warning',
-      icon: '🔄'
-    });
-    if (!ok) return;
-    this.resService.removeCrawlerWebhook().subscribe({
+  resolveAndAddCrawlerChannel() {
+    const input = this.smartChannelInput.trim();
+    if (!input) {
+      this.showToast(this.i18n.lang() === 'zh-CN' ? '请输入频道用户名、链接或数字ID' : 'Please enter channel link or username', 'error');
+      return;
+    }
+    this.isResolvingChannel.set(true);
+    this.resService.resolveCrawlerChannel(input).subscribe({
       next: (res) => {
-        this.showToast(res.message || '✅ 已切换为定时轮询模式', 'success');
-        this.loadCrawlerConfigAndStats();
+        const ch = res.channel;
+        this.resService.createCrawlerChannel({
+          channel_id: ch.channel_id,
+          name: ch.name,
+          drive_type: ch.drive_type || 'auto',
+          remark: ch.remark || ''
+        }).subscribe({
+          next: () => {
+            this.isResolvingChannel.set(false);
+            this.showToast(this.i18n.lang() === 'zh-CN' ? `✅ 成功识别并添加频道【${ch.name}】` : `✅ Added channel ${ch.name}`, 'success');
+            this.smartChannelInput = '';
+            this.loadCrawlerConfigAndStats();
+          },
+          error: (err) => {
+            this.isResolvingChannel.set(false);
+            this.showToast(`❌ 添加频道失败: ${err.error?.error || err.message}`, 'error');
+          }
+        });
       },
       error: (err) => {
-        this.showToast(`❌ 注销失败: ${err.error?.error || err.message}`, 'error');
+        this.isResolvingChannel.set(false);
+        this.showToast(`❌ 识别频道失败: ${err.error?.error || err.message}`, 'error');
       }
     });
+  }
+
+  sendCrawlerTestBroadcast(targetChannel?: string) {
+    this.isTestingBroadcast.set(true);
+    this.resService.sendCrawlerTestBroadcast(targetChannel).subscribe({
+      next: (res) => {
+        this.isTestingBroadcast.set(false);
+        this.showToast(res.message || '🎉 测试广播消息已发送成功！', 'success');
+      },
+      error: (err) => {
+        this.isTestingBroadcast.set(false);
+        this.showToast(`❌ ${err.error?.error || err.message || '测试广播发送失败'}`, 'error');
+      }
+    });
+  }
+
+  loadBroadcastChannels() {
+    this.resService.getBroadcastChannels().subscribe({
+      next: (res) => {
+        this.broadcastChannels.set(res.channels || []);
+      }
+    });
+  }
+
+  resolveAndAddBroadcastChannel() {
+    const input = this.smartBroadcastChannelInput.trim();
+    if (!input) {
+      this.showToast(this.i18n.lang() === 'zh-CN' ? '请输入我的频道用户名、链接或数字ID' : 'Please enter channel link or username', 'error');
+      return;
+    }
+    this.isResolvingBroadcastChannel.set(true);
+    this.resService.resolveBroadcastChannel(input).subscribe({
+      next: (res) => {
+        this.isResolvingBroadcastChannel.set(false);
+        this.showToast(this.i18n.lang() === 'zh-CN' ? `✅ 成功识别并添加广播频道【${res.channel.name}】` : `✅ Added broadcast channel ${res.channel.name}`, 'success');
+        this.smartBroadcastChannelInput = '';
+        this.loadBroadcastChannels();
+      },
+      error: (err) => {
+        this.isResolvingBroadcastChannel.set(false);
+        this.showToast(`❌ 添加广播频道失败: ${err.error?.error || err.message}`, 'error');
+      }
+    });
+  }
+
+  toggleBroadcastChannel(ch: TelegramBroadcastChannelDto) {
+    this.resService.toggleBroadcastChannel(ch.id).subscribe({
+      next: (res) => {
+        ch.is_active = res.is_active;
+        this.showToast(res.message || '✅ 广播状态已更新', 'success');
+        this.loadBroadcastChannels();
+      },
+      error: (err) => {
+        this.showToast(`❌ 切换失败: ${err.error?.error || err.message}`, 'error');
+      }
+    });
+  }
+
+  async deleteBroadcastChannel(id: string) {
+    const ok = await this.confirmDialog({
+      title: this.i18n.lang() === 'zh-CN' ? '移除广播频道' : 'Remove Broadcast Channel',
+      message: this.i18n.lang() === 'zh-CN' ? '确定要从广播列表中移除该频道吗？移除后将不再向该频道发布资料。' : 'Are you sure you want to remove this broadcast channel?',
+      confirmText: this.i18n.lang() === 'zh-CN' ? '确定移除' : 'Remove',
+      type: 'danger',
+      icon: '🗑️'
+    });
+    if (!ok) return;
+    this.resService.deleteBroadcastChannel(id).subscribe({
+      next: () => {
+        this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 广播频道已移除' : '✅ Channel removed', 'success');
+        this.loadBroadcastChannels();
+      }
+    });
+  }
+
+  broadcastResourceToTelegram(res: ResourceItemDto) {
+    if (!res.id) return;
+    this.showToast(this.i18n.lang() === 'zh-CN' ? `📢 正在广播推送「${res.title}」至 Telegram 频道...` : `Broadcasting to Telegram...`);
+    this.resService.broadcastResourceToTelegram(res.id).subscribe({
+      next: (resp) => {
+        this.showToast(resp.message || this.i18n.t('crawler.broadcastSuccess'), 'success');
+      },
+      error: (err) => {
+        this.showToast(`❌ ${err.error?.error || err.message || '广播推送失败'}`, 'error');
+      }
+    });
+  }
+
+  async removeCrawlerWebhook() {
+    this.registerCrawlerWebhook();
   }
 
   updateDraftStatus(draft: ResourceDraftDto, status: 'pending' | 'approved' | 'ignored') {
@@ -1912,7 +2145,7 @@ export class App implements OnInit {
     });
   }
 
-  switchTab(tab: 'list' | 'add' | 'stats' | 'crawler' | 'accounts' | 'channels' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests') {
+  switchTab(tab: 'list' | 'add' | 'stats' | 'crawler' | 'email' | 'seo' | 'accounts' | 'channels' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests') {
     this.currentTab.set(tab);
     if (tab === 'list') {
       this.loadResources();
@@ -1935,6 +2168,8 @@ export class App implements OnInit {
     } else if (tab === 'crawler') {
       this.loadCrawlerDrafts();
       this.loadCrawlerConfigAndStats();
+      this.loadCrawlerChannels();
+      this.loadBroadcastChannels();
     }
   }
 

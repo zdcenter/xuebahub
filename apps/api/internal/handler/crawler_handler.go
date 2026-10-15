@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -36,7 +37,9 @@ func (h *CrawlerHandler) GetConfig(c fiber.Ctx) error {
 		cfg = model.TelegramConfig{
 			BotToken:            "7315955834:AAEr_bxkFhKheGyYzNZ_3Mzwskl8TrTuHYA",
 			BotUsername:         "demoMovieFind_bot",
-			AutoSync:            true,
+			SyncMode:            "webhook",
+			WebhookURL:          "https://api.xuebaw.com:8443/api/v1/public/telegram/webhook",
+			AutoSync:            false,
 			SyncIntervalSeconds: 60,
 			LastSyncStatus:      "idle",
 			LastSyncMessage:     "初始化就绪",
@@ -68,10 +71,15 @@ func (h *CrawlerHandler) GetConfig(c fiber.Ctx) error {
 // UpdateConfig 更新 Telegram 机器人参数
 func (h *CrawlerHandler) UpdateConfig(c fiber.Ctx) error {
 	type UpdateReq struct {
-		BotToken            string `json:"bot_token"`
-		BotUsername         string `json:"bot_username"`
-		AutoSync            bool   `json:"auto_sync"`
-		SyncIntervalSeconds int    `json:"sync_interval_seconds"`
+		BotToken    string `json:"bot_token"`
+		BotUsername string `json:"bot_username"`
+		WebhookURL  string `json:"webhook_url"`
+		ProxyURL    string `json:"proxy_url"`
+		ApiBaseURL         string  `json:"api_base_url"`
+		IsEnabled          *bool   `json:"is_enabled"`
+		BroadcastChannelID *string `json:"broadcast_channel_id"`
+		AutoBroadcast      *bool   `json:"auto_broadcast"`
+		BroadcastTemplate  *string `json:"broadcast_template"`
 	}
 
 	var req UpdateReq
@@ -88,32 +96,90 @@ func (h *CrawlerHandler) UpdateConfig(c fiber.Ctx) error {
 		cfg.BotToken = strings.TrimSpace(req.BotToken)
 	}
 	cfg.BotUsername = strings.TrimSpace(req.BotUsername)
-	cfg.AutoSync = req.AutoSync
-	if req.SyncIntervalSeconds > 0 {
-		cfg.SyncIntervalSeconds = req.SyncIntervalSeconds
+	if req.WebhookURL != "" {
+		cfg.WebhookURL = strings.TrimSpace(req.WebhookURL)
 	}
+	cfg.ProxyURL = strings.TrimSpace(req.ProxyURL)
+	cfg.ApiBaseURL = strings.TrimSpace(req.ApiBaseURL)
+	if req.IsEnabled != nil {
+		cfg.IsEnabled = *req.IsEnabled
+	}
+	if req.BroadcastChannelID != nil {
+		cfg.BroadcastChannelID = strings.TrimSpace(*req.BroadcastChannelID)
+	}
+	if req.AutoBroadcast != nil {
+		cfg.AutoBroadcast = *req.AutoBroadcast
+	}
+	if req.BroadcastTemplate != nil {
+		cfg.BroadcastTemplate = *req.BroadcastTemplate
+	}
+	// 锁定为 Webhook 实时触发模式
+	cfg.SyncMode = "webhook"
+	cfg.AutoSync = false
 
 	if err := h.db.Save(&cfg).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "更新配置失败"})
 	}
 
+	// 自动向 Telegram 注册/同步该 Webhook 地址
+	if cfg.BotToken != "" {
+		if err := h.crawlerService.SetWebhook(cfg.WebhookURL); err != nil {
+			log.Printf("更新配置后注册 Webhook 提示: %v", err)
+		}
+	}
+
 	return c.JSON(fiber.Map{
-		"message": "Telegram 机器人配置更新成功",
+		"message": "Telegram 机器人配置更新成功，已同步注册 Webhook 实时通道",
 		"config":  cfg,
 	})
 }
 
-// SyncNow 立即执行一次电报消息同步与采集
+// ToggleMasterSwitch 切换全局采集与监控总开关 (一键暂停/开启)
+func (h *CrawlerHandler) ToggleMasterSwitch(c fiber.Ctx) error {
+	var cfg model.TelegramConfig
+	if err := h.db.First(&cfg).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "未找到配置"})
+	}
+
+	cfg.IsEnabled = !cfg.IsEnabled
+	statusText := "已恢复全局实时监控"
+	if !cfg.IsEnabled {
+		statusText = "已暂停全局监控 (阻断所有新消息自动入库)"
+		cfg.LastSyncMessage = "⏸️ 监控总开关已暂停：当前阻断所有频道新资源自动入库"
+	} else {
+		cfg.LastSyncMessage = "🟢 监控总开关已恢复：正在实时监听频道新消息并自动推送"
+	}
+	h.db.Save(&cfg)
+
+	return c.JSON(fiber.Map{
+		"message":    fmt.Sprintf("✅ 采集监控总开关%s", statusText),
+		"is_enabled": cfg.IsEnabled,
+		"config":     cfg,
+	})
+}
+
+// SyncNow 立即校验并刷新 Telegram Webhook 实时触发状态 (纯 Webhook 架构，已取消 60 秒轮询)
 func (h *CrawlerHandler) SyncNow(c fiber.Ctx) error {
-	res, err := h.crawlerService.SyncNow()
-	if err != nil {
+	var cfg model.TelegramConfig
+	if err := h.db.First(&cfg).Error; err != nil || strings.TrimSpace(cfg.BotToken) == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
+			"error": "Telegram Bot Token 未配置，请先填写 Bot 凭证",
 		})
 	}
+
+	if err := h.crawlerService.SetWebhook(cfg.WebhookURL); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("Webhook 连通校验失败: %v", err),
+		})
+	}
+
+	info, _ := h.crawlerService.GetWebhookInfo()
 	return c.JSON(fiber.Map{
 		"success": true,
-		"result":  res,
+		"result": fiber.Map{
+			"message": "⚡ Webhook 实时触发通道正常！频道一有新消息发布，Telegram 将在 0 秒内瞬间自动推送到本系统，无需后台轮询。",
+			"info":    info,
+		},
 	})
 }
 
@@ -397,6 +463,13 @@ func (h *CrawlerHandler) BatchDraftAction(c fiber.Ctx) error {
 
 // HandleTelegramWebhook 接收 Telegram Webhook 推送的实时频道广播
 func (h *CrawlerHandler) HandleTelegramWebhook(c fiber.Ctx) error {
+	// 0. 检查全局采集与监控总开关是否开启
+	var cfg model.TelegramConfig
+	if err := h.db.First(&cfg).Error; err == nil && !cfg.IsEnabled {
+		// 全局总开关已关闭，直接忽略丢弃本次推送
+		return c.SendStatus(fiber.StatusOK)
+	}
+
 	body := c.Body()
 	var update service.TelegramUpdate
 	if err := json.Unmarshal(body, &update); err != nil {
@@ -486,15 +559,16 @@ func (h *CrawlerHandler) RegisterWebhook(c fiber.Ctx) error {
 	})
 }
 
-// RemoveWebhook 注销 Webhook 并切回定时轮询模式
+// RemoveWebhook 重新刷新并校验 Webhook 实时触发模式
 func (h *CrawlerHandler) RemoveWebhook(c fiber.Ctx) error {
-	if err := h.crawlerService.DeleteWebhook(); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	var cfg model.TelegramConfig
+	if err := h.db.First(&cfg).Error; err == nil && cfg.BotToken != "" {
+		_ = h.crawlerService.SetWebhook(cfg.WebhookURL)
 	}
 
 	return c.JSON(fiber.Map{
-		"message":   "已成功注销 Webhook，已切回后台定时自动轮询模式",
-		"sync_mode": "polling",
+		"message":   "⚡ Webhook 实时推送通道已刷新！",
+		"sync_mode": "webhook",
 	})
 }
 
@@ -506,3 +580,235 @@ func (h *CrawlerHandler) GetWebhookInfo(c fiber.Ctx) error {
 	}
 	return c.JSON(info)
 }
+
+// ResolveChannel 智能解析 Telegram 频道信息 (@username 或 t.me/xxx 或 数字ID)
+func (h *CrawlerHandler) ResolveChannel(c fiber.Ctx) error {
+	type ResolveReq struct {
+		Input string `json:"input"`
+	}
+	var req ResolveReq
+	if err := c.Bind().Body(&req); err != nil || strings.TrimSpace(req.Input) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "请输入有效的频道链接、@用户名或数字ID"})
+	}
+
+	ch, err := h.crawlerService.ResolveChannel(req.Input)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("解析频道失败: %v", err)})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "频道识别成功",
+		"channel": ch,
+	})
+}
+
+// SendTestBroadcast 发送一条测试广播消息到指定或已配置的广播频道
+func (h *CrawlerHandler) SendTestBroadcast(c fiber.Ctx) error {
+	type TestReq struct {
+		TargetChannel string `json:"target_channel"`
+	}
+	var req TestReq
+	_ = c.Bind().Body(&req)
+
+	target := strings.TrimSpace(req.TargetChannel)
+	if target == "" {
+		var cfg model.TelegramConfig
+		if err := h.db.First(&cfg).Error; err == nil {
+			target = cfg.BroadcastChannelID
+		}
+	}
+
+	if target == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "未设置目标广播频道，请先在广播设置中填写广播频道（例如: @xuebaw_official）",
+		})
+	}
+
+	if err := h.crawlerService.SendTestBroadcast(target); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("发送测试广播失败: %v（提示: 请确保机器人已被添加为该频道管理员并拥有发布消息权限）", err),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": fmt.Sprintf("🎉 测试广播消息已成功发送至频道 %s！请前往 Telegram 查验。", target),
+	})
+}
+
+// BroadcastResource 手动将某个资源一键广播至 Telegram 频道
+func (h *CrawlerHandler) BroadcastResource(c fiber.Ctx) error {
+	resourceIDStr := strings.TrimSpace(c.Params("resourceId"))
+	var res model.Resource
+	query := h.db.Preload("Links")
+	if resUUID, err := uuid.Parse(resourceIDStr); err == nil {
+		query = query.Where("id = ?", resUUID)
+	} else {
+		query = query.Where("slug = ?", resourceIDStr)
+	}
+	if err := query.First(&res).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "资源未找到"})
+	}
+
+	type BroadcastReq struct {
+		CustomChannelID string `json:"custom_channel_id"`
+	}
+	var req BroadcastReq
+	_ = c.Bind().Body(&req)
+
+	if err := h.crawlerService.BroadcastResource(&res, req.CustomChannelID); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("推送电报广播失败: %v", err),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": fmt.Sprintf("📢 资源「%s」已成功推送到 Telegram 频道！", res.Title),
+	})
+}
+
+// ListBroadcastChannels 获取所有广播推送频道列表
+func (h *CrawlerHandler) ListBroadcastChannels(c fiber.Ctx) error {
+	var channels []model.TelegramBroadcastChannel
+	h.db.Order("created_at asc").Find(&channels)
+
+	// 如果广播列表为空但 TelegramConfig 填有历史 broadcast_channel_id，自动迁移并存入一条
+	if len(channels) == 0 {
+		var cfg model.TelegramConfig
+		if err := h.db.First(&cfg).Error; err == nil && strings.TrimSpace(cfg.BroadcastChannelID) != "" {
+			autoCh := model.TelegramBroadcastChannel{
+				ID:        uuid.New(),
+				ChannelID: strings.TrimSpace(cfg.BroadcastChannelID),
+				Name:      "默认广播频道",
+				IsActive:  true,
+				Remark:    "系统历史配置自动迁移",
+			}
+			h.db.Create(&autoCh)
+			channels = append(channels, autoCh)
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"channels": channels,
+	})
+}
+
+// CreateBroadcastChannel 新增广播推送频道
+func (h *CrawlerHandler) CreateBroadcastChannel(c fiber.Ctx) error {
+	type CreateReq struct {
+		ChannelID string `json:"channel_id"`
+		Name      string `json:"name"`
+		Remark    string `json:"remark"`
+	}
+
+	var req CreateReq
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "参数格式错误"})
+	}
+
+	channelID := strings.TrimSpace(req.ChannelID)
+	if channelID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "频道 ID / 用户名不能为空"})
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		name = fmt.Sprintf("广播频道 %s", channelID)
+	}
+
+	ch := model.TelegramBroadcastChannel{
+		ID:        uuid.New(),
+		ChannelID: channelID,
+		Name:      name,
+		IsActive:  true,
+		Remark:    req.Remark,
+	}
+
+	if err := h.db.Create(&ch).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "广播频道已存在或创建失败"})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "广播频道添加成功",
+		"channel": ch,
+	})
+}
+
+// ResolveBroadcastChannel 智能识别并直接添加广播频道
+func (h *CrawlerHandler) ResolveBroadcastChannel(c fiber.Ctx) error {
+	type ResolveReq struct {
+		Input string `json:"input"`
+	}
+	var req ResolveReq
+	if err := c.Bind().Body(&req); err != nil || strings.TrimSpace(req.Input) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "请输入有效的频道链接、@用户名或数字ID"})
+	}
+
+	ch, err := h.crawlerService.ResolveChannel(req.Input)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("识别频道失败: %v", err)})
+	}
+
+	// 存入广播频道表
+	bCh := model.TelegramBroadcastChannel{
+		ID:        uuid.New(),
+		ChannelID: ch.ChannelID,
+		Name:      ch.Name,
+		IsActive:  true,
+		Remark:    ch.Remark,
+	}
+	if err := h.db.Create(&bCh).Error; err != nil {
+		_ = h.db.Where("channel_id = ?", ch.ChannelID).First(&bCh)
+	}
+
+	return c.JSON(fiber.Map{
+		"message": fmt.Sprintf("✅ 成功识别并添加广播频道【%s】", bCh.Name),
+		"channel": bCh,
+	})
+}
+
+// ToggleBroadcastChannel 切换广播频道的启用/暂停状态
+func (h *CrawlerHandler) ToggleBroadcastChannel(c fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "非法频道 ID"})
+	}
+
+	var ch model.TelegramBroadcastChannel
+	if err := h.db.First(&ch, "id = ?", id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "广播频道不存在"})
+	}
+
+	ch.IsActive = !ch.IsActive
+	if err := h.db.Save(&ch).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "切换广播频道状态失败"})
+	}
+
+	actionStr := "已开启广播"
+	if !ch.IsActive {
+		actionStr = "已暂停广播"
+	}
+
+	return c.JSON(fiber.Map{
+		"message":   fmt.Sprintf("频道 [%s] %s", ch.Name, actionStr),
+		"is_active": ch.IsActive,
+		"channel":   ch,
+	})
+}
+
+// DeleteBroadcastChannel 删除广播频道
+func (h *CrawlerHandler) DeleteBroadcastChannel(c fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "非法频道 ID"})
+	}
+
+	if err := h.db.Delete(&model.TelegramBroadcastChannel{}, "id = ?", id).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "删除广播频道失败"})
+	}
+
+	return c.JSON(fiber.Map{"message": "广播频道已移除"})
+}
+
+

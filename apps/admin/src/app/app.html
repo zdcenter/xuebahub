@@ -71,14 +71,23 @@
       </div>
     </div>
   } @else {
-    <!-- 侧边导航栏 -->
-    <aside class="sidebar">
+    <!-- 侧边导航栏 (支持一键收起/展开，极大提升右侧视窗空间) -->
+    <aside class="sidebar" [class.collapsed]="isSidebarCollapsed()">
     <div class="brand">
-      <div class="brand-logo">📚</div>
-      <div class="brand-text">
-        <h2>学霸网后台管理</h2>
-        <span>Go + PG 实时驱动</span>
+      <div class="brand-left">
+        <div class="brand-logo" (click)="toggleSidebar()" style="cursor: pointer;" title="点击折叠/展开侧边栏">📚</div>
+        <div class="brand-text">
+          <h2>学霸网后台管理</h2>
+          <span>Go + PG 实时驱动</span>
+        </div>
       </div>
+      <button 
+        type="button" 
+        class="sidebar-toggle-btn" 
+        (click)="toggleSidebar()" 
+        [title]="isSidebarCollapsed() ? '点击展开侧边栏 (显示完整菜单)' : '点击收起侧边栏 (获得更大工作视窗)'">
+        <span>{{ isSidebarCollapsed() ? '▶' : '◀' }}</span>
+      </button>
     </div>
 
     <nav class="nav-menu">
@@ -158,11 +167,16 @@
           <span class="icon">☁️</span>
           <span class="nav-label">{{ i18n.t('nav.accounts') }}</span>
         </button>
+      </div>
+
+      <!-- 4. ✈️ Telegram 运营中枢 -->
+      <div class="nav-section">
+        <div class="nav-section-title">{{ i18n.t('nav.groupTelegram') }}</div>
         <button 
           type="button"
           [class.active]="currentTab() === 'crawler'" 
           (click)="switchTab('crawler')">
-          <span class="icon">📥</span>
+          <span class="icon">✈️</span>
           <span class="nav-label">{{ i18n.t('crawler.navTitle') }}</span>
           @if (crawlerStats().pending_drafts > 0) {
             <span class="nav-pill-badge hot">{{ crawlerStats().pending_drafts }}</span>
@@ -172,7 +186,26 @@
         </button>
       </div>
 
-      <!-- 4. 系统与全局 -->
+      <!-- 4.1 📧 邮件营销与 🔍 搜索引擎收录中枢 -->
+      <div class="nav-section">
+        <div class="nav-section-title">{{ i18n.t('nav.groupEmail') }}</div>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'email'" 
+          (click)="switchTab('email')">
+          <span class="icon">📧</span>
+          <span class="nav-label">{{ i18n.t('email.navTitle') }}</span>
+        </button>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'seo'" 
+          (click)="switchTab('seo')">
+          <span class="icon">🔍</span>
+          <span class="nav-label">{{ i18n.t('seo.nav') }}</span>
+        </button>
+      </div>
+
+      <!-- 5. 系统与全局 -->
       <div class="nav-section">
         <div class="nav-section-title">{{ i18n.t('nav.groupSystem') }}</div>
         <button 
@@ -205,28 +238,40 @@
   <main class="main-content">
     <header class="topbar">
       <div class="title-area">
-        <h1>
-          @if (currentTab() === 'list') { 📚 资料库管理 (实时数据库) }
-          @if (currentTab() === 'add') { ✍️ 录入并发布新试卷/视频 }
-          @if (currentTab() === 'stats') { 📊 推广收益与转化分析 }
-          @if (currentTab() === 'crawler') { 📥 {{ i18n.t('crawler.title') }} }
-          @if (currentTab() === 'accounts') { ☁️ 网盘账号与全自动转存换链配置 }
-          @if (currentTab() === 'channels') { 🏷️ 网站顶级频道与业务线管理 }
-          @if (currentTab() === 'navmenus') { 🧭 网站前台多级导航与专区配置 }
-          @if (currentTab() === 'schools') { 🏫 重点名校与所属省市地区字典库 }
-          @if (currentTab() === 'hotsearches') { 🔥 {{ i18n.t('hotsearch.title') }} }
-          @if (currentTab() === 'settings') { ⚙️ {{ i18n.t('settings.title') }} }
-          @if (currentTab() === 'requests') { 📝 {{ i18n.t('requests.title') }} }
-        </h1>
-        <p class="subtitle">
-          @if (currentTab() === 'channels') { 动态管理教辅资料顶级频道与业务线，支持一键上下线与排序 }
-          @else if (currentTab() === 'navmenus') { 自由配置前台顶部一级学段专区与下拉二级分类、高亮角标与跳转路由，全站实时同步 }
-          @else if (currentTab() === 'schools') { 预置全国及柳州本地重点中小学库，发资料时一键匹配，并支持随时自动入库新学校 }
-          @else if (currentTab() === 'hotsearches') { {{ i18n.t('hotsearch.subtitle') }} }
-          @else if (currentTab() === 'settings') { {{ i18n.t('settings.subtitle') }} }
-          @else if (currentTab() === 'requests') { {{ i18n.t('requests.subtitle') }} }
-          @else { 覆盖中小学同步教辅、名校密卷、教师资格证与公考升学刚需备考资源 }
-        </p>
+        <button 
+          type="button" 
+          class="topbar-toggle-btn" 
+          (click)="toggleSidebar()" 
+          [title]="isSidebarCollapsed() ? '展开左侧导航菜单' : '收起左侧导航菜单 (获得全屏宽视野)'">
+          <span>{{ isSidebarCollapsed() ? '☰' : '◀' }}</span>
+        </button>
+        <div>
+          <h1>
+            @if (currentTab() === 'list') { 📚 资料库管理 (实时数据库) }
+            @if (currentTab() === 'add') { ✍️ 录入并发布新试卷/视频 }
+            @if (currentTab() === 'stats') { 📊 推广收益与转化分析 }
+            @if (currentTab() === 'crawler') { ✈️ {{ i18n.t('crawler.title') }} }
+            @if (currentTab() === 'email') { 📧 {{ i18n.t('email.title') }} }
+            @if (currentTab() === 'seo') { 🔍 {{ i18n.t('seo.title') }} }
+            @if (currentTab() === 'accounts') { ☁️ 网盘账号与全自动转存换链配置 }
+            @if (currentTab() === 'channels') { 🏷️ 网站顶级频道与业务线管理 }
+            @if (currentTab() === 'navmenus') { 🧭 网站前台多级导航与专区配置 }
+            @if (currentTab() === 'schools') { 🏫 重点名校与所属省市地区字典库 }
+            @if (currentTab() === 'hotsearches') { 🔥 {{ i18n.t('hotsearch.title') }} }
+            @if (currentTab() === 'settings') { ⚙️ {{ i18n.t('settings.title') }} }
+            @if (currentTab() === 'requests') { 📝 {{ i18n.t('requests.title') }} }
+          </h1>
+          <p class="subtitle">
+            @if (currentTab() === 'channels') { 动态管理教辅资料顶级频道与业务线，支持一键上下线与排序 }
+            @else if (currentTab() === 'navmenus') { 自由配置前台顶部一级学段专区与下拉二级分类、高亮角标与跳转路由，全站实时同步 }
+            @else if (currentTab() === 'schools') { 预置全国及柳州本地重点中小学库，发资料时一键匹配，并支持随时自动入库新学校 }
+            @else if (currentTab() === 'hotsearches') { {{ i18n.t('hotsearch.subtitle') }} }
+            @else if (currentTab() === 'settings') { {{ i18n.t('settings.subtitle') }} }
+            @else if (currentTab() === 'requests') { {{ i18n.t('requests.subtitle') }} }
+            @else if (currentTab() === 'seo') { {{ i18n.t('seo.subtitle') }} }
+            @else { 覆盖中小学同步教辅、名校密卷、教师资格证与公考升学刚需备考资源 }
+          </p>
+        </div>
       </div>
       <div class="quick-stats">
         @if (currentUser()) {
@@ -397,6 +442,9 @@
                 <button type="button" class="btn btn-sm btn-batch-share" (click)="openBatchCopyModal()">
                   {{ i18n.t('copyWriter.batchCopy') }}
                 </button>
+                <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff; border: none; font-weight: 600; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);" (click)="batchPushSelectedToSeo()" title="将选中的资料批量推送到百度与必应搜索引擎加快收录">
+                  ⚡ 百度/必应主动收录
+                </button>
                 <button type="button" class="btn btn-sm btn-batch-enable" (click)="batchToggleResources(true)">
                   {{ i18n.t('resource.batchPublish') }}
                 </button>
@@ -419,13 +467,12 @@
             <table class="data-table">
               <colgroup>
                 <col style="width: 44px; text-align: center;" />
-                <col style="width: 28%; min-width: 250px;" />
-                <col style="width: 12%; min-width: 105px;" />
-                <col style="width: 12%; min-width: 110px;" />
-                <col style="width: 11%; min-width: 100px;" />
-                <col style="width: 20%; min-width: 185px;" />
-                <col style="width: 8%; min-width: 85px;" />
-                <col style="width: 7%; min-width: 95px;" />
+                <col style="width: 27%; min-width: 230px;" />
+                <col style="width: 15%; min-width: 125px;" />
+                <col style="width: 10%; min-width: 90px;" />
+                <col style="width: 21%; min-width: 180px;" />
+                <col style="width: 8%; min-width: 75px;" />
+                <col style="width: 19%; min-width: 195px;" />
               </colgroup>
               <thead>
                 <tr>
@@ -439,8 +486,7 @@
                     />
                   </th>
                   <th>资料标题 / 访问路径</th>
-                  <th>学段 / 年级</th>
-                  <th>学科 / 版本</th>
+                  <th>分类与版本</th>
                   <th>文件规格</th>
                   <th>转存 / 浏览</th>
                   <th>状态</th>
@@ -502,15 +548,15 @@
                       </div>
                     </td>
                     <td>
-                      <div class="stage-grade-cell">
-                        <span class="tag stage">{{ getStageLabel(res.stage) }}</span>
-                        <span class="tag grade">{{ res.grade }}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div class="subject-edition-cell">
-                        <span class="tag subject">{{ res.subject }}</span>
-                        <span class="edition-badge">{{ res.edition }}</span>
+                      <div class="category-meta-stack">
+                        <div class="category-row">
+                          <span class="tag stage">{{ getStageLabel(res.stage) }}</span>
+                          <span class="tag subject">{{ res.subject }}</span>
+                        </div>
+                        <div class="edition-row">
+                          <span class="tag grade">{{ res.grade }}</span>
+                          <span class="edition-badge">{{ res.edition }}</span>
+                        </div>
                       </div>
                     </td>
                     <td>
@@ -598,10 +644,49 @@
                       </button>
                     </td>
                     <td>
-                      <div class="action-btn-group">
-                        <button class="btn-action share" (click)="openCopyWriterModal(res)" title="提取引流宣发文案（小红书/微信群/贴吧）">{{ i18n.t('copyWriter.btn') }}</button>
-                        <button class="btn-action edit" (click)="openEdit(res)" title="修改资料">✏️ 修改</button>
-                        <button class="btn-action danger" (click)="deleteResource(res.id)" title="删除资料">🗑️ 删除</button>
+                      <div class="action-grid-direct">
+                        <!-- 上排：全网宣发直达通道 (1键触发，0弹窗跳步) -->
+                        <div class="action-grid-row">
+                          <button 
+                            type="button" 
+                            class="btn-direct-action tg" 
+                            (click)="broadcastResourceToTelegram(res)" 
+                            [title]="i18n.t('crawler.btnBroadcastToTg') + ' - 一键推送到绑定电报群/频道'">
+                            <span>✈️ {{ i18n.t('crawler.btnBroadcastToTg') }}</span>
+                          </button>
+                          <button 
+                            type="button" 
+                            class="btn-direct-action email" 
+                            (click)="openEmailHubWithResource(res)" 
+                            title="一键载入邮件营销中枢进行群发推广">
+                            <span>📧 邮件营销</span>
+                          </button>
+                        </div>
+
+                        <!-- 下排：内容维护与文案提取 (1键直达) -->
+                        <div class="action-grid-row">
+                          <button 
+                            type="button" 
+                            class="btn-direct-action copy" 
+                            (click)="openCopyWriterModal(res)" 
+                            [title]="i18n.t('copyWriter.btn') + ' - 提取小红书/微信群爆款文案'">
+                            <span>📋 {{ i18n.t('copyWriter.btn') }}</span>
+                          </button>
+                          <button 
+                            type="button" 
+                            class="btn-direct-action edit" 
+                            (click)="openEdit(res)" 
+                            title="修改资料详情与网盘链接">
+                            <span>✏️ 修改</span>
+                          </button>
+                          <button 
+                            type="button" 
+                            class="btn-direct-action delete" 
+                            (click)="deleteResource(res.id)" 
+                            title="删除资料">
+                            <span>🗑️ 删除</span>
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -1349,16 +1434,16 @@
         </div>
       }
 
-      <!-- 4. 电报智能采集与资源草稿池中台 (Telegram Ingestion & Drafts Pool) -->
+      <!-- 4. ✈️ Telegram 电报智能运营中枢 (Telegram Operations Hub - 方案 1 模板化架构) -->
       @if (currentTab() === 'crawler') {
         <div style="display: flex; flex-direction: column; gap: 20px;">
           <!-- 顶部业务横幅与操作中枢 -->
-          <div class="account-hero-banner" style="background: linear-gradient(135deg, #064e3b 0%, #065f46 40%, #047857 100%);">
+          <div class="account-hero-banner" style="background: linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%);">
             <div class="hero-left">
               <div class="hero-badge" style="background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); color: #ecfdf5;">
-                📥 {{ i18n.t('crawler.title') }}
+                ✈️ {{ i18n.t('crawler.title') }}
               </div>
-              <h2>电报频道智能采集暂存中台 · 资源草稿池与一键入库</h2>
+              <h2>Telegram 电报运营中枢 · 采集与广播闭环工作台</h2>
               <p>{{ i18n.t('crawler.subtitle') }}</p>
               
               <!-- 快捷操作按钮组 -->
@@ -1366,23 +1451,8 @@
                 <button 
                   type="button" 
                   class="btn btn-primary" 
-                  [disabled]="isSyncingCrawler()"
-                  (click)="triggerCrawlerSync()"
-                  style="background: #ffffff; color: #065f46; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  @if (isSyncingCrawler()) {
-                    <span class="animate-spin">⏳</span>
-                    <span>{{ i18n.t('crawler.syncing') }}</span>
-                  } @else {
-                    <span>⚡</span>
-                    <span>{{ i18n.t('crawler.syncNow') }}</span>
-                  }
-                </button>
-
-                <button 
-                  type="button" 
-                  class="btn btn-secondary" 
                   (click)="openCrawlerPasteModal()"
-                  style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  style="background: #ffffff; color: #0284c7; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 6px; cursor: pointer;">
                   <span>📋</span>
                   <span>{{ i18n.t('crawler.pasteIngest') }}</span>
                 </button>
@@ -1390,7 +1460,17 @@
                 <button 
                   type="button" 
                   class="btn btn-secondary" 
-                  (click)="openCrawlerSettingsModal()"
+                  [disabled]="isRegisteringWebhook()"
+                  (click)="registerCrawlerWebhook()"
+                  style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <span>⚡</span>
+                  <span>{{ i18n.t('crawler.syncNow') }}</span>
+                </button>
+
+                <button 
+                  type="button" 
+                  class="btn btn-secondary" 
+                  (click)="switchCrawlerSubTab('settings')"
                   style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
                   <span>⚙️</span>
                   <span>{{ i18n.t('crawler.settings') }}</span>
@@ -1413,111 +1493,139 @@
                 <span class="stat-label">{{ i18n.t('crawler.statTotal') }}</span>
               </div>
               <div class="hero-stat-item">
-                <span class="stat-num" style="color: #a7f3d0;">
-                  {{ crawlerStats().approved_drafts }}
+                <span class="stat-num" style="color: #38bdf8;">
+                  {{ activeChannelsCount() }}
                 </span>
-                <span class="stat-label">{{ i18n.t('crawler.statApproved') }}</span>
+                <span class="stat-label">📡 监听频道</span>
               </div>
               <div class="hero-stat-item">
-                <span class="stat-num" style="color: #fed7aa;">
-                  {{ crawlerStats().monitored_channels }}
+                <span class="stat-num" style="color: #a7f3d0;">
+                  {{ activeBroadcastChannelsCount() }}
                 </span>
-                <span class="stat-label">{{ i18n.t('crawler.statChannels') }}</span>
+                <span class="stat-label">📢 广播频道</span>
               </div>
             </div>
           </div>
 
-          <!-- 实时监听雷达与状态看板 (Live Monitoring Radar & Daemon Status) -->
-          <div class="card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
-              <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                <!-- 核心工作状态脉冲指示灯 -->
-                @if (!crawlerConfig()?.bot_token) {
-                  <div style="display: flex; align-items: center; gap: 8px; background: #fef2f2; border: 1px solid #fecaca; padding: 6px 14px; border-radius: 20px;">
-                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></span>
-                    <span style="font-size: 13px; font-weight: 700; color: #991b1b;">未配置 Telegram Bot</span>
-                    <button type="button" class="btn btn-sm" (click)="openCrawlerSettingsModal()" style="padding: 2px 8px; font-size: 11px; background: #dc2626; color: #fff; border: none; border-radius: 12px; cursor: pointer;">立即配置</button>
-                  </div>
-                } @else if (crawlerConfig()?.sync_mode === 'webhook') {
-                  <div style="display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 14px; border-radius: 20px;">
-                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);"></span>
-                    <span style="font-size: 13px; font-weight: 700; color: #065f46;">🟢 正在监听中 · Webhook 自动触发 (0秒延迟实时推送)</span>
-                  </div>
-                } @else if (crawlerConfig()?.auto_sync) {
-                  <div style="display: flex; align-items: center; gap: 8px; background: #eff6ff; border: 1px solid #bfdbfe; padding: 6px 14px; border-radius: 20px;">
-                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);"></span>
-                    <span style="font-size: 13px; font-weight: 700; color: #1e40af;">🟢 正在监听中 · 后台自动轮询 (每 {{ crawlerConfig()?.sync_interval_seconds || 60 }} 秒)</span>
-                  </div>
-                } @else {
-                  <div style="display: flex; align-items: center; gap: 8px; background: #fffbeb; border: 1px solid #fde68a; padding: 6px 14px; border-radius: 20px;">
-                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b;"></span>
-                    <span style="font-size: 13px; font-weight: 700; color: #92400e;">⏸️ 自动监听已暂停 (仅手动拉取模式)</span>
-                  </div>
-                }
+          <!-- Telegram 工作台 4 大 Sub-Tabs 导航栏 -->
+          <div class="crawler-subnav-bar">
+            <button 
+              type="button" 
+              class="crawler-subtab-btn" 
+              [class.active]="crawlerSubTab() === 'drafts'"
+              (click)="switchCrawlerSubTab('drafts')">
+              <span>📥</span> {{ i18n.t('crawler.subTabDrafts') }}
+              @if (crawlerStats().pending_drafts > 0) {
+                <span class="subtab-badge hot">{{ crawlerStats().pending_drafts }}</span>
+              }
+            </button>
+            <button 
+              type="button" 
+              class="crawler-subtab-btn" 
+              [class.active]="crawlerSubTab() === 'ingestion'"
+              (click)="switchCrawlerSubTab('ingestion')">
+              <span>📡</span> {{ i18n.t('crawler.subTabIngestion') }}
+              <span class="subtab-badge">{{ crawlerChannels().length }}</span>
+            </button>
+            <button 
+              type="button" 
+              class="crawler-subtab-btn" 
+              [class.active]="crawlerSubTab() === 'broadcast'"
+              (click)="switchCrawlerSubTab('broadcast')">
+              <span>📢</span> {{ i18n.t('crawler.subTabBroadcast') }}
+              <span class="subtab-badge">{{ broadcastChannels().length }}</span>
+            </button>
+            <button 
+              type="button" 
+              class="crawler-subtab-btn" 
+              [class.active]="crawlerSubTab() === 'settings'"
+              (click)="switchCrawlerSubTab('settings')">
+              <span>⚙️</span> {{ i18n.t('crawler.subTabSettings') }}
+            </button>
+          </div>
 
-                <!-- 监控频道活跃概览 -->
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #334155; background: #f8fafc; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                  <span>📡 频道监控:</span>
-                  <strong style="color: #047857;">{{ activeChannelsCount() }} 个活跃</strong>
-                  @if (pausedChannelsCount() > 0) {
-                    <span style="color: #94a3b8;">/</span>
-                    <strong style="color: #d97706;">{{ pausedChannelsCount() }} 个已暂停</strong>
-                  }
-                  <span style="color: #64748b;">(共 {{ crawlerChannels().length }} 个)</span>
+          <!-- ===== 选项卡 1: 📥 资源采集草稿池 (Drafts Pool) ===== -->
+          @if (crawlerSubTab() === 'drafts') {
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+              <!-- 快捷工作台：⚡ 极速粘贴智能提取与入库 (免弹窗、直连入库) -->
+              <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); border-left: 4px solid #0284c7; padding: 20px 24px; background: #ffffff;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">📋</span>
+                    <div>
+                      <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span>快速粘贴智能解析入库</span>
+                        <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 600;">免弹窗 · 极速录入</span>
+                      </h3>
+                      <p style="margin: 2px 0 0 0; font-size: 12.5px; color: #64748b;">
+                        直接粘贴从电报、微信群或网页复制的网盘分享文本，系统自动提取标题、网盘类型、分享链接与提取码，秒级存入草稿池！
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <!-- 机器人身份与最后状态 -->
-                @if (crawlerConfig()?.bot_username) {
-                  <span style="font-size: 12px; color: #64748b; font-family: monospace; background: #f1f5f9; padding: 4px 8px; border-radius: 6px;">
-                    🤖 @{{ crawlerConfig()?.bot_username }}
-                  </span>
-                }
-              </div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                  <textarea 
+                    id="fast-paste-textarea"
+                    class="form-control" 
+                    rows="3" 
+                    [(ngModel)]="pasteForm.rawText"
+                    (keydown)="onFastPasteKeyDown($event)"
+                    placeholder="在此直接粘贴网盘分享文本（例如：2026高考数学模拟卷 链接: https://pan.quark.cn/s/xxx 提取码: 1234）... 支持按 Ctrl + Enter 快捷提交"
+                    style="font-family: inherit; font-size: 13px; line-height: 1.6; padding: 12px 14px; border-radius: 8px; border: 1.5px solid #cbd5e1; resize: vertical; transition: border-color 0.2s;">
+                  </textarea>
 
-              <!-- 右侧快捷模式切换与最后同步时间 -->
-              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                @if (crawlerConfig()?.last_sync_at) {
-                  <div style="font-size: 12px; color: #64748b;">
-                    🕒 最近活动: {{ crawlerConfig()?.last_sync_at | date:'yyyy-MM-dd HH:mm:ss' }}
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                      <input 
+                        type="text" 
+                        class="form-control" 
+                        [(ngModel)]="pasteForm.sourceName" 
+                        placeholder="来源备注 (可选，如: 高三家长群)" 
+                        style="font-size: 12.5px; width: 220px; padding: 7px 12px; border-radius: 6px;">
+                      
+                      <select class="form-control" [(ngModel)]="pasteForm.driveType" style="font-size: 12.5px; width: 130px; padding: 7px 10px; border-radius: 6px;">
+                        <option value="auto">自动识别网盘</option>
+                        <option value="quark">夸克网盘</option>
+                        <option value="baidu">百度网盘</option>
+                        <option value="alipan">阿里云盘</option>
+                        <option value="xunlei">迅雷云盘</option>
+                      </select>
+
+                      <span style="font-size: 11.5px; color: #94a3b8;">
+                        💡 提示：支持按 <kbd style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 1px 4px; border-radius: 4px; font-family: monospace;">Ctrl + Enter</kbd> 快捷提取
+                      </span>
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      @if (pasteForm.rawText.trim()) {
+                        <button 
+                          type="button" 
+                          class="btn btn-sm" 
+                          (click)="clearFastPaste()"
+                          style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer;">
+                          清空
+                        </button>
+                      }
+                      <button 
+                        type="button" 
+                        class="btn btn-primary" 
+                        (click)="submitPasteIngest()" 
+                        [disabled]="!pasteForm.rawText.trim() || isPastingCrawler()"
+                        style="background: #0284c7; color: #ffffff; font-weight: 700; font-size: 13px; padding: 8px 22px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(2,132,199,0.25);">
+                        @if (isPastingCrawler()) {
+                          <span>⏳ 正在提取并录入...</span>
+                        } @else {
+                          <span>⚡ 立即智能解析入库</span>
+                        }
+                      </button>
+                    </div>
                   </div>
-                }
-
-                @if (crawlerConfig()?.sync_mode !== 'webhook') {
-                  <button 
-                    type="button" 
-                    class="btn btn-sm" 
-                    (click)="registerCrawlerWebhook()"
-                    [disabled]="isRegisteringWebhook()"
-                    title="向 Telegram 注册 Webhook 模式，频道有新资源时将自动秒级触发推送到本系统"
-                    style="background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; font-weight: 600; font-size: 12px; padding: 5px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                    @if (isRegisteringWebhook()) {
-                      <span>⏳ 正在注册...</span>
-                    } @else {
-                      <span>⚡ 开启 Webhook 自动触发</span>
-                    }
-                  </button>
-                } @else {
-                  <button 
-                    type="button" 
-                    class="btn btn-sm" 
-                    (click)="removeCrawlerWebhook()"
-                    title="注销 Webhook，切回传统的后台自动轮询模式"
-                    style="background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; padding: 5px 12px; border-radius: 8px; cursor: pointer;">
-                    🔄 切回轮询模式
-                  </button>
-                }
+                </div>
               </div>
-            </div>
 
-            @if (crawlerConfig()?.last_sync_message) {
-              <div style="margin-top: 10px; font-size: 12px; color: #475569; background: #f8fafc; padding: 6px 12px; border-radius: 6px; border-left: 3px solid #10b981;">
-                💬 最新状态简讯: {{ crawlerConfig()?.last_sync_message }}
-              </div>
-            }
-          </div>
-
-          <!-- 模块 1：资源采集箱与草稿审核池主区域 (Core Drafts Pool Area) -->
-          <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+              <!-- 模块 1：资源采集箱与草稿审核池主区域 (Core Drafts Pool Area) -->
+              <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px 20px; border-bottom: 1px solid #e2e8f0;">
               <!-- 状态筛选 Tab 组 -->
               <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
@@ -1970,6 +2078,462 @@
               </div>
             </div>
           </div>
+        </div>
+      }
+
+          <!-- ===== 选项卡 2: 📡 监控采集中枢 (Ingestion Channels) ===== -->
+          @if (crawlerSubTab() === 'ingestion') {
+            <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); padding: 24px;">
+              <!-- 业务说明头部 -->
+              <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;">
+                  <span>📡 外部电报资源频道监控列表</span>
+                  <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 12px;">共 {{ crawlerChannels().length }} 个频道</span>
+                </h3>
+                <p style="font-size: 13px; color: #64748b; margin: 0; line-height: 1.6;">
+                  {{ i18n.t('crawler.ingestionDesc') }}
+                </p>
+              </div>
+
+              <!-- 智能识别并添加监控频道输入卡片 -->
+              <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                <div style="font-weight: 700; font-size: 14px; color: #1e40af; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>⚡ 智能识别并添加监控频道</span>
+                    <span class="badge" style="background: #dbeafe; color: #1d4ed8; font-size: 11px;">无需查找数字 ID</span>
+                  </div>
+                  <span style="font-size: 12px; color: #3b82f6;">支持 @用户名、链接 (https://t.me/xxx) 或 数字 ID</span>
+                </div>
+                <div style="font-size: 12px; color: #3b82f6; margin-bottom: 12px; line-height: 1.5;">
+                  直接粘贴电报频道公开链接或用户名，系统调用 Telegram 官方 API 自动识别频道标题与网盘特征，一键完成入库监控！
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    [(ngModel)]="smartChannelInput" 
+                    [placeholder]="i18n.t('crawler.smartResolvePlaceholder')" 
+                    style="flex: 1; min-width: 240px; font-size: 13px; font-family: monospace;">
+                  <button 
+                    type="button" 
+                    class="btn btn-primary" 
+                    (click)="resolveAndAddCrawlerChannel()" 
+                    [disabled]="isResolvingChannel() || !smartChannelInput.trim()"
+                    style="background: #2563eb; color: #ffffff; font-weight: 700; font-size: 13px; padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                    @if (isResolvingChannel()) {
+                      <span>⏳ {{ i18n.t('crawler.resolving') }}</span>
+                    } @else {
+                      <span>{{ i18n.t('crawler.smartResolveBtn') }}</span>
+                    }
+                  </button>
+                </div>
+              </div>
+
+              <!-- 监控频道自适应表格 (100% 宽度，零横向滚动条) -->
+              <div style="width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
+                <table style="width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; font-size: 13px; margin: 0;">
+                  <thead>
+                    <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                      <th style="width: 25%; padding: 12px 14px; text-align: left; font-weight: 600; color: #475569;">频道 ID</th>
+                      <th style="width: 27%; padding: 12px 14px; text-align: left; font-weight: 600; color: #475569;">频道名称</th>
+                      <th style="width: 11%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">网盘</th>
+                      <th style="width: 11%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">已采集</th>
+                      <th style="width: 11%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">监控状态</th>
+                      <th style="width: 15%; padding: 12px 14px; text-align: right; font-weight: 600; color: #475569;">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ch of crawlerChannels(); track ch.id) {
+                      <tr [style.opacity]="ch.is_active ? '1' : '0.65'" style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s ease;">
+                        <td style="padding: 12px 14px; font-family: monospace; font-weight: 600; color: #0369a1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="ch.channel_id">{{ ch.channel_id }}</td>
+                        <td style="padding: 12px 14px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="ch.name">
+                          {{ ch.name }}
+                          @if (!ch.is_active) {
+                            <span style="font-size: 11px; color: #d97706; margin-left: 4px;">(已暂停)</span>
+                          }
+                        </td>
+                        <td style="padding: 12px 6px; text-align: center;">
+                          <span class="badge" style="background: #f1f5f9; color: #334155; font-size: 11px; padding: 2px 8px;">{{ ch.drive_type }}</span>
+                        </td>
+                        <td style="padding: 12px 6px; text-align: center;">
+                          <span class="badge" style="background: #ecfdf5; color: #047857; font-size: 11px; padding: 2px 8px;">{{ ch.item_count }} 项</span>
+                        </td>
+                        <td style="padding: 12px 6px; text-align: center;">
+                          @if (ch.is_active) {
+                            <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 600; padding: 2px 8px;">
+                              🟢 监听中
+                            </span>
+                          } @else {
+                            <span class="badge" style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 8px;">
+                              ⏸️ 已暂停
+                            </span>
+                          }
+                        </td>
+                        <td style="padding: 12px 14px; text-align: right; white-space: nowrap;">
+                          <button 
+                            type="button" 
+                            class="btn btn-sm" 
+                            (click)="toggleCrawlerChannel(ch)"
+                            [style.background]="ch.is_active ? '#fef3c7' : '#dcfce7'"
+                            [style.color]="ch.is_active ? '#b45309' : '#15803d'"
+                            style="border: none; padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; margin-right: 6px;">
+                            {{ ch.is_active ? '⏸️ 暂停' : '▶️ 启动' }}
+                          </button>
+                          <button 
+                            type="button" 
+                            class="btn btn-sm" 
+                            (click)="deleteCrawlerChannel(ch.id)"
+                            style="background: #fee2e2; color: #dc2626; border: none; padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px;">
+                            移除
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                    @if (crawlerChannels().length === 0) {
+                      <tr>
+                        <td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8; font-size: 13px;">
+                          暂无监控频道，请在上方输入频道链接一键智能添加
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- ===== 选项卡 3: 📢 专属频道广播中枢 (Broadcast Hub) ===== -->
+          @if (crawlerSubTab() === 'broadcast') {
+            <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); padding: 24px;">
+              <!-- 广播中枢核心介绍与总控横幅 -->
+              <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(2,132,199,0.15);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 28px;">📢</span>
+                    <div>
+                      <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff;">{{ i18n.t('crawler.broadcastTitle') }}</h3>
+                      <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">打造专属私域流量池 · 站内优质资料一键或全自动分发至 Telegram 频道矩阵</div>
+                    </div>
+                  </div>
+
+                  <!-- 快捷全局测试广播 -->
+                  <button 
+                    type="button" 
+                    class="btn" 
+                    [disabled]="isTestingBroadcast()"
+                    (click)="sendCrawlerTestBroadcast()"
+                    style="background: #ffffff; color: #0284c7; font-weight: 700; font-size: 13px; padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);">
+                    @if (isTestingBroadcast()) {
+                      <span>⏳ {{ i18n.t('crawler.testingBroadcast') }}</span>
+                    } @else {
+                      <span>{{ i18n.t('crawler.testBroadcastBtn') }}</span>
+                    }
+                  </button>
+                </div>
+
+                <div style="font-size: 12px; opacity: 0.95; line-height: 1.6; background: rgba(255,255,255,0.12); padding: 12px 16px; border-radius: 8px; margin-top: 14px;">
+                  {{ i18n.t('crawler.broadcastDesc') }}
+                </div>
+              </div>
+
+              <!-- 全自动广播总开关控制条 -->
+              @if (crawlerConfig(); as cfg) {
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                  <div>
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; font-weight: 700; color: #0f172a; margin: 0;">
+                      <input 
+                        type="checkbox" 
+                        [(ngModel)]="cfg.auto_broadcast" 
+                        style="width: 18px; height: 18px; cursor: pointer; accent-color: #0284c7;">
+                      <span>{{ i18n.t('crawler.autoBroadcastToggle') }}</span>
+                    </label>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 4px; padding-left: 28px;">
+                      {{ i18n.t('crawler.autoBroadcastDesc') }}
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    class="btn btn-primary" 
+                    (click)="saveCrawlerConfig()" 
+                    style="padding: 7px 18px; font-size: 12px; border-radius: 6px;">
+                    💾 保存自动广播开关
+                  </button>
+                </div>
+              }
+
+              <!-- 智能识别并添加我的广播频道 -->
+              <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(34,197,94,0.06);">
+                <div style="font-weight: 700; font-size: 14px; color: #166534; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>⚡ 智能识别并添加我的发布频道</span>
+                    <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 11px;">无需查找数字 ID</span>
+                  </div>
+                  <span style="font-size: 12px; color: #16a34a;">支持多频道同时群发 · 独立启停</span>
+                </div>
+                <div style="font-size: 12px; color: #15803d; margin-bottom: 12px; line-height: 1.5;">
+                  直接粘贴您的公开频道链接 (如 <code>https://t.me/xuebaw_official</code>) 或 <code>@用户名</code>，系统通过 Telegram 官方 API 自动识别频道标题并加入广播发布池！
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    [(ngModel)]="smartBroadcastChannelInput" 
+                    [placeholder]="i18n.t('crawler.smartBroadcastPlaceholder')" 
+                    style="flex: 1; min-width: 240px; font-size: 13px; font-family: monospace;">
+                  <button 
+                    type="button" 
+                    class="btn" 
+                    (click)="resolveAndAddBroadcastChannel()" 
+                    [disabled]="isResolvingBroadcastChannel() || !smartBroadcastChannelInput.trim()"
+                    style="background: #16a34a; color: #ffffff; font-weight: 700; font-size: 13px; padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                    @if (isResolvingBroadcastChannel()) {
+                      <span>⏳ {{ i18n.t('crawler.resolving') }}</span>
+                    } @else {
+                      <span>{{ i18n.t('crawler.smartBroadcastBtn') }}</span>
+                    }
+                  </button>
+                </div>
+              </div>
+
+              <!-- 广播频道自适应表格 (100% 宽度，零横向滚动条) -->
+              <div style="width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
+                <table style="width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; font-size: 13px; margin: 0;">
+                  <thead>
+                    <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                      <th style="width: 26%; padding: 12px 14px; text-align: left; font-weight: 600; color: #475569;">频道 ID / 标识</th>
+                      <th style="width: 28%; padding: 12px 14px; text-align: left; font-weight: 600; color: #475569;">频道名称</th>
+                      <th style="width: 14%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">累计广播</th>
+                      <th style="width: 14%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">广播状态</th>
+                      <th style="width: 18%; padding: 12px 14px; text-align: right; font-weight: 600; color: #475569;">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (bc of broadcastChannels(); track bc.id) {
+                      <tr [style.opacity]="bc.is_active ? '1' : '0.65'" style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s ease;">
+                        <td style="padding: 12px 14px; font-family: monospace; font-weight: 600; color: #0284c7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="bc.channel_id">{{ bc.channel_id }}</td>
+                        <td style="padding: 12px 14px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="bc.name">
+                          {{ bc.name }}
+                          @if (!bc.is_active) {
+                            <span style="font-size: 11px; color: #d97706; margin-left: 4px;">(已暂停)</span>
+                          }
+                        </td>
+                        <td style="padding: 12px 6px; text-align: center;">
+                          <span class="badge" style="background: #eff6ff; color: #1d4ed8; font-size: 11px; padding: 2px 8px;">{{ bc.item_count }} 条</span>
+                        </td>
+                        <td style="padding: 12px 6px; text-align: center;">
+                          @if (bc.is_active) {
+                            <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 600; padding: 2px 8px;">
+                              {{ i18n.t('crawler.broadcastStatusActive') }}
+                            </span>
+                          } @else {
+                            <span class="badge" style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 8px;">
+                              {{ i18n.t('crawler.broadcastStatusPaused') }}
+                            </span>
+                          }
+                        </td>
+                        <td style="padding: 12px 14px; text-align: right; white-space: nowrap;">
+                          <button 
+                            type="button" 
+                            class="btn btn-sm" 
+                            (click)="sendCrawlerTestBroadcast(bc.channel_id)"
+                            title="向此特定频道发送一条测试图文广播"
+                            style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; margin-right: 6px;">
+                            {{ i18n.t('crawler.testChannelBtn') }}
+                          </button>
+                          <button 
+                            type="button" 
+                            class="btn btn-sm" 
+                            (click)="toggleBroadcastChannel(bc)"
+                            [style.background]="bc.is_active ? '#fef3c7' : '#dcfce7'"
+                            [style.color]="bc.is_active ? '#b45309' : '#15803d'"
+                            style="border: none; padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; margin-right: 6px;">
+                            {{ bc.is_active ? '⏸️ 暂停' : '▶️ 启动' }}
+                          </button>
+                          <button 
+                            type="button" 
+                            class="btn btn-sm" 
+                            (click)="deleteBroadcastChannel(bc.id)"
+                            style="background: #fee2e2; color: #dc2626; border: none; padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px;">
+                            移除
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                    @if (broadcastChannels().length === 0) {
+                      <tr>
+                        <td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8; font-size: 13px;">
+                          {{ i18n.t('crawler.emptyBroadcastChannels') }}
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <!-- ===== 选项卡 4: ⚙️ 机器人与网络设置 (Bot & Settings) ===== -->
+          @if (crawlerSubTab() === 'settings') {
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+              <!-- 实时监听雷达与状态看板 -->
+              <div class="card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+                  <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                    @if (!crawlerConfig()?.bot_token) {
+                      <div style="display: flex; align-items: center; gap: 8px; background: #fef2f2; border: 1px solid #fecaca; padding: 6px 14px; border-radius: 20px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></span>
+                        <span style="font-size: 13px; font-weight: 700; color: #991b1b;">未配置 Telegram Bot Token</span>
+                      </div>
+                    } @else if (crawlerConfig()?.is_enabled === false) {
+                      <div style="display: flex; align-items: center; gap: 8px; background: #fffbeb; border: 1px solid #fde68a; padding: 6px 14px; border-radius: 20px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b;"></span>
+                        <span style="font-size: 13px; font-weight: 700; color: #92400e;">⏸️ 采集监控已全局暂停 (阻断所有新消息入库)</span>
+                      </div>
+                    } @else {
+                      <div style="display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 14px; border-radius: 20px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);"></span>
+                        <span style="font-size: 13px; font-weight: 700; color: #065f46;">🟢 正在监听中 · Webhook 自动触发 (0秒延迟实时推送 · 免后台轮询)</span>
+                      </div>
+                    }
+
+                    @if (crawlerConfig()?.bot_username) {
+                      <span style="font-size: 13px; color: #64748b; font-family: monospace; background: #f1f5f9; padding: 4px 10px; border-radius: 6px;">
+                        🤖 @{{ crawlerConfig()?.bot_username }}
+                      </span>
+                    }
+                  </div>
+
+                  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    @if (crawlerConfig()?.last_sync_at) {
+                      <div style="font-size: 12px; color: #64748b;">
+                        🕒 最近活动: {{ crawlerConfig()?.last_sync_at | date:'yyyy-MM-dd HH:mm:ss' }}
+                      </div>
+                    }
+
+                    @if (crawlerConfig()?.bot_token) {
+                      @if (crawlerConfig()?.is_enabled === false) {
+                        <button 
+                          type="button" 
+                          class="btn btn-sm" 
+                          (click)="toggleCrawlerMasterSwitch()"
+                          title="点击一键恢复全站 Telegram 采集与监控功能"
+                          style="background: #10b981; color: #ffffff; border: none; font-weight: 700; font-size: 12px; padding: 6px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);">
+                          ▶️ 启动总监控
+                        </button>
+                      } @else {
+                        <button 
+                          type="button" 
+                          class="btn btn-sm" 
+                          (click)="toggleCrawlerMasterSwitch()"
+                          title="点击一键暂停全站 Telegram 采集与监控功能，暂停期间将阻断所有新消息入库"
+                          style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-weight: 700; font-size: 12px; padding: 6px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                          ⏸️ 暂停总监控
+                        </button>
+                      }
+                    }
+                  </div>
+                </div>
+
+                @if (crawlerConfig()?.last_sync_message) {
+                  <div style="margin-top: 12px; font-size: 12.5px; color: #475569; background: #f8fafc; padding: 8px 14px; border-radius: 6px; border-left: 3px solid #10b981;">
+                    💬 最新状态简讯: {{ crawlerConfig()?.last_sync_message }}
+                  </div>
+                }
+              </div>
+
+              <!-- 机器人底层通信与网络凭据表单卡片 -->
+              @if (crawlerConfig(); as cfg) {
+                <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); padding: 24px;">
+                  <h3 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                    <span>🤖 Telegram Bot 凭据与网络代理配置</span>
+                    @if (cfg.last_sync_status === 'success') {
+                      <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px;">🟢 通信通道就绪</span>
+                    }
+                  </h3>
+
+                  <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+                      <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 13px; color: #334155;">{{ i18n.t('crawler.botTokenLabel') }}</label>
+                        <input 
+                          type="password" 
+                          class="form-control" 
+                          [(ngModel)]="cfg.bot_token" 
+                          placeholder="例如: 7315955834:AAEr_..."
+                          style="font-family: monospace; font-size: 13px; margin-top: 4px;">
+                      </div>
+                      <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 13px; color: #334155;">{{ i18n.t('crawler.botUsernameLabel') }}</label>
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          [(ngModel)]="cfg.bot_username" 
+                          placeholder="如: demo_bot" 
+                          style="font-size: 13px; margin-top: 4px;">
+                      </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                      <label style="font-weight: 600; font-size: 13px; color: #334155;">🔗 Webhook 回调推送地址 (对外公网 HTTPS 域名)：</label>
+                      <div style="display: flex; gap: 10px; margin-top: 4px;">
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          [(ngModel)]="cfg.webhook_url" 
+                          placeholder="https://api.xuebaw.com:8443/api/v1/public/telegram/webhook" 
+                          style="font-size: 13px; font-family: monospace; flex: 1;">
+                        <button 
+                          type="button" 
+                          class="btn" 
+                          (click)="registerCrawlerWebhook()"
+                          [disabled]="isRegisteringWebhook()"
+                          style="background: #047857; color: #ffffff; font-weight: 600; font-size: 12px; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; white-space: nowrap;">
+                          @if (isRegisteringWebhook()) {
+                            <span>⏳ 校验中...</span>
+                          } @else {
+                            <span>⚡ 注册/校验 Webhook</span>
+                          }
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px;">
+                      <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 12px; color: #334155;">🌐 本地网络代理地址 (Clash 本地端口，留空自动嗅探)：</label>
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          [(ngModel)]="cfg.proxy_url" 
+                          placeholder="http://127.0.0.1:7897" 
+                          style="font-size: 12px; font-family: monospace; margin-top: 4px;">
+                        <small style="color: #64748b; font-size: 11px; margin-top: 2px; display: block;">系统内置智能自愈：留空时将自动尝试 127.0.0.1:7897 与 7890 端口。</small>
+                      </div>
+                      <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 12px; color: #334155;">🔗 Telegram API 反代地址 (留空默认官方)：</label>
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          [(ngModel)]="cfg.api_base_url" 
+                          placeholder="https://api.telegram.org" 
+                          style="font-size: 12px; font-family: monospace; margin-top: 4px;">
+                        <small style="color: #64748b; font-size: 11px; margin-top: 2px; display: block;">若服务器未开启全局代理，可填入 Cloudflare 反代域名。</small>
+                      </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                      <button 
+                        type="button" 
+                        class="btn btn-primary" 
+                        (click)="saveCrawlerConfig()" 
+                        style="font-size: 13px; font-weight: 700; padding: 10px 24px; border-radius: 8px;">
+                        💾 保存机器人与网络配置
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
         </div>
       }
 
@@ -2910,6 +3474,21 @@
             </div>
           </div>
         </div>
+      }
+
+      <!-- 4.1 📧 邮件精准营销推广中枢 (Email Marketing & Resource Promotion Hub) - 独立组件架构 -->
+      @if (currentTab() === 'email') {
+        <app-email-hub 
+          [preselectedResource]="emailPreselectedResource()"
+          (notify)="handleEmailHubNotification($event)">
+        </app-email-hub>
+      }
+
+      <!-- 4.2 🔍 搜索引擎批量主动收录与索引中枢 (Baidu & Bing Hub) - 独立组件架构 -->
+      @if (currentTab() === 'seo') {
+        <app-seo-hub 
+          (notify)="handleSeoHubNotification($event)">
+        </app-seo-hub>
       }
 
       <!-- 10. 系统全局配置管理中台 (Site Settings) -->
@@ -5085,237 +5664,450 @@
   <!-- 模态框 1：Telegram 机器人与频道监控设置 -->
   @if (showCrawlerSettingsModal()) {
     <div class="modal-backdrop" (click)="closeCrawlerSettingsModal()">
-      <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 780px; background: #ffffff;">
+      <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 820px; width: 94%; background: #ffffff;">
         <div class="modal-header" style="background: #ffffff;">
           <h3>{{ i18n.t('crawler.settingsModalTitle') }}</h3>
           <button type="button" class="modal-close-btn" (click)="closeCrawlerSettingsModal()">✕</button>
         </div>
-        <div class="modal-body" style="max-height: 75vh; overflow-y: auto; background: #ffffff;">
-          <!-- 机器人基础设置 -->
-          @if (crawlerConfig(); as cfg) {
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
-              <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 14px 0; display: flex; align-items: center; gap: 6px;">
-                <span>🤖 Bot 凭证与自动化轮询</span>
-                @if (cfg.last_sync_status === 'success') {
-                  <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px;">🟢 连接正常</span>
-                } @else if (cfg.last_sync_status === 'error') {
-                  <span class="badge" style="background: #fee2e2; color: #991b1b; font-size: 11px;">🔴 最近同步报错</span>
-                }
-              </h4>
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto; overflow-x: hidden; background: #ffffff;">
+          <!-- 双中枢导航选项卡切换 (Dual Hub Tabs) -->
+          <div style="display: flex; gap: 8px; border-bottom: 2px solid #e2e8f0; margin-bottom: 18px; padding-bottom: 2px;">
+            <button 
+              type="button"
+              (click)="crawlerSettingsTab.set('ingestion')"
+              [style.border-bottom]="crawlerSettingsTab() === 'ingestion' ? '3px solid #0284c7' : '3px solid transparent'"
+              [style.color]="crawlerSettingsTab() === 'ingestion' ? '#0284c7' : '#64748b'"
+              [style.font-weight]="crawlerSettingsTab() === 'ingestion' ? '700' : '500'"
+              style="background: none; border: none; padding: 8px 16px; font-size: 13.5px; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; gap: 6px;">
+              <span>📡</span> {{ i18n.t('crawler.tabIngestionHub') }}
+            </button>
+            <button 
+              type="button"
+              (click)="crawlerSettingsTab.set('broadcast')"
+              [style.border-bottom]="crawlerSettingsTab() === 'broadcast' ? '3px solid #0284c7' : '3px solid transparent'"
+              [style.color]="crawlerSettingsTab() === 'broadcast' ? '#0284c7' : '#64748b'"
+              [style.font-weight]="crawlerSettingsTab() === 'broadcast' ? '700' : '500'"
+              style="background: none; border: none; padding: 8px 16px; font-size: 13.5px; cursor: pointer; transition: all 0.15s ease; display: flex; align-items: center; gap: 6px;">
+              <span>📢</span> {{ i18n.t('crawler.tabBroadcastHub') }}
+            </button>
+          </div>
 
-              <div class="form-grid" style="grid-template-columns: 1fr; gap: 14px;">
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label style="font-weight: 600; font-size: 13px;">{{ i18n.t('crawler.botTokenLabel') }}</label>
-                  <input 
-                    type="password" 
-                    class="form-control" 
-                    [(ngModel)]="cfg.bot_token" 
-                    placeholder="如: 7315955834:AAEr_bxkFhKheGyYzNZ_3Mzwskl8TrTuHYA"
-                    style="font-family: monospace; font-size: 13px;">
-                  <span style="font-size: 11px; color: #64748b; margin-top: 4px; display: block;">
-                    请确保持有该 Bot 的管理员权限，或已将 Bot 加入到目标频道/群组中
-                  </span>
+          @if (crawlerConfig(); as cfg) {
+            <!-- 中枢 1: 外部监控采集中枢 -->
+            @if (crawlerSettingsTab() === 'ingestion') {
+              <div>
+                <!-- 采集中枢智能添加卡片 (Smart Resolve Channel) -->
+                <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                  <div style="font-weight: 700; font-size: 13px; color: #1e40af; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span>⚡ 智能识别并添加监控频道</span>
+                      <span class="badge" style="background: #dbeafe; color: #1d4ed8; font-size: 11px;">无需查找数字 ID</span>
+                    </div>
+                    <span style="font-size: 11px; color: #3b82f6;">支持 @用户名 或 链接 或 数字ID</span>
+                  </div>
+                  <div style="font-size: 11px; color: #3b82f6; margin-bottom: 10px; line-height: 1.4;">
+                    直接粘贴电报频道公开链接 (如 <code>https://t.me/xxx</code>) 或 <code>@用户名</code>，系统通过 Telegram 官方 API 自动识别频道标题与网盘特征！
+                  </div>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      [(ngModel)]="smartChannelInput" 
+                      [placeholder]="i18n.t('crawler.smartResolvePlaceholder')" 
+                      style="flex: 1; min-width: 220px; font-size: 12px; font-family: monospace;">
+                    <button 
+                      type="button" 
+                      class="btn btn-sm" 
+                      (click)="resolveAndAddCrawlerChannel()" 
+                      [disabled]="isResolvingChannel() || !smartChannelInput.trim()"
+                      style="background: #2563eb; color: #ffffff; font-weight: 700; font-size: 12px; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                      @if (isResolvingChannel()) {
+                        <span>⏳ {{ i18n.t('crawler.resolving') }}</span>
+                      } @else {
+                        <span>{{ i18n.t('crawler.smartResolveBtn') }}</span>
+                      }
+                    </button>
+                  </div>
                 </div>
 
-                <!-- 采集触发工作模式切换 -->
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                  <div>
-                    <div style="font-weight: 700; font-size: 13px; color: #0f172a; display: flex; align-items: center; gap: 6px;">
-                      <span>⚡ 触发工作模式：</span>
-                      @if (cfg.sync_mode === 'webhook') {
-                        <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px;">Webhook 自动秒级触发 (0秒延迟)</span>
-                      } @else {
-                        <span class="badge" style="background: #eff6ff; color: #1e40af; font-size: 11px;">定时自动轮询模式</span>
+                <!-- 监控频道表格 (宽度 100% 自适应，彻底消除横向滚动条) -->
+                <div style="margin-bottom: 16px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
+                      <span>{{ i18n.t('crawler.channelsTitle') }}</span>
+                      <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 11px;">共 {{ crawlerChannels().length }} 个</span>
+                    </h4>
+                  </div>
+
+                  <div style="width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+                    <table style="width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; font-size: 12px; margin: 0;">
+                      <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                          <th style="width: 25%; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">频道 ID</th>
+                          <th style="width: 27%; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">频道名称</th>
+                          <th style="width: 11%; padding: 10px 6px; text-align: center; font-weight: 600; color: #475569;">网盘</th>
+                          <th style="width: 11%; padding: 10px 6px; text-align: center; font-weight: 600; color: #475569;">已采集</th>
+                          <th style="width: 11%; padding: 10px 6px; text-align: center; font-weight: 600; color: #475569;">监控状态</th>
+                          <th style="width: 15%; padding: 10px 12px; text-align: right; font-weight: 600; color: #475569;">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (ch of crawlerChannels(); track ch.id) {
+                          <tr [style.opacity]="ch.is_active ? '1' : '0.65'" style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s ease;">
+                            <td style="padding: 10px 12px; font-family: monospace; font-weight: 600; color: #0369a1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="ch.channel_id">{{ ch.channel_id }}</td>
+                            <td style="padding: 10px 12px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="ch.name">
+                              {{ ch.name }}
+                              @if (!ch.is_active) {
+                                <span style="font-size: 11px; color: #d97706; margin-left: 4px;">(已暂停)</span>
+                              }
+                            </td>
+                            <td style="padding: 10px 6px; text-align: center;">
+                              <span class="badge" style="background: #f1f5f9; color: #334155; font-size: 11px; padding: 2px 6px;">{{ ch.drive_type }}</span>
+                            </td>
+                            <td style="padding: 10px 6px; text-align: center;">
+                              <span class="badge" style="background: #ecfdf5; color: #047857; font-size: 11px; padding: 2px 6px;">{{ ch.item_count }} 项</span>
+                            </td>
+                            <td style="padding: 10px 6px; text-align: center;">
+                              @if (ch.is_active) {
+                                <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 600; padding: 2px 6px;">
+                                  🟢 监听中
+                                </span>
+                              } @else {
+                                <span class="badge" style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 6px;">
+                                  ⏸️ 已暂停
+                                </span>
+                              }
+                            </td>
+                            <td style="padding: 10px 12px; text-align: right; white-space: nowrap;">
+                              <button 
+                                type="button" 
+                                class="btn btn-sm" 
+                                (click)="toggleCrawlerChannel(ch)"
+                                [style.background]="ch.is_active ? '#fef3c7' : '#dcfce7'"
+                                [style.color]="ch.is_active ? '#b45309' : '#15803d'"
+                                style="border: none; padding: 3px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; margin-right: 4px;">
+                                {{ ch.is_active ? '⏸️ 暂停' : '▶️ 启动' }}
+                              </button>
+                              <button 
+                                type="button" 
+                                class="btn btn-sm" 
+                                (click)="deleteCrawlerChannel(ch.id)"
+                                style="background: #fee2e2; color: #dc2626; border: none; padding: 3px 8px; font-size: 11px; cursor: pointer; border-radius: 4px;">
+                                移除
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (crawlerChannels().length === 0) {
+                          <tr>
+                            <td colspan="6" style="padding: 24px; text-align: center; color: #94a3b8; font-size: 12px;">
+                              暂无监控频道，请在上方输入频道链接一键智能添加
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- 机器人底层通信设置与总开关 -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                  <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span>🤖 采集中枢通信配置与总开关</span>
+                      @if (cfg.last_sync_status === 'success') {
+                        <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px;">🟢 Webhook 正常</span>
                       }
                     </div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 3px;">
-                      @if (cfg.sync_mode === 'webhook') {
-                        由 Telegram 官方服务器在频道发布新内容时自动瞬间推送到本系统，无需主动轮询。
-                      } @else {
-                        由服务器后台每隔 {{ cfg.sync_interval_seconds || 60 }} 秒主动调用 Telegram API 轮询检查新消息。
-                      }
+                    <button 
+                      type="button" 
+                      class="btn btn-sm" 
+                      (click)="toggleCrawlerMasterSwitch()"
+                      [style.background]="cfg.is_enabled !== false ? '#fffbeb' : '#10b981'"
+                      [style.color]="cfg.is_enabled !== false ? '#b45309' : '#ffffff'"
+                      [style.border]="cfg.is_enabled !== false ? '1px solid #fde68a' : 'none'"
+                      style="font-weight: 700; font-size: 11px; padding: 4px 12px; border-radius: 6px; cursor: pointer;">
+                      {{ cfg.is_enabled !== false ? '⏸️ 暂停总监控' : '▶️ 启动总监控' }}
+                    </button>
+                  </h4>
+
+                  <div class="form-grid" style="grid-template-columns: 1fr; gap: 10px;">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                      <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 12px;">{{ i18n.t('crawler.botTokenLabel') }}</label>
+                        <input 
+                          type="password" 
+                          class="form-control" 
+                          [(ngModel)]="cfg.bot_token" 
+                          placeholder="如: 7315955834:AAEr_..."
+                          style="font-family: monospace; font-size: 12px;">
+                      </div>
+                      <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 12px;">{{ i18n.t('crawler.botUsernameLabel') }}</label>
+                        <input type="text" class="form-control" [(ngModel)]="cfg.bot_username" placeholder="demoMovieFind_bot" style="font-size: 12px;">
+                      </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                      <label style="font-weight: 600; font-size: 12px;">🔗 Webhook 回调推送地址 (对外 HTTPS 域名)：</label>
+                      <div style="display: flex; gap: 8px;">
+                        <input type="text" class="form-control" [(ngModel)]="cfg.webhook_url" placeholder="https://api.xuebaw.com:8443/api/v1/public/telegram/webhook" style="font-size: 12px; font-family: monospace; flex: 1;">
+                        <button 
+                          type="button" 
+                          class="btn btn-sm" 
+                          (click)="registerCrawlerWebhook()"
+                          [disabled]="isRegisteringWebhook()"
+                          style="background: #047857; color: #ffffff; font-weight: 600; font-size: 11px; padding: 4px 12px; border-radius: 6px; border: none; cursor: pointer; white-space: nowrap;">
+                          @if (isRegisteringWebhook()) {
+                            <span>⏳ 校验中...</span>
+                          } @else {
+                            <span>⚡ 校验 Webhook</span>
+                          }
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px;">
+                      <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 11px;">🌐 网络代理地址 (本地 Clash 端口，留空自动探测)：</label>
+                        <input type="text" class="form-control" [(ngModel)]="cfg.proxy_url" placeholder="http://127.0.0.1:7897" style="font-size: 11px; font-family: monospace;">
+                      </div>
+                      <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 600; font-size: 11px;">🔗 API 反代 (留空默认)：</label>
+                        <input type="text" class="form-control" [(ngModel)]="cfg.api_base_url" placeholder="https://api.telegram.org" style="font-size: 11px; font-family: monospace;">
+                      </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; margin-top: 4px;">
+                      <button type="button" class="btn btn-sm btn-primary" (click)="saveCrawlerConfig()" style="font-size: 12px; padding: 6px 16px;">
+                        {{ i18n.t('crawler.saveConfigBtn') }}
+                      </button>
                     </div>
                   </div>
-                  <div>
-                    @if (cfg.sync_mode !== 'webhook') {
+                </div>
+              </div>
+            }
+
+            <!-- 中枢 2: 资源自动广播中枢 (发布到我的专属频道) -->
+            @if (crawlerSettingsTab() === 'broadcast') {
+              <div>
+                <!-- 广播中枢核心介绍卡片 -->
+                <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; box-shadow: 0 4px 12px rgba(2,132,199,0.15);">
+                  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 24px;">📢</span>
+                    <div>
+                      <h4 style="margin: 0; font-size: 15px; font-weight: 700;">{{ i18n.t('crawler.broadcastTitle') }}</h4>
+                      <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">打造专属私域流量池 · 站内优质资料一键或全自动分发至 Telegram 频道</div>
+                    </div>
+                  </div>
+                  <div style="font-size: 11.5px; opacity: 0.95; line-height: 1.6; background: rgba(255,255,255,0.12); padding: 10px 14px; border-radius: 8px; margin-top: 10px;">
+                    {{ i18n.t('crawler.broadcastDesc') }}
+                  </div>
+                </div>
+
+                <!-- 广播频道智能添加卡片 (Smart Resolve Broadcast Channel) -->
+                <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(34,197,94,0.06);">
+                  <div style="font-weight: 700; font-size: 13px; color: #166534; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span>⚡ 智能识别并添加我的发布频道</span>
+                      <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 11px;">无需查找数字 ID</span>
+                    </div>
+                    <span style="font-size: 11px; color: #16a34a;">支持多频道同时群发 · 独立启停</span>
+                  </div>
+                  <div style="font-size: 11px; color: #15803d; margin-bottom: 10px; line-height: 1.4;">
+                    直接粘贴您的公开频道链接 (如 <code>https://t.me/xuebaw_official</code>) 或 <code>@用户名</code>，系统通过 Telegram 官方 API 自动识别频道标题并加入广播发布池！
+                  </div>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      [(ngModel)]="smartBroadcastChannelInput" 
+                      [placeholder]="i18n.t('crawler.smartBroadcastPlaceholder')" 
+                      style="flex: 1; min-width: 220px; font-size: 12px; font-family: monospace;">
+                    <button 
+                      type="button" 
+                      class="btn btn-sm" 
+                      (click)="resolveAndAddBroadcastChannel()" 
+                      [disabled]="isResolvingBroadcastChannel() || !smartBroadcastChannelInput.trim()"
+                      style="background: #16a34a; color: #ffffff; font-weight: 700; font-size: 12px; padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                      @if (isResolvingBroadcastChannel()) {
+                        <span>⏳ {{ i18n.t('crawler.resolving') }}</span>
+                      } @else {
+                        <span>{{ i18n.t('crawler.smartBroadcastBtn') }}</span>
+                      }
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 广播频道管理列表 (宽度 100% 自适应，彻底消除横向滚动条) -->
+                <div style="margin-bottom: 16px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
+                      <span>{{ i18n.t('crawler.broadcastChannelsTitle') }}</span>
+                      <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 11px;">共 {{ broadcastChannels().length }} 个</span>
+                    </h4>
+                  </div>
+
+                  <div style="width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+                    <table style="width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; font-size: 12px; margin: 0;">
+                      <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                          <th style="width: 26%; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">广播频道 / Handle</th>
+                          <th style="width: 28%; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">频道名称</th>
+                          <th style="width: 12%; padding: 10px 6px; text-align: center; font-weight: 600; color: #475569;">已广播</th>
+                          <th style="width: 12%; padding: 10px 6px; text-align: center; font-weight: 600; color: #475569;">发布状态</th>
+                          <th style="width: 22%; padding: 10px 12px; text-align: right; font-weight: 600; color: #475569;">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (ch of broadcastChannels(); track ch.id) {
+                          <tr [style.opacity]="ch.is_active ? '1' : '0.65'" style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s ease;">
+                            <td style="padding: 10px 12px; font-family: monospace; font-weight: 600; color: #0284c7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="ch.channel_id">{{ ch.channel_id }}</td>
+                            <td style="padding: 10px 12px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="ch.name">
+                              {{ ch.name }}
+                              @if (!ch.is_active) {
+                                <span style="font-size: 11px; color: #d97706; margin-left: 4px;">(已暂停)</span>
+                              }
+                            </td>
+                            <td style="padding: 10px 6px; text-align: center;">
+                              <span class="badge" style="background: #ecfdf5; color: #047857; font-size: 11px; padding: 2px 6px;">{{ ch.item_count }} 篇</span>
+                            </td>
+                            <td style="padding: 10px 6px; text-align: center;">
+                              @if (ch.is_active) {
+                                <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 600; padding: 2px 6px;">
+                                  {{ i18n.t('crawler.broadcastStatusActive') }}
+                                </span>
+                              } @else {
+                                <span class="badge" style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 6px;">
+                                  {{ i18n.t('crawler.broadcastStatusPaused') }}
+                                </span>
+                              }
+                            </td>
+                            <td style="padding: 10px 12px; text-align: right; white-space: nowrap;">
+                              <button 
+                                type="button" 
+                                class="btn btn-sm" 
+                                (click)="sendCrawlerTestBroadcast(ch.channel_id)"
+                                [disabled]="isTestingBroadcast()"
+                                title="向该专属频道单独发送测试消息"
+                                style="background: #e0f2fe; color: #0369a1; border: none; padding: 3px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; margin-right: 4px; font-weight: 600;">
+                                {{ i18n.t('crawler.testChannelBtn') }}
+                              </button>
+                              <button 
+                                type="button" 
+                                class="btn btn-sm" 
+                                (click)="toggleBroadcastChannel(ch)"
+                                [style.background]="ch.is_active ? '#fef3c7' : '#dcfce7'"
+                                [style.color]="ch.is_active ? '#b45309' : '#15803d'"
+                                style="border: none; padding: 3px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; margin-right: 4px;">
+                                {{ ch.is_active ? '⏸️ 暂停' : '▶️ 启动' }}
+                              </button>
+                              <button 
+                                type="button" 
+                                class="btn btn-sm" 
+                                (click)="deleteBroadcastChannel(ch.id)"
+                                style="background: #fee2e2; color: #dc2626; border: none; padding: 3px 8px; font-size: 11px; cursor: pointer; border-radius: 4px;">
+                                移除
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                        @if (broadcastChannels().length === 0) {
+                          <tr>
+                            <td colspan="5" style="padding: 24px; text-align: center; color: #94a3b8; font-size: 12px;">
+                              {{ i18n.t('crawler.emptyBroadcastChannels') }}
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- 自动发布全局控制卡片 -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                  <h4 style="font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">⚙️ 自动广播联动与全局测试</h4>
+
+                  <div class="form-grid" style="grid-template-columns: 1fr; gap: 12px;">
+                    <!-- 自动广播开关 -->
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
+                      <div>
+                        <div style="font-weight: 700; font-size: 13px; color: #0f172a;">
+                          {{ i18n.t('crawler.autoBroadcastToggle') }}
+                        </div>
+                        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                          开启后，无论是后台手动新增、还是从采集草稿池审核入库的新资料，均会自动同步广播推送到上方所有已启用的广播频道。
+                        </div>
+                      </div>
+                      <div>
+                        <label style="display: flex; align-items: center; cursor: pointer; gap: 6px; margin: 0;">
+                          <input 
+                            type="checkbox" 
+                            [(ngModel)]="cfg.auto_broadcast" 
+                            style="width: 18px; height: 18px; cursor: pointer;">
+                          <span style="font-size: 12px; font-weight: 600;" [style.color]="cfg.auto_broadcast ? '#047857' : '#64748b'">
+                            {{ cfg.auto_broadcast ? '已开启自动广播' : '未开启' }}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div style="font-size: 11px; color: #d97706; display: flex; align-items: center; gap: 6px; background: #fffbeb; padding: 8px 12px; border-radius: 6px; border: 1px solid #fef3c7;">
+                      <span>⚠️</span>
+                      <span>{{ i18n.t('crawler.broadcastChannelTip') }}</span>
+                    </div>
+
+                    <!-- 全局操作栏 -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding-top: 4px;">
                       <button 
                         type="button" 
                         class="btn btn-sm" 
-                        (click)="registerCrawlerWebhook()"
-                        [disabled]="isRegisteringWebhook()"
-                        style="background: #047857; color: #ffffff; font-weight: 600; font-size: 12px; padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer;">
-                        @if (isRegisteringWebhook()) {
-                          <span>⏳ 正在向 Telegram 注册...</span>
+                        (click)="sendCrawlerTestBroadcast()"
+                        [disabled]="isTestingBroadcast()"
+                        style="background: #0284c7; color: #ffffff; font-weight: 700; font-size: 12px; padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                        @if (isTestingBroadcast()) {
+                          <span>⏳ {{ i18n.t('crawler.testingBroadcast') }}</span>
                         } @else {
-                          <span>🚀 一键开启 Webhook 自动触发</span>
+                          <span>{{ i18n.t('crawler.testBroadcastBtn') }}</span>
                         }
                       </button>
-                    } @else {
+
                       <button 
                         type="button" 
-                        class="btn btn-sm" 
-                        (click)="removeCrawlerWebhook()"
-                        style="background: #f1f5f9; color: #475569; font-weight: 600; font-size: 12px; padding: 6px 14px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;">
-                        🔄 注销 Webhook，切回轮询
+                        class="btn btn-sm btn-primary" 
+                        (click)="saveCrawlerConfig()"
+                        style="font-size: 12px; padding: 8px 20px; font-weight: 700;">
+                        {{ i18n.t('crawler.saveConfigBtn') }}
                       </button>
-                    }
+                    </div>
                   </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-weight: 600; font-size: 12px;">{{ i18n.t('crawler.botUsernameLabel') }}</label>
-                    <input type="text" class="form-control" [(ngModel)]="cfg.bot_username" placeholder="demoMovieFind_bot" style="font-size: 12px;">
+                <!-- 消息格式预览卡片 -->
+                <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px;">
+                  <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                    <span>📱 Telegram 频道消息排版效果预览</span>
+                    <span class="badge" style="background: #e2e8f0; color: #475569; font-size: 10px;">HTML 极速富文本</span>
                   </div>
-
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-weight: 600; font-size: 12px;">{{ i18n.t('crawler.autoSyncLabel') }}</label>
-                    <select class="form-control" [(ngModel)]="cfg.auto_sync" style="font-size: 12px;">
-                      <option [ngValue]="true">开启 (后台定时自动轮询)</option>
-                      <option [ngValue]="false">关闭 (仅手动点击同步)</option>
-                    </select>
+                  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; font-size: 12px; line-height: 1.6; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                    <div style="font-weight: 700; color: #0284c7; margin-bottom: 4px;">📚 <b>【高三数学】2026年名校高考一轮复习重点题型集训 (PDF)</b></div>
+                    <div style="color: #64748b; font-size: 11px; margin-bottom: 8px;">🏷️ 学段科目：高中 / 高三 · 数学 · 15.8 MB</div>
+                    <div style="margin-bottom: 6px;">
+                      📂 <b>夸克网盘</b>：<br>
+                      🔗 直达链接：<a href="javascript:void(0)" style="color: #0284c7; text-decoration: underline;">https://pan.quark.cn/s/sample_link</a>
+                    </div>
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
+                      🌐 <b>学霸网全套真题与微课在线预览与A4打印</b>：<br>
+                      👉 <a href="javascript:void(0)" style="color: #0284c7; text-decoration: underline;">https://xuebaw.com/resource/sample_res_id</a>
+                    </div>
+                    <div style="font-size: 10.5px; color: #94a3b8; font-style: italic; margin-top: 8px;">
+                      ⚡ 学霸网 (xuebaw.com) · 每日精选名校试卷与课件实时更新
+                    </div>
                   </div>
-
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-weight: 600; font-size: 12px;">{{ i18n.t('crawler.intervalLabel') }}</label>
-                    <input type="number" class="form-control" [(ngModel)]="cfg.sync_interval_seconds" min="15" max="3600" style="font-size: 12px;">
-                  </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-weight: 600; font-size: 12px;">🌐 网络代理地址 (如 Clash 端口，留空自动探测)：</label>
-                    <input type="text" class="form-control" [(ngModel)]="cfg.proxy_url" placeholder="如: http://127.0.0.1:7897" style="font-size: 12px; font-family: monospace;">
-                    <span style="font-size: 11px; color: #64748b; margin-top: 2px; display: block;">
-                      国内环境连接 Telegram 必备，系统已内置智能探测本地 7897/7890 端口
-                    </span>
-                  </div>
-
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-weight: 600; font-size: 12px;">🔗 API 网关反代 (可选)：</label>
-                    <input type="text" class="form-control" [(ngModel)]="cfg.api_base_url" placeholder="默认: https://api.telegram.org" style="font-size: 12px; font-family: monospace;">
-                    <span style="font-size: 11px; color: #64748b; margin-top: 2px; display: block;">
-                      支持自定义 Cloudflare Worker 等反向代理加速地址
-                    </span>
-                  </div>
-                </div>
-
-                @if (cfg.last_sync_message) {
-                  <div style="font-size: 11px; color: #475569; background: #ffffff; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    🕒 最近状态 ({{ cfg.last_sync_at | date:'yyyy-MM-dd HH:mm:ss' }}): {{ cfg.last_sync_message }}
-                  </div>
-                }
-
-                <div style="display: flex; justify-content: flex-end;">
-                  <button type="button" class="btn btn-sm btn-primary" (click)="saveCrawlerConfig()">
-                    {{ i18n.t('crawler.saveConfigBtn') }}
-                  </button>
                 </div>
               </div>
-            </div>
+            }
           }
-
-          <!-- 监控频道管理 -->
-          <div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0;">
-                {{ i18n.t('crawler.channelsTitle') }} ({{ crawlerChannels().length }} 个)
-              </h4>
-            </div>
-
-            <!-- 频道表格 -->
-            <table class="data-table" style="font-size: 12px; margin-bottom: 16px;">
-              <thead>
-                <tr>
-                  <th style="min-width: 130px;">频道 ID</th>
-                  <th>频道名称</th>
-                  <th style="width: 80px;">网盘</th>
-                  <th style="width: 80px;">已采集</th>
-                  <th style="width: 90px; text-align: center;">监控状态</th>
-                  <th style="width: 120px; text-align: right;">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (ch of crawlerChannels(); track ch.id) {
-                  <tr [style.opacity]="ch.is_active ? '1' : '0.65'">
-                    <td style="font-family: monospace; font-weight: 600; color: #0369a1;">{{ ch.channel_id }}</td>
-                    <td style="font-weight: 600;">
-                      {{ ch.name }}
-                      @if (!ch.is_active) {
-                        <span style="font-size: 11px; color: #d97706; margin-left: 4px;">(已暂停)</span>
-                      }
-                    </td>
-                    <td>
-                      <span class="badge" style="background: #f1f5f9; color: #334155;">{{ ch.drive_type }}</span>
-                    </td>
-                    <td>
-                      <span class="badge" style="background: #ecfdf5; color: #047857;">{{ ch.item_count }} 项</span>
-                    </td>
-                    <td style="text-align: center;">
-                      @if (ch.is_active) {
-                        <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 600;">
-                          🟢 监听中
-                        </span>
-                      } @else {
-                        <span class="badge" style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600;">
-                          ⏸️ 已暂停
-                        </span>
-                      }
-                    </td>
-                    <td style="text-align: right; white-space: nowrap;">
-                      <button 
-                        type="button" 
-                        class="btn btn-sm" 
-                        (click)="toggleCrawlerChannel(ch)"
-                        [style.background]="ch.is_active ? '#fef3c7' : '#dcfce7'"
-                        [style.color]="ch.is_active ? '#b45309' : '#15803d'"
-                        style="border: none; padding: 2px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; margin-right: 6px;">
-                        {{ ch.is_active ? '⏸️ 暂停' : '▶️ 启动' }}
-                      </button>
-                      <button 
-                        type="button" 
-                        class="btn btn-sm" 
-                        (click)="deleteCrawlerChannel(ch.id)"
-                        style="background: #fee2e2; color: #dc2626; border: none; padding: 2px 8px; font-size: 11px; cursor: pointer; border-radius: 4px;">
-                        移除
-                      </button>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-
-            <!-- 新增频道卡片 -->
-            <div style="background: #f1f5f9; border-radius: 10px; padding: 14px; border: 1px dashed #cbd5e1;">
-              <div style="font-weight: 700; font-size: 12px; color: #334155; margin-bottom: 8px;">➕ 新增监控频道</div>
-              <div style="display: grid; grid-template-columns: 1.5fr 1.5fr 1fr 1fr auto; gap: 8px; align-items: flex-end;">
-                <div>
-                  <label style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">频道 ID</label>
-                  <input type="text" class="form-control" [(ngModel)]="newChannelForm.channelId" placeholder="-100xxxxxxx" style="font-size: 12px; padding: 5px 8px;">
-                </div>
-                <div>
-                  <label style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">频道名称</label>
-                  <input type="text" class="form-control" [(ngModel)]="newChannelForm.name" placeholder="如: 夸克学习资料群" style="font-size: 12px; padding: 5px 8px;">
-                </div>
-                <div>
-                  <label style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">网盘偏好</label>
-                  <select class="form-control" [(ngModel)]="newChannelForm.driveType" style="font-size: 12px; padding: 5px 8px;">
-                    <option value="auto">自动识别</option>
-                    <option value="quark">夸克</option>
-                    <option value="baidu">百度</option>
-                    <option value="alipan">阿里</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="font-size: 11px; color: #64748b; display: block; margin-bottom: 2px;">备注</label>
-                  <input type="text" class="form-control" [(ngModel)]="newChannelForm.remark" placeholder="选填" style="font-size: 12px; padding: 5px 8px;">
-                </div>
-                <button type="button" class="btn btn-sm btn-primary" (click)="addCrawlerChannel()" style="padding: 6px 14px; font-size: 12px; cursor: pointer;">
-                  添加
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
         <div class="modal-footer" style="background: #ffffff;">
           <button type="button" class="btn btn-secondary" (click)="closeCrawlerSettingsModal()">关闭</button>
@@ -5324,64 +6116,6 @@
     </div>
   }
 
-  <!-- 模态框 2：快速粘贴解析录入 -->
-  @if (showCrawlerPasteModal()) {
-    <div class="modal-backdrop" (click)="closeCrawlerPasteModal()">
-      <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 620px; background: #ffffff;">
-        <div class="modal-header" style="background: #ffffff;">
-          <h3>{{ i18n.t('crawler.pasteModalTitle') }}</h3>
-          <button type="button" class="modal-close-btn" (click)="closeCrawlerPasteModal()">✕</button>
-        </div>
-        <div class="modal-body" style="background: #ffffff;">
-          <div class="form-group">
-            <label style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">
-              📄 原始分享消息文本：
-            </label>
-            <textarea 
-              class="form-control" 
-              rows="7" 
-              [(ngModel)]="pasteForm.rawText"
-              [placeholder]="i18n.t('crawler.pastePlaceholder')"
-              style="font-family: inherit; font-size: 13px; line-height: 1.6; padding: 12px; border-radius: 8px;">
-            </textarea>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
-            <div class="form-group" style="margin-bottom: 0;">
-              <label style="font-weight: 600; font-size: 12px; margin-bottom: 4px; display: block;">
-                {{ i18n.t('crawler.pasteSourceLabel') }}
-              </label>
-              <input 
-                type="text" 
-                class="form-control" 
-                [(ngModel)]="pasteForm.sourceName" 
-                placeholder="如: 微信家长互助群 / 手动采集" 
-                style="font-size: 12px;">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 0;">
-              <label style="font-weight: 600; font-size: 12px; margin-bottom: 4px; display: block;">
-                优先网盘类型：
-              </label>
-              <select class="form-control" [(ngModel)]="pasteForm.driveType" style="font-size: 12px;">
-                <option value="auto">自动识别</option>
-                <option value="quark">夸克网盘</option>
-                <option value="baidu">百度网盘</option>
-                <option value="alipan">阿里云盘</option>
-                <option value="xunlei">迅雷云盘</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer" style="background: #ffffff;">
-          <button type="button" class="btn btn-secondary" (click)="closeCrawlerPasteModal()">取消</button>
-          <button type="button" class="btn btn-primary" (click)="submitPasteIngest()" [disabled]="!pasteForm.rawText.trim()">
-            {{ i18n.t('crawler.pasteBtnSubmit') }}
-          </button>
-        </div>
-      </div>
-    </div>
-  }
 
   <!-- 模态框 3：查看 Telegram 消息原文 -->
   @if (showCrawlerRawModal()) {

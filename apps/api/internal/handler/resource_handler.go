@@ -23,14 +23,18 @@ type ResourceHandler struct {
 	checker  *service.NetdiskCheckerService
 	coverGen *service.CoverGeneratorService
 	r2       *service.R2Service
+	crawler  *service.TelegramCrawlerService
+	seo      *service.SeoService
 }
 
-func NewResourceHandler(parser *service.NetdiskParserService, checker *service.NetdiskCheckerService, coverGen *service.CoverGeneratorService, r2 *service.R2Service) *ResourceHandler {
+func NewResourceHandler(parser *service.NetdiskParserService, checker *service.NetdiskCheckerService, coverGen *service.CoverGeneratorService, r2 *service.R2Service, crawler *service.TelegramCrawlerService, seo *service.SeoService) *ResourceHandler {
 	return &ResourceHandler{
 		parser:   parser,
 		checker:  checker,
 		coverGen: coverGen,
 		r2:       r2,
+		crawler:  crawler,
+		seo:      seo,
 	}
 }
 
@@ -401,6 +405,34 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 		go EnsureRegionAndSchool(database.DB, res.Region, res.School, res.Stage)
 	}
 
+	if res.IsPublished && h.crawler != nil {
+		go func(createdRes model.Resource) {
+			var cfg model.TelegramConfig
+			if err := database.DB.First(&cfg).Error; err == nil && cfg.AutoBroadcast {
+				database.DB.Preload("Links").First(&createdRes, "id = ?", createdRes.ID)
+				if err := h.crawler.BroadcastResource(&createdRes, ""); err != nil {
+					log.Printf("[AutoBroadcast] Telegram 自动广播失败: %v", err)
+				} else {
+					log.Printf("[AutoBroadcast] 资源「%s」已自动广播至 Telegram", createdRes.Title)
+				}
+			}
+		}(res)
+	}
+
+	// 百度 / 必应 搜索引擎自动化秒级收录推送
+	if res.IsPublished && h.seo != nil {
+		go func(createdRes model.Resource) {
+			var seoCfg model.SeoConfig
+			if err := database.DB.Where("id = ?", "global").First(&seoCfg).Error; err == nil && seoCfg.AutoPushOnPublish {
+				if summary, pushErr := h.seo.BatchPush("all", []uuid.UUID{createdRes.ID}, nil); pushErr != nil {
+					log.Printf("[AutoSeoPush] 百度/必应自动收录推送异常: %v", pushErr)
+				} else {
+					log.Printf("[AutoSeoPush] 资源「%s」已全自动向百度/必应推送收录: %s", createdRes.Title, summary.SummaryMessage)
+				}
+			}
+		}(res)
+	}
+
 	return c.JSON(fiber.Map{
 		"code":    200,
 		"message": "创建成功",
@@ -634,6 +666,16 @@ func (h *ResourceHandler) AdminTogglePublish(c fiber.Ctx) error {
 	res.IsPublished = !res.IsPublished
 	database.DB.Save(&res)
 
+	// 如果切换为上架状态，自动向百度与必应推送索引
+	if res.IsPublished && h.seo != nil {
+		go func(pushedRes model.Resource) {
+			var seoCfg model.SeoConfig
+			if err := database.DB.Where("id = ?", "global").First(&seoCfg).Error; err == nil && seoCfg.AutoPushOnPublish {
+				h.seo.BatchPush("all", []uuid.UUID{pushedRes.ID}, nil)
+			}
+		}(res)
+	}
+
 	return c.JSON(fiber.Map{
 		"code":    200,
 		"message": "状态已更新",
@@ -678,6 +720,16 @@ func (h *ResourceHandler) AdminBatchTogglePublish(c fiber.Ctx) error {
 			"code":    500,
 			"message": "批量切换状态失败: " + err.Error(),
 		})
+	}
+
+	// 如果批量上架，自动异步向搜索引擎批量推送
+	if req.IsPublished && h.seo != nil && len(parsedIDs) > 0 {
+		go func(ids []uuid.UUID) {
+			var seoCfg model.SeoConfig
+			if err := database.DB.Where("id = ?", "global").First(&seoCfg).Error; err == nil && seoCfg.AutoPushOnPublish {
+				h.seo.BatchPush("all", ids, nil)
+			}
+		}(parsedIDs)
 	}
 
 	return c.JSON(fiber.Map{

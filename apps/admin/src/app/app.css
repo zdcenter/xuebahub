@@ -26,26 +26,38 @@ body {
   height: 100vh;
   position: sticky;
   top: 0;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 20px 18px;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px 14px;
   border-bottom: 1px solid #1e293b;
   flex-shrink: 0;
 }
 
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
 .brand-logo {
   font-size: 24px;
+  flex-shrink: 0;
 }
 
 .brand-text h2 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .brand-text span {
@@ -56,6 +68,81 @@ body {
   border-radius: 4px;
   display: inline-block;
   margin-top: 2px;
+  white-space: nowrap;
+}
+
+.sidebar-toggle-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* 侧边栏折叠状态 */
+.sidebar.collapsed {
+  width: 68px;
+}
+
+.sidebar.collapsed .brand {
+  padding: 18px 8px;
+  justify-content: center;
+}
+
+.sidebar.collapsed .brand-text,
+.sidebar.collapsed .nav-section-title,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-pill-badge,
+.sidebar.collapsed .sidebar-toggle-btn,
+.sidebar.collapsed .admin-badge span:last-child {
+  display: none !important;
+}
+
+.sidebar.collapsed .nav-menu {
+  padding: 10px 6px;
+  gap: 8px;
+}
+
+.sidebar.collapsed .nav-menu button {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.sidebar.collapsed .nav-menu button .icon {
+  font-size: 20px;
+}
+
+.sidebar.collapsed .nav-btn-promo {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.sidebar.collapsed .nav-section {
+  gap: 6px;
+}
+
+.sidebar.collapsed .nav-section:not(:first-child) {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 6px;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  padding: 14px 8px;
+  display: flex;
+  justify-content: center;
 }
 
 .nav-menu {
@@ -205,6 +292,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.title-area {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .title-area h1 {
@@ -833,8 +926,270 @@ body {
 .action-btn-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   white-space: nowrap;
+}
+
+/* 分类与版本纵向紧凑卡片 */
+.category-meta-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.category-row,
+.edition-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* 直观双排快捷操作矩阵 (全功能零遮挡、零次级弹窗、一键直达) */
+.action-grid-direct {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  min-width: 180px;
+}
+
+.action-grid-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-direct-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  line-height: 1.25;
+}
+
+/* ✈️ TG广播: Telegram 经典蓝 */
+.btn-direct-action.tg {
+  flex: 1;
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0369a1;
+}
+
+.btn-direct-action.tg:hover {
+  background: #0369a1;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+  transform: translateY(-1px);
+}
+
+/* 📧 邮件营销: 优雅高质感紫微渐变 */
+.btn-direct-action.email {
+  flex: 1;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: #ffffff;
+  border-color: #4338ca;
+}
+
+.btn-direct-action.email:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+  transform: translateY(-1px);
+}
+
+/* 📋 宣发文案: 翡翠绿轻卡片 */
+.btn-direct-action.copy {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+  padding: 4px 8px;
+}
+
+.btn-direct-action.copy:hover {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+  transform: translateY(-1px);
+}
+
+/* ✏️ 修改资料: 稳重蓝灰 Slate */
+.btn-direct-action.edit {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #cbd5e1;
+  padding: 4px 8px;
+}
+
+.btn-direct-action.edit:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+/* 🗑️ 删除资料: 柔和警戒红 */
+.btn-direct-action.delete {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+  padding: 4px 8px;
+}
+
+.btn-direct-action.delete:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+/* 宣发推广矩阵快捷下拉浮层 (备用兼容) */
+.promo-dropdown-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-promo-trigger {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #c7d2fe;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #4338ca;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-promo-trigger:hover,
+.btn-promo-trigger.active {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  border-color: #4338ca;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.btn-promo-trigger .arrow-icon {
+  font-size: 8px;
+  transition: transform 0.2s ease;
+  margin-left: 1px;
+}
+
+.btn-promo-trigger.active .arrow-icon {
+  transform: rotate(180deg);
+}
+
+.promo-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 270px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.16), 0 8px 12px -6px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  z-index: 1050;
+  animation: promo-menu-pop 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes promo-menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.promo-menu-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  padding: 6px 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 4px;
+}
+
+.promo-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.promo-menu-item:hover {
+  background: #f0fdf4;
+}
+
+.promo-menu-item .item-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.promo-menu-item .item-text {
+  flex: 1;
+}
+
+.promo-menu-item .item-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.promo-menu-item:hover .item-name {
+  color: #166534;
+}
+
+.promo-menu-item .item-desc {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* 顶部工作区折叠按钮 */
+.topbar-toggle-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.topbar-toggle-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 .btn-action {
@@ -3474,6 +3829,69 @@ tr.selected-row {
   border-color: #4ade80 !important;
   transform: translateX(2px);
 }
+
+/* Telegram 运营中枢工作台 Sub-Tabs */
+.crawler-subnav-bar {
+  display: flex;
+  gap: 10px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 6px 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow-x: auto;
+}
+
+.crawler-subtab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.crawler-subtab-btn:hover {
+  background: var(--bg-hover, #f1f5f9);
+  color: var(--text-main, #0f172a);
+}
+
+.crawler-subtab-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+}
+
+.crawler-subtab-btn .subtab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+}
+
+.crawler-subtab-btn.active .subtab-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.crawler-subtab-btn .subtab-badge.hot {
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
+
 
 
 

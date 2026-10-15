@@ -120,6 +120,10 @@ type TelegramConfig struct {
 	ApiBaseURL          string     `gorm:"type:varchar(255)" json:"api_base_url"`               // defaults to https://api.telegram.org
 	AutoSync            bool       `gorm:"default:true" json:"auto_sync"`
 	SyncIntervalSeconds int        `gorm:"default:60" json:"sync_interval_seconds"`
+	IsEnabled           bool       `gorm:"default:true" json:"is_enabled"`                      // 全局采集监控总开关 (true: 运行中, false: 已暂停)
+	BroadcastChannelID  string     `gorm:"type:varchar(100)" json:"broadcast_channel_id"`       // 站长专属广播频道 ID/用户名 (如 @xuebaw_official 或 -100xxxxxxx)
+	AutoBroadcast       bool       `gorm:"default:false" json:"auto_broadcast"`                 // 发布新资料时是否自动广播到自己频道
+	BroadcastTemplate   string     `gorm:"type:text" json:"broadcast_template"`                 // 自定义广播文案模板 (留空使用官方高颜值排版)
 	LastUpdateID        int64      `gorm:"default:0" json:"last_update_id"`
 	LastSyncAt          *time.Time `json:"last_sync_at"`
 	LastSyncStatus      string     `gorm:"type:varchar(50);default:'idle'" json:"last_sync_status"` // idle, success, error
@@ -139,6 +143,18 @@ type TelegramChannel struct {
 	Remark      string    `gorm:"type:varchar(255)" json:"remark"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TelegramBroadcastChannel 站长专属广播推送频道与群组模型 (支持多频道群发、独立启停与测试)
+type TelegramBroadcastChannel struct {
+	ID        uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	ChannelID string    `gorm:"type:varchar(100);uniqueIndex;not null" json:"channel_id"` // e.g. @xuebaw_official 或 -100xxxxxxxx
+	Name      string    `gorm:"type:varchar(100);not null" json:"name"`                   // e.g. 学霸网官方资料频道
+	IsActive  bool      `gorm:"default:true;index" json:"is_active"`
+	ItemCount int       `gorm:"default:0" json:"item_count"`
+	Remark    string    `gorm:"type:varchar(255)" json:"remark"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ResourceDraft 采集暂存草稿池模型 (从电报/外部采集中转，待管理员审核入库)
@@ -280,7 +296,83 @@ type ResourceRequest struct {
 	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
+// EmailConfig 邮件营销发信与 SMTP 凭据配置模型
+type EmailConfig struct {
+	ID              string     `gorm:"type:varchar(50);primaryKey" json:"id"` // "global"
+	SMTPHost        string     `gorm:"type:varchar(100);default:'smtp.qq.com'" json:"smtp_host"`
+	SMTPPort        int        `gorm:"default:465" json:"smtp_port"` // 465 (SSL) 或 587 (TLS)
+	SMTPUser        string     `gorm:"type:varchar(100)" json:"smtp_user"`
+	SMTPPass        string     `gorm:"type:varchar(100)" json:"smtp_pass"` // 密码或授权码
+	SenderName      string     `gorm:"type:varchar(100);default:'学霸网精选真题'" json:"sender_name"`
+	SenderEmail     string     `gorm:"type:varchar(100)" json:"sender_email"`
+	DailyLimit      int        `gorm:"default:500" json:"daily_limit"` // 每日发信配额
+	IntervalSeconds float64    `gorm:"default:1.5" json:"interval_seconds"` // 单封发送间隔秒数(防风控)
+	IsEnabled       bool       `gorm:"default:true" json:"is_enabled"`
+	LastTestedAt    *time.Time `json:"last_tested_at"`
+	LastTestStatus  string     `gorm:"type:varchar(50)" json:"last_test_status"` // success, error
+	LastTestMsg     string     `gorm:"type:varchar(255)" json:"last_test_msg"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+}
 
+// EmailContact 精准目标邮箱名录模型 (唯一索引绝对防重)
+type EmailContact struct {
+	ID         uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	Email      string     `gorm:"type:varchar(150);uniqueIndex;not null" json:"email"` // 唯一约束
+	Name       string     `gorm:"type:varchar(100)" json:"name"`
+	GroupTag   string     `gorm:"type:varchar(50);default:'general';index" json:"group_tag"` // 标签: gaokao, zhongkao, kaogong, general, request, vip
+	Source     string     `gorm:"type:varchar(100);default:'paste'" json:"source"` // qq_group, web_paste, request, manual
+	SendCount  int        `gorm:"default:0" json:"send_count"` // 累计发送成功次数
+	LastSentAt *time.Time `json:"last_sent_at"` // 最近一次发信时间
+	Status     string     `gorm:"type:varchar(20);default:'active';index" json:"status"` // active(正常), unsubscribed(已退订), bounced(失效/拒信)
+	Remark     string     `gorm:"type:varchar(255)" json:"remark"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+}
 
+// EmailCampaignLog 邮件群发批次活动日志模型
+type EmailCampaignLog struct {
+	ID            uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	CampaignType  string     `gorm:"type:varchar(50);default:'resource'" json:"campaign_type"` // resource(资料推荐), site(站点推广), custom(自定义)
+	ResourceID    *uuid.UUID `gorm:"type:uuid" json:"resource_id"`
+	ResourceTitle string     `gorm:"type:varchar(255)" json:"resource_title"`
+	Subject       string     `gorm:"type:varchar(255);not null" json:"subject"` // 邮件主题
+	TotalCount    int        `gorm:"default:0" json:"total_count"` // 目标总数
+	SuccessCount  int        `gorm:"default:0" json:"success_count"`
+	FailedCount   int        `gorm:"default:0" json:"failed_count"`
+	TargetTag     string     `gorm:"type:varchar(50)" json:"target_tag"`
+	Status        string     `gorm:"type:varchar(20);default:'sending';index" json:"status"` // sending, completed, failed
+	ErrorMessage  string     `gorm:"type:text" json:"error_message"`
+	CreatedAt     time.Time  `json:"created_at"`
+	CompletedAt   *time.Time `json:"completed_at"`
+}
 
+// SeoConfig 搜索引擎主动收录与索引配置模型 (支持百度普通收录 API 与微软必应 IndexNow)
+type SeoConfig struct {
+	ID                string     `gorm:"type:varchar(50);primaryKey" json:"id"` // "global"
+	SiteDomain        string     `gorm:"type:varchar(200);default:'https://xuebaw.com'" json:"site_domain"`
+	BaiduToken        string     `gorm:"type:varchar(100)" json:"baidu_token"`        // 百度搜索资源平台准入密钥 token
+	BaiduActive       bool       `gorm:"default:true" json:"baidu_active"`             // 是否开启百度收录推送
+	BingApiKey        string     `gorm:"type:varchar(100)" json:"bing_api_key"`       // 必应/IndexNow API Key (32位十六进制)
+	BingActive        bool       `gorm:"default:true" json:"bing_active"`              // 是否开启必应/IndexNow 推送
+	AutoPushOnPublish bool       `gorm:"default:true" json:"auto_push_on_publish"`    // 发布新资料时是否全自动向搜索引擎推送
+	DailyPushLimit    int        `gorm:"default:100000" json:"daily_push_limit"`      // 每日配额上限 (百度通常为 100000 条)
+	TodayPushedCount  int        `gorm:"default:0" json:"today_pushed_count"`         // 今日已推送量
+	TotalPushedCount  int        `gorm:"default:0" json:"total_pushed_count"`         // 历史累计推送量
+	LastPushAt        *time.Time `json:"last_push_at"`                                // 最近一次推送时间
+	BaiduRemainQuota  int        `gorm:"default:100000" json:"baidu_remain_quota"`     // 百度接口返回的今日剩余配额
+	UpdatedAt         time.Time  `json:"updated_at"`
+}
+
+// SeoPushLog 搜索引擎收录推送历史流水模型
+type SeoPushLog struct {
+	ID            uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	Engine        string         `gorm:"type:varchar(30);index;not null" json:"engine"` // baidu, bing, all
+	URLCount      int            `gorm:"default:0" json:"url_count"`                   // 提交的 URL 数量
+	URLs          datatypes.JSON `gorm:"type:jsonb;default:'[]'" json:"urls"`          // 提交的 URL 列表
+	Status        string         `gorm:"type:varchar(20);default:'success';index" json:"status"` // success, partial, failed
+	ResultSummary string         `gorm:"type:varchar(500)" json:"result_summary"`      // 简要结果说明 (如: 百度成功 12 条, 必应成功接收)
+	ResponseBody  string         `gorm:"type:text" json:"response_body"`               // 接口原始返回 JSON
+	ErrorMessage  string         `gorm:"type:text" json:"error_message"`
+	CreatedAt     time.Time      `json:"created_at"`
+}
 

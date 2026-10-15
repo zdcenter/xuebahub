@@ -1,0 +1,55 @@
+/* 邮件营销推广中枢专属微调样式 (与 Telegram 运营中枢完全对齐) */
+:host {
+  display: block;
+}
+
+/* 呼吸灯动画效果 (状态雷达卡片) */
+@keyframes radar-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.radar-dot-active {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: radar-pulse 2s infinite;
+}
+
+/* 表格行动效 */
+tr {
+  transition: background-color 0.15s ease;
+}
+
+tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* 邮件富文本模拟卡片滚动条优雅化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

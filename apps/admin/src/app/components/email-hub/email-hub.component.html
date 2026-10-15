@@ -1,0 +1,919 @@
+<div style="display: flex; flex-direction: column; gap: 20px;">
+  <!-- 1. 顶部业务横幅与营销核心看板 (完全对齐 Telegram 运营中枢顶级 Banner 质感) -->
+  <div class="account-hero-banner" style="background: linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%);">
+    <div class="hero-left">
+      <div class="hero-badge" style="background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); color: #ecfdf5;">
+        📧 {{ i18n.t('email.title') }}
+      </div>
+      <h2>邮件精准营销推广中枢 · 目标名录清洗与私域矩阵推广</h2>
+      <p>{{ i18n.t('email.subtitle') }}</p>
+      
+      <!-- 快捷操作按钮组 (与 Telegram 运营中枢完全一致的设计语言) -->
+      <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
+        <button 
+          type="button" 
+          class="btn btn-primary" 
+          (click)="switchTab('contacts')"
+          style="background: #ffffff; color: #0284c7; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <span>📋</span>
+          <span>快速粘贴解析名录</span>
+        </button>
+
+        <button 
+          type="button" 
+          class="btn btn-secondary" 
+          (click)="switchTab('campaign')"
+          style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <span>🚀</span>
+          <span>新建营销群发</span>
+        </button>
+
+        <button 
+          type="button" 
+          class="btn btn-secondary" 
+          (click)="switchTab('settings')"
+          style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <span>⚙️</span>
+          <span>发信与 SMTP 配置</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 四大关键核心指标统计卡片 (与 Telegram 运营中枢完全一致的统计卡片布局与配色) -->
+    <div class="hero-stats">
+      <div class="hero-stat-item">
+        <span class="stat-num" style="color: #67e8f9;">
+          {{ stats().total_contacts }}
+        </span>
+        <span class="stat-label">{{ i18n.t('email.statTotalContacts') }}</span>
+      </div>
+      <div class="hero-stat-item">
+        <span class="stat-num" style="color: #34d399;">
+          {{ stats().active_contacts }}
+        </span>
+        <span class="stat-label">{{ i18n.t('email.statActiveContacts') }}</span>
+      </div>
+      <div class="hero-stat-item">
+        <span class="stat-num" style="color: #fbbf24;">
+          {{ stats().total_sent_success }}
+        </span>
+        <span class="stat-label">{{ i18n.t('email.statTotalSent') }}</span>
+      </div>
+      <div class="hero-stat-item">
+        <span class="stat-num" style="color: #38bdf8;">
+          {{ stats().total_campaigns }}
+        </span>
+        <span class="stat-label">{{ i18n.t('email.statCampaigns') }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 邮件中枢 3 大 Sub-Tabs 平铺选项卡 (对齐 Telegram crawler-subnav-bar) -->
+  <div class="crawler-subnav-bar">
+    <button 
+      type="button" 
+      class="crawler-subtab-btn" 
+      [class.active]="activeSubTab() === 'contacts'"
+      (click)="switchTab('contacts')">
+      <span>👥</span> {{ i18n.t('email.subTabContacts') }}
+      <span class="subtab-badge">{{ stats().total_contacts }}</span>
+    </button>
+    <button 
+      type="button" 
+      class="crawler-subtab-btn" 
+      [class.active]="activeSubTab() === 'campaign'"
+      (click)="switchTab('campaign')">
+      <span>🚀</span> {{ i18n.t('email.subTabCampaign') }}
+      @if (stats().total_campaigns > 0) {
+        <span class="subtab-badge">{{ stats().total_campaigns }}</span>
+      }
+    </button>
+    <button 
+      type="button" 
+      class="crawler-subtab-btn" 
+      [class.active]="activeSubTab() === 'settings'"
+      (click)="switchTab('settings')">
+      <span>⚙️</span> {{ i18n.t('email.subTabSettings') }}
+    </button>
+  </div>
+
+  <!-- ===== 选项卡 1: 👥 精准名录与采集草稿池 (对标 Telegram 选项卡 1: 资源采集草稿池) ===== -->
+  @if (activeSubTab() === 'contacts') {
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- 快捷工作台：⚡ 快速粘贴与QQ群提取智能解析 (对标 Telegram 快速粘贴智能解析入库) -->
+      <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); border-left: 4px solid #0284c7; padding: 20px 24px; background: #ffffff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 22px;">📋</span>
+            <div>
+              <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span>快速粘贴与QQ群提取智能解析入库</span>
+                <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 600;">免弹窗 · 自动转QQ邮箱 · 100%原子去重</span>
+              </h3>
+              <p style="margin: 2px 0 0 0; font-size: 12.5px; color: #64748b;">
+                直接粘贴微信群、QQ群、网页评论等任意杂乱文本，自动提取纯QQ号并转为 <code>@qq.com</code>，与库内已有数据强制原子级去重！
+              </p>
+            </div>
+          </div>
+
+          <!-- QQ群提取指南快捷触发按钮 -->
+          <button 
+            type="button" 
+            class="btn btn-sm" 
+            (click)="showQQGuide.set(!showQQGuide())"
+            style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <span>💡</span>
+            <span>QQ群成员 3 秒极速提取指南</span>
+            <span style="font-size: 10px;">{{ showQQGuide() ? '▲' : '▼' }}</span>
+          </button>
+        </div>
+
+        <!-- QQ 群提取辅助小技巧折叠面板 -->
+        @if (showQQGuide()) {
+          <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; font-size: 12.5px; color: #1e40af; line-height: 1.7; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+            <div style="font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <span style="font-size: 13px;">⚡ 如何在 3 秒内导出整个 QQ 群几千个家长的 QQ 号？</span>
+              <button 
+                type="button" 
+                class="btn btn-sm" 
+                (click)="copyQQScript()"
+                style="background: #2563eb; color: #ffffff; border: none; font-size: 11.5px; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                📋 复制提取脚本代码
+              </button>
+            </div>
+            <ol style="margin: 0; padding-left: 20px;">
+              <li>在电脑浏览器打开 QQ 官方群管理后台: <a href="https://qun.qq.com/member.html" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 600;">qun.qq.com/member.html</a> 并登录您的 QQ；</li>
+              <li>选择您加入的高考/中考家长群，在浏览器页面上按下键盘上的 <kbd style="background: #ffffff; border: 1px solid #cbd5e1; padding: 1px 5px; border-radius: 3px; font-family: monospace;">F12</kbd> 打开控制台 (Console)；</li>
+              <li>点击上方【📋 复制提取脚本代码】，粘贴到控制台回车，群内所有家长的 QQ 号就会瞬间自动复制到您的剪贴板！</li>
+              <li>回到本页面下方录入框直接粘贴，系统秒级自动去重并录入库中！</li>
+            </ol>
+          </div>
+        }
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <textarea 
+            id="fast-email-textarea"
+            class="form-control" 
+            rows="3" 
+            [(ngModel)]="rawExtractText"
+            (keydown)="onFastExtractKeyDown($event)"
+            placeholder="在此直接粘贴任意杂乱内容（例如从微信群、网页或群聊中复制的文本：张三(12345678)、李四 87654321@qq.com、99887766、王五: 33445566...）系统自动识别纯QQ号并去重！支持按 Ctrl + Enter 快捷提取"
+            style="font-family: inherit; font-size: 13px; line-height: 1.6; padding: 12px 14px; border-radius: 8px; border: 1.5px solid #cbd5e1; resize: vertical; transition: border-color 0.2s;">
+          </textarea>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <select class="form-control" [(ngModel)]="extractGroupTag" style="font-size: 12.5px; width: 140px; padding: 7px 10px; border-radius: 6px;">
+                <option value="gaokao">🎓 高考备战组</option>
+                <option value="zhongkao">🎒 中考备考组</option>
+                <option value="kaogong">💼 考公考编组</option>
+                <option value="primary">🧒 小学期末组</option>
+                <option value="request">📝 求资料留资</option>
+                <option value="general">📦 通用名录</option>
+              </select>
+
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="extractSource" 
+                placeholder="来源备注 (如: 高三家长群)" 
+                style="font-size: 12.5px; width: 200px; padding: 7px 12px; border-radius: 6px;">
+
+              <span style="font-size: 11.5px; color: #94a3b8;">
+                💡 提示：支持按 <kbd style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 1px 4px; border-radius: 4px; font-family: monospace;">Ctrl + Enter</kbd> 快捷提取
+              </span>
+            </div>
+
+            <div style="display: flex; gap: 8px; align-items: center;">
+              @if (rawExtractText.trim()) {
+                <button 
+                  type="button" 
+                  class="btn btn-sm" 
+                  (click)="clearFastExtract()"
+                  style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer;">
+                  清空
+                </button>
+              }
+              <button 
+                type="button" 
+                class="btn btn-primary" 
+                (click)="extractContacts()" 
+                [disabled]="!rawExtractText.trim() || isExtracting()"
+                style="background: #0284c7; color: #ffffff; font-weight: 700; font-size: 13px; padding: 8px 22px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(2,132,199,0.25);">
+                @if (isExtracting()) {
+                  <span>⏳ 正在提取与排重...</span>
+                } @else {
+                  <span>⚡ 立即智能解析入库</span>
+                }
+              </button>
+            </div>
+          </div>
+
+          <!-- 本次提取结果统计高保真反馈横幅 -->
+          @if (extractResult(); as r) {
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px 16px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <div style="font-size: 13px; color: #065f46; font-weight: 600;">
+                🎉 提取成功：共识别 <b>{{ r.total_found }}</b> 个，文本内排重后 <b>{{ r.batch_unique_count }}</b> 个，库内已有 <b>{{ r.existing_count }}</b> 个，全新录入 <b>{{ r.new_inserted_count }}</b> 个！
+              </div>
+              <button type="button" class="btn btn-sm" (click)="extractResult.set(null)" style="background: #d1fae5; color: #065f46; border: none; font-size: 11.5px; padding: 2px 8px; border-radius: 4px; cursor: pointer;">✕ 知道了</button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- 模块 1：精准名录审核与管理池主区域 (完全复刻 Telegram 审核池卡片与表格) -->
+      <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px 20px; border-bottom: 1px solid #e2e8f0;">
+          <!-- 标签筛选 Pill 组 (对标 Telegram 状态 Tab 组：全部/高考/中考/考公/小学/求卷) -->
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <button 
+              type="button" 
+              class="btn btn-sm"
+              [style.background]="selectedTagFilter() === 'all' ? '#047857' : '#f1f5f9'"
+              [style.color]="selectedTagFilter() === 'all' ? '#ffffff' : '#475569'"
+              [style.font-weight]="selectedTagFilter() === 'all' ? '700' : '500'"
+              (click)="selectedTagFilter.set('all'); contactsPage.set(1); loadContacts();"
+              style="border-radius: 20px; padding: 6px 14px; cursor: pointer; border: none;">
+              🌐 全部名录 ({{ stats().total_contacts }})
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm"
+              [style.background]="selectedTagFilter() === 'gaokao' ? '#047857' : '#f1f5f9'"
+              [style.color]="selectedTagFilter() === 'gaokao' ? '#ffffff' : '#475569'"
+              [style.font-weight]="selectedTagFilter() === 'gaokao' ? '700' : '500'"
+              (click)="selectedTagFilter.set('gaokao'); contactsPage.set(1); loadContacts();"
+              style="border-radius: 20px; padding: 6px 14px; cursor: pointer; border: none;">
+              🎓 高考备战组
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm"
+              [style.background]="selectedTagFilter() === 'zhongkao' ? '#047857' : '#f1f5f9'"
+              [style.color]="selectedTagFilter() === 'zhongkao' ? '#ffffff' : '#475569'"
+              [style.font-weight]="selectedTagFilter() === 'zhongkao' ? '700' : '500'"
+              (click)="selectedTagFilter.set('zhongkao'); contactsPage.set(1); loadContacts();"
+              style="border-radius: 20px; padding: 6px 14px; cursor: pointer; border: none;">
+              🎒 中考备考组
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm"
+              [style.background]="selectedTagFilter() === 'kaogong' ? '#047857' : '#f1f5f9'"
+              [style.color]="selectedTagFilter() === 'kaogong' ? '#ffffff' : '#475569'"
+              [style.font-weight]="selectedTagFilter() === 'kaogong' ? '700' : '500'"
+              (click)="selectedTagFilter.set('kaogong'); contactsPage.set(1); loadContacts();"
+              style="border-radius: 20px; padding: 6px 14px; cursor: pointer; border: none;">
+              💼 考公考编组
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm"
+              [style.background]="selectedTagFilter() === 'primary' ? '#047857' : '#f1f5f9'"
+              [style.color]="selectedTagFilter() === 'primary' ? '#ffffff' : '#475569'"
+              [style.font-weight]="selectedTagFilter() === 'primary' ? '700' : '500'"
+              (click)="selectedTagFilter.set('primary'); contactsPage.set(1); loadContacts();"
+              style="border-radius: 20px; padding: 6px 14px; cursor: pointer; border: none;">
+              🧒 小学期末组
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-sm"
+              [style.background]="selectedTagFilter() === 'request' ? '#047857' : '#f1f5f9'"
+              [style.color]="selectedTagFilter() === 'request' ? '#ffffff' : '#475569'"
+              [style.font-weight]="selectedTagFilter() === 'request' ? '700' : '500'"
+              (click)="selectedTagFilter.set('request'); contactsPage.set(1); loadContacts();"
+              style="border-radius: 20px; padding: 6px 14px; cursor: pointer; border: none;">
+              📝 求卷留资
+            </button>
+          </div>
+
+          <!-- 关键字搜索与刷新操作 -->
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="搜索邮箱或来源备注..."
+              [(ngModel)]="contactSearch"
+              (keyup.enter)="contactsPage.set(1); loadContacts();"
+              style="width: 220px; font-size: 13px; padding: 6px 12px; border-radius: 8px;">
+            <button 
+              type="button" 
+              class="btn btn-sm btn-primary" 
+              (click)="contactsPage.set(1); loadContacts();"
+              style="cursor: pointer; padding: 6px 12px; border-radius: 8px; background: #0284c7; border: none; color: #ffffff;">
+              🔍
+            </button>
+          </div>
+        </div>
+
+        <!-- 批量操作工具栏 (当有选中项时激活，对齐 Telegram 批量审核栏) -->
+        @if (selectedContactIds().length > 0) {
+          <div style="padding: 10px 20px; background: #ecfdf5; border-bottom: 1px solid #a7f3d0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div style="font-size: 13px; font-weight: 600; color: #065f46; display: flex; align-items: center; gap: 8px;">
+              <span>✓ 已选中 {{ selectedContactIds().length }} 项联系人</span>
+              <button type="button" class="btn btn-sm" (click)="selectedContactIds.set([])" style="background: transparent; border: none; color: #047857; text-decoration: underline; font-size: 12px; cursor: pointer;">
+                取消选中
+              </button>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button 
+                type="button" 
+                class="btn btn-sm" 
+                (click)="openCampaignWithSelected()"
+                style="background: #0284c7; color: #ffffff; border: none; font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                🚀 对选中联系人发起群发
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-danger" 
+                (click)="batchDeleteContacts()"
+                style="background: #ef4444; color: #ffffff; border: none; font-size: 12px; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                🗑️ 批量彻底删除
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- 名录数据表格 (自适应宽度，零横向滚动条，复刻 Telegram 表格质感) -->
+        <div style="width: 100%; overflow: hidden; background: #ffffff;">
+          <table style="width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; font-size: 13px; margin: 0;">
+            <thead>
+              <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <th style="width: 44px; padding: 12px 14px; text-align: center;">
+                  <input 
+                    type="checkbox" 
+                    [checked]="isAllSelected()" 
+                    (change)="selectAllContacts($event)" 
+                    style="cursor: pointer; width: 16px; height: 16px; accent-color: #0284c7;">
+                </th>
+                <th style="width: 32%; padding: 12px 14px; text-align: left; font-weight: 600; color: #475569;">邮箱地址</th>
+                <th style="width: 18%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">归属标签</th>
+                <th style="width: 16%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">来源渠道</th>
+                <th style="width: 12%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">已发次数</th>
+                <th style="width: 14%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">最近发送</th>
+                <th style="width: 80px; padding: 12px 14px; text-align: right; font-weight: 600; color: #475569;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (contact of contacts(); track contact.id) {
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.15s ease;"
+                    [style.background]="selectedContactIds().includes(contact.id) ? '#f0f9ff' : 'transparent'">
+                  <td style="padding: 12px 14px; text-align: center;">
+                    <input 
+                      type="checkbox" 
+                      [checked]="selectedContactIds().includes(contact.id)"
+                      (change)="toggleContactSelection(contact.id)"
+                      style="cursor: pointer; width: 16px; height: 16px; accent-color: #0284c7;">
+                  </td>
+                  <td style="padding: 12px 14px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <span style="font-family: monospace; font-size: 13.5px; color: #0369a1;">{{ contact.email }}</span>
+                    <button 
+                      type="button" 
+                      (click)="copyEmail(contact.email)" 
+                      title="复制邮箱地址"
+                      style="margin-left: 8px; background: none; border: none; cursor: pointer; opacity: 0.6; font-size: 11px;">
+                      📋
+                    </button>
+                  </td>
+                  <td style="padding: 12px 6px; text-align: center;">
+                    <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 11px; padding: 2px 8px; border-radius: 6px;">
+                      {{ getTagLabel(contact.group_tag) }}
+                    </span>
+                  </td>
+                  <td style="padding: 12px 6px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #64748b;" [title]="contact.source">
+                    {{ contact.source || '外部导入' }}
+                  </td>
+                  <td style="padding: 12px 6px; text-align: center;">
+                    @if (contact.send_count > 0) {
+                      <span class="badge" style="background: #dcfce7; color: #166534; font-size: 11px; padding: 2px 8px;">{{ contact.send_count }} 封</span>
+                    } @else {
+                      <span class="badge" style="background: #f1f5f9; color: #94a3b8; font-size: 11px; padding: 2px 8px;">0 次</span>
+                    }
+                  </td>
+                  <td style="padding: 12px 6px; text-align: center; font-size: 12px; color: #64748b;">
+                    {{ contact.last_sent_at ? (contact.last_sent_at | date:'MM-dd HH:mm') : '从未发送' }}
+                  </td>
+                  <td style="padding: 12px 14px; text-align: right; white-space: nowrap;">
+                    <button 
+                      type="button" 
+                      class="btn btn-sm" 
+                      (click)="deleteContact(contact)"
+                      style="background: #fee2e2; color: #dc2626; border: none; padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px;">
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              }
+              @if (contacts().length === 0) {
+                <tr>
+                  <td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8; font-size: 13px;">
+                    暂无符合条件的邮箱联系人，可通过上方工作台一键粘贴导入！
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 分页栏 -->
+        <div style="padding: 14px 20px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fafafa; font-size: 12.5px; color: #64748b;">
+          <div>共 {{ contactsTotal() }} 个精准邮箱</div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button 
+              type="button" 
+              class="btn btn-sm" 
+              [disabled]="contactsPage() <= 1"
+              (click)="contactsPage.set(contactsPage() - 1); loadContacts();"
+              style="background: #ffffff; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; cursor: pointer;">
+              上一页
+            </button>
+            <span style="font-weight: 600; color: #334155;">第 {{ contactsPage() }} 页</span>
+            <button 
+              type="button" 
+              class="btn btn-sm" 
+              [disabled]="contacts().length < contactsPageSize()"
+              (click)="contactsPage.set(contactsPage() + 1); loadContacts();"
+              style="background: #ffffff; border: 1px solid #cbd5e1; padding: 4px 12px; border-radius: 6px; cursor: pointer;">
+              下一页
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ===== 选项卡 2: 🚀 邮件营销活动与广播中枢 (对标 Telegram 选项卡 3: 专属频道广播中枢) ===== -->
+  @if (activeSubTab() === 'campaign') {
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- 营销活动创建卡片 (左右分栏：左侧营销参数，右侧实时 HTML 富文本排版预览) -->
+      <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); padding: 24px;">
+        <div style="margin-bottom: 20px;">
+          <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;">
+            <span>🚀 邮件营销活动与广播配置</span>
+            <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 11px;">异步限速平滑队列 · 防风控</span>
+          </h3>
+          <p style="font-size: 13px; color: #64748b; margin: 0; line-height: 1.6;">
+            向精准目标群体群发名校真题与网盘资源，支持单资料直达落地页、A4高清打印与微课解析卖点深度触达！
+          </p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px;">
+          
+          <!-- 左侧：营销配置表单 -->
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div>
+              <label style="font-weight: 700; font-size: 13px; color: #334155; margin-bottom: 8px; display: block;">1. 推广内容模式：</label>
+              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 9px 16px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 13px; font-weight: 600;"
+                       [style.borderColor]="campaignForm.campaign_type === 'resource' ? '#0284c7' : '#cbd5e1'"
+                       [style.background]="campaignForm.campaign_type === 'resource' ? '#f0f9ff' : '#ffffff'">
+                  <input type="radio" name="campType" value="resource" [(ngModel)]="campaignForm.campaign_type">
+                  <span>🎯 精选真题资料推荐</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 9px 16px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 13px; font-weight: 600;"
+                       [style.borderColor]="campaignForm.campaign_type === 'site' ? '#0284c7' : '#cbd5e1'"
+                       [style.background]="campaignForm.campaign_type === 'site' ? '#f0f9ff' : '#ffffff'">
+                  <input type="radio" name="campType" value="site" [(ngModel)]="campaignForm.campaign_type">
+                  <span>🌐 学霸网全站平台推广</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 选择具体资料快速滚动列表 -->
+            @if (campaignForm.campaign_type === 'resource') {
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;">
+                <label style="font-weight: 600; font-size: 12.5px; color: #334155; margin-bottom: 6px; display: block;">
+                  🎯 挑选要推送的在库真题（点击选择）：
+                </label>
+                <div style="max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff;">
+                  @for (res of availableResources(); track res.id) {
+                    <div 
+                      (click)="selectResourceForCampaign(res)"
+                      style="padding: 9px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s ease;"
+                      [style.background]="campaignForm.resource_id === res.id ? '#e0f2fe' : '#ffffff'">
+                      <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px;">
+                        <div style="font-weight: 600; font-size: 12.5px; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ res.title }}</div>
+                        <div style="font-size: 11px; color: #64748b;">{{ res.stage }} · {{ res.subject }} · 网盘: {{ res.links?.length || 0 }}个</div>
+                      </div>
+                      @if (campaignForm.resource_id === res.id) {
+                        <span class="badge" style="background: #0284c7; color: #ffffff; font-size: 11px; flex-shrink: 0;">已选中</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 邮件主题 -->
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-weight: 600; font-size: 13px; color: #334155;">邮件通知主题：</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                [(ngModel)]="campaignForm.subject" 
+                placeholder="例如：【名校试卷精选】2026年高三开学考全科真题微课合集 (A4极清打印版)"
+                style="font-size: 13px; margin-top: 4px;">
+            </div>
+
+            <!-- 自定义站长寄语 -->
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-weight: 600; font-size: 13px; color: #334155;">站长专属寄语 / 推荐导读：</label>
+              <textarea 
+                class="form-control" 
+                rows="2" 
+                [(ngModel)]="campaignForm.custom_message" 
+                placeholder="例如：群里的家长们好，本周更新了名校真题试卷，支持A4直接打印与原画微课视频，有需要的家长可自取存入网盘备用~"
+                style="font-size: 12.5px; margin-top: 4px; line-height: 1.6;">
+              </textarea>
+            </div>
+
+            <!-- 目标受众选择 -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;">
+              <label style="font-weight: 600; font-size: 12.5px; color: #334155; margin-bottom: 8px; display: block;">2. 发送目标受众：</label>
+              <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12.5px;">
+                  <input type="radio" name="tgtType" value="tag" [(ngModel)]="campaignForm.target_type">
+                  <span>👥 按群组标签</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12.5px;">
+                  <input type="radio" name="tgtType" value="all" [(ngModel)]="campaignForm.target_type">
+                  <span>🌐 全量活跃联系人 ({{ stats().active_contacts }}人)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12.5px;">
+                  <input type="radio" name="tgtType" value="manual" [(ngModel)]="campaignForm.target_type">
+                  <span>📋 临时贴入邮箱</span>
+                </label>
+              </div>
+
+              @if (campaignForm.target_type === 'tag') {
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 12px; color: #64748b;">群组标签：</span>
+                  <select class="form-control" [(ngModel)]="campaignForm.target_tag" style="width: 160px; font-size: 12px; padding: 5px 8px;">
+                    <option value="gaokao">🎓 高考备战组</option>
+                    <option value="zhongkao">🎒 中考备考组</option>
+                    <option value="kaogong">💼 考公考编组</option>
+                    <option value="primary">🧒 小学期末组</option>
+                    <option value="request">📝 求资料留资</option>
+                    <option value="general">📦 通用名录</option>
+                  </select>
+                </div>
+              }
+
+              @if (campaignForm.target_type === 'manual') {
+                <textarea 
+                  class="form-control" 
+                  rows="3" 
+                  [(ngModel)]="campaignForm.manual_emails" 
+                  placeholder="直接在此贴入收件人邮箱（支持多个QQ号或邮箱，逗号/换行隔开，自动去重）"
+                  style="font-size: 12px; margin-top: 6px;">
+                </textarea>
+              }
+
+              <!-- 智能防频繁打扰 -->
+              <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #cbd5e1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #64748b;">
+                <span>🛡️ 防打扰冷却：跳过最近</span>
+                <input type="number" class="form-control" [(ngModel)]="campaignForm.skip_recent_days" style="width: 55px; font-size: 12px; padding: 2px 6px;">
+                <span>天内已发送过的联系人</span>
+              </div>
+            </div>
+
+            <!-- 启动群发按钮 -->
+            <button 
+              type="button" 
+              class="btn btn-primary" 
+              (click)="sendCampaign()"
+              [disabled]="isSendingCampaign()"
+              style="background: #0284c7; color: #ffffff; font-weight: 700; font-size: 14px; padding: 11px 28px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(2,132,199,0.3);">
+              @if (isSendingCampaign()) {
+                <span>⏳ 正在启动任务并入队...</span>
+              } @else {
+                <span>🚀 启动异步平滑群发</span>
+              }
+            </button>
+          </div>
+
+          <!-- 右侧：📱 邮件排版效果实时预览 (对标 Telegram 频道消息排版效果预览卡片) -->
+          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-size: 13px; font-weight: 700; color: #334155; display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span>📱 邮件排版实时效果预览</span>
+                <span class="badge" style="background: #e2e8f0; color: #475569; font-size: 11px;">HTML 响应式极速富文本</span>
+              </div>
+              <span style="font-size: 11px; color: #94a3b8;">所见即所得</span>
+            </div>
+
+            <!-- 邮件富文本模拟容器 -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <!-- 邮件顶部品牌栏 -->
+              <div style="background: linear-gradient(135deg, #0f172a 0%, #0369a1 100%); padding: 16px 20px; color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 6px;">
+                  <span>👑 学霸网</span>
+                  <span style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px;">xuebaw.com</span>
+                </div>
+                <div style="font-size: 11px; opacity: 0.85;">名校真题 · 矢量打印 · 原画微课</div>
+              </div>
+
+              <!-- 邮件正文模拟 -->
+              <div style="padding: 20px;">
+                <div style="font-size: 15px; font-weight: 800; color: #0284c7; line-height: 1.5; margin-bottom: 12px;">
+                  {{ campaignForm.subject || '【备考精选真题】' + getSelectedResourceTitle() + ' (A4极清打印版)' }}
+                </div>
+
+                @if (campaignForm.custom_message) {
+                  <div style="background: #f0fdf4; border-left: 3px solid #10b981; padding: 10px 14px; border-radius: 6px; font-size: 12.5px; color: #166534; line-height: 1.6; margin-bottom: 14px;">
+                    💬 <b>站长推荐导读：</b>{{ campaignForm.custom_message }}
+                  </div>
+                }
+
+                <!-- 特权徽标 -->
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+                  <span style="font-size: 11px; background: #eff6ff; color: #1d4ed8; padding: 3px 8px; border-radius: 4px; font-weight: 600;">📄 A4矢量极清打印</span>
+                  <span style="font-size: 11px; background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 4px; font-weight: 600;">🎬 4K原画原声微课</span>
+                  <span style="font-size: 11px; background: #ecfdf5; color: #065f46; padding: 3px 8px; border-radius: 4px; font-weight: 600;">🔒 存入个人网盘永久防丢</span>
+                </div>
+
+                <!-- 大行动按钮 -->
+                <div style="text-align: center; margin: 20px 0 10px 0;">
+                  <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; font-weight: 700; font-size: 13.5px; padding: 10px 24px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 10px rgba(2,132,199,0.25);">
+                    👉 免登录一键转存到网盘 / 在线查阅
+                  </div>
+                </div>
+              </div>
+
+              <!-- 邮件页脚 -->
+              <div style="background: #f8fafc; border-top: 1px solid #f1f5f9; padding: 12px 20px; font-size: 11px; color: #94a3b8; text-align: center;">
+                本邮件由学霸网 (xuebaw.com) 智能私域系统发出 · 祝备考顺利取得优异成绩！
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 模块 2：群发历史流水看板 (对齐 Telegram 广播历史与频道矩阵表格) -->
+      <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <h3 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <span>📋 群发营销流水与实时进度</span>
+            <span class="badge" style="background: #eff6ff; color: #1d4ed8; font-size: 11px;">共 {{ campaignLogs().length }} 批次</span>
+          </h3>
+          <button type="button" class="btn btn-sm" (click)="loadCampaignLogs()" style="background: #f1f5f9; color: #64748b; font-size: 12px; padding: 5px 12px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer;">
+            🔄 刷新进度
+          </button>
+        </div>
+
+        <div style="width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #ffffff;">
+          <table style="width: 100%; min-width: 0; table-layout: fixed; border-collapse: collapse; font-size: 13px; margin: 0;">
+            <thead>
+              <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <th style="width: 32%; padding: 12px 14px; text-align: left; font-weight: 600; color: #475569;">邮件主题</th>
+                <th style="width: 16%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">目标总数</th>
+                <th style="width: 18%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">发送成功 / 失败</th>
+                <th style="width: 16%; padding: 12px 6px; text-align: center; font-weight: 600; color: #475569;">任务状态</th>
+                <th style="width: 18%; padding: 12px 14px; text-align: right; font-weight: 600; color: #475569;">发起时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (log of campaignLogs(); track log.id) {
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 12px 14px; font-weight: 600; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="log.subject">
+                    {{ log.subject }}
+                  </td>
+                  <td style="padding: 12px 6px; text-align: center; font-weight: 700; color: #475569;">
+                    {{ log.total_count }} 封
+                  </td>
+                  <td style="padding: 12px 6px; text-align: center;">
+                    <span style="color: #10b981; font-weight: 700;">{{ log.success_count }} 成功</span>
+                    @if (log.failed_count > 0) {
+                      <span style="color: #ef4444; font-weight: 700; margin-left: 6px;">{{ log.failed_count }} 失败</span>
+                    }
+                  </td>
+                  <td style="padding: 12px 6px; text-align: center;">
+                    @if (log.status === 'sending') {
+                      <span class="badge" style="background: #dbeafe; color: #1d4ed8; font-size: 11px; font-weight: 600;">⏳ 正在发送中</span>
+                    } @else if (log.status === 'completed') {
+                      <span class="badge" style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 600;">✅ 已完成</span>
+                    } @else {
+                      <span class="badge" style="background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 600;">❌ 失败</span>
+                    }
+                  </td>
+                  <td style="padding: 12px 14px; text-align: right; color: #64748b; font-size: 12px;">
+                    {{ log.created_at | date:'yyyy-MM-dd HH:mm' }}
+                  </td>
+                </tr>
+              }
+              @if (campaignLogs().length === 0) {
+                <tr>
+                  <td colspan="5" style="text-align: center; padding: 36px; color: #94a3b8;">
+                    暂无群发历史记录
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ===== 选项卡 3: ⚙️ 发信与网关配置 (对标 Telegram 选项卡 4: 机器人与网络设置) ===== -->
+  @if (activeSubTab() === 'settings') {
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <!-- 实时监听雷达与状态看板 (对标 Telegram 监听雷达卡片，带动态呼吸灯指示器) -->
+      <div class="card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            @if (!config()?.smtp_host || !config()?.smtp_user) {
+              <div style="display: flex; align-items: center; gap: 8px; background: #fef2f2; border: 1px solid #fecaca; padding: 6px 14px; border-radius: 20px;">
+                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></span>
+                <span style="font-size: 13px; font-weight: 700; color: #991b1b;">未配置 SMTP 发信凭据</span>
+              </div>
+            } @else {
+              <div style="display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 14px; border-radius: 20px;">
+                <span class="radar-dot-active"></span>
+                <span style="font-size: 13px; font-weight: 700; color: #065f46;">🟢 SMTP 发信网关就绪 · 待命中 (随时支持秒级队列群发)</span>
+              </div>
+            }
+
+            @if (config()?.sender_email) {
+              <span style="font-size: 13px; color: #64748b; font-family: monospace; background: #f1f5f9; padding: 4px 10px; border-radius: 6px;">
+                📧 {{ config()?.sender_email }}
+              </span>
+            }
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            @if (config()?.last_tested_at) {
+              <div style="font-size: 12px; color: #64748b;">
+                🕒 最近连通性测试: {{ config()?.last_tested_at | date:'yyyy-MM-dd HH:mm:ss' }}
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (config()?.last_test_msg) {
+          <div style="margin-top: 12px; font-size: 12.5px; color: #475569; background: #f8fafc; padding: 8px 14px; border-radius: 6px; border-left: 3px solid #10b981;">
+            💬 最新测试简讯: {{ config()?.last_test_msg }}
+          </div>
+        }
+      </div>
+
+      <!-- 发信凭据与网关底层配置表单 (对标 Telegram Bot 凭据与反代配置卡片) -->
+      @if (config(); as cfg) {
+        <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); padding: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>⚙️ SMTP 网关通信凭据与发信参数</span>
+              <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 11px;">SSL / TLS 安全加密通道</span>
+            </h3>
+
+            <!-- 快捷预填模板胶囊按钮组 -->
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              <span style="font-size: 12px; color: #64748b;">快捷填入预设：</span>
+              <button type="button" class="btn btn-sm" (click)="fillQQPreset()" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11.5px; padding: 3px 10px; border-radius: 6px; cursor: pointer;">
+                ⚡ QQ 邮箱
+              </button>
+              <button type="button" class="btn btn-sm" (click)="fill163Preset()" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11.5px; padding: 3px 10px; border-radius: 6px; cursor: pointer;">
+                ⚡ 163 邮箱
+              </button>
+              <button type="button" class="btn btn-sm" (click)="fillAliyunPreset()" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11.5px; padding: 3px 10px; border-radius: 6px; cursor: pointer;">
+                ⚡ 阿里云 DirectMail
+              </button>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- Row 1: Host & Port -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">SMTP 服务器域名 / 地址：</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  [(ngModel)]="cfg.smtp_host" 
+                  placeholder="例如: smtp.qq.com 或 smtp.163.com"
+                  style="font-family: monospace; font-size: 13px; margin-top: 4px;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">SSL 发信端口 (推荐 465)：</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  [(ngModel)]="cfg.smtp_port" 
+                  placeholder="465" 
+                  style="font-size: 13px; margin-top: 4px;">
+              </div>
+            </div>
+
+            <!-- Row 2: Username & Password -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">发信账号 / 用户名：</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  [(ngModel)]="cfg.smtp_user" 
+                  placeholder="例如: 12345678@qq.com"
+                  style="font-family: monospace; font-size: 13px; margin-top: 4px;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">授权码 / SMTP 独立密码：</label>
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  [(ngModel)]="cfg.smtp_pass" 
+                  placeholder="QQ/163 邮箱设置页生成的专用授权码" 
+                  style="font-family: monospace; font-size: 13px; margin-top: 4px;">
+              </div>
+            </div>
+
+            <!-- Row 3: From Email & From Name -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">发件人邮箱 (From Email)：</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  [(ngModel)]="cfg.sender_email" 
+                  placeholder="必须与发信账号域名一致"
+                  style="font-family: monospace; font-size: 13px; margin-top: 4px;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">发件人显示昵称 (From Name)：</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  [(ngModel)]="cfg.sender_name" 
+                  placeholder="例如: 学霸网真题文库" 
+                  style="font-size: 13px; margin-top: 4px;">
+              </div>
+            </div>
+
+            <!-- Row 4: Daily Limit & Interval -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">每日发信安全上限 (封)：</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  [(ngModel)]="cfg.daily_limit" 
+                  placeholder="500" 
+                  style="font-size: 13px; margin-top: 4px;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-weight: 600; font-size: 13px; color: #334155;">单封发送平滑延时 (秒，推荐 2~3s 防封)：</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  [(ngModel)]="cfg.interval_seconds" 
+                  placeholder="2" 
+                  style="font-size: 13px; margin-top: 4px;">
+              </div>
+            </div>
+
+            <!-- 操作动作条：单件测试与保存配置 -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin-top: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input 
+                  type="email" 
+                  class="form-control" 
+                  [(ngModel)]="testRecipient" 
+                  placeholder="输入测试收件邮箱验证..."
+                  style="font-size: 12.5px; width: 220px; padding: 7px 12px; border-radius: 6px;">
+                <button 
+                  type="button" 
+                  class="btn btn-sm" 
+                  (click)="sendTestEmail()"
+                  [disabled]="isTestingSMTP() || !testRecipient.trim()"
+                  style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 700; font-size: 12.5px; padding: 7px 16px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  @if (isTestingSMTP()) {
+                    <span>⏳ 正在验证连接...</span>
+                  } @else {
+                    <span>⚡ 发送测试邮件验证连通性</span>
+                  }
+                </button>
+              </div>
+
+              <button 
+                type="button" 
+                class="btn btn-primary" 
+                (click)="saveConfig()"
+                [disabled]="isSavingConfig()"
+                style="background: #0284c7; color: #ffffff; font-weight: 700; font-size: 13px; padding: 8px 24px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(2,132,199,0.25);">
+                @if (isSavingConfig()) {
+                  <span>💾 正在保存...</span>
+                } @else {
+                  <span>💾 保存 SMTP 发信配置</span>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

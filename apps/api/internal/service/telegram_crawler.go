@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -37,8 +38,9 @@ func NewTelegramCrawlerService(db *gorm.DB, parser *NetdiskParserService) *Teleg
 			Timeout: 25 * time.Second,
 		},
 	}
-	// 启动后台自动轮询采集 worker
-	go s.startBackgroundWorker()
+	// 完全采用 Telegram 官方 Webhook 实时自动推送架构，彻底取消 60 秒轮询
+	// 启动时自动异步校验并确保 Webhook 地址就绪
+	go s.ensureWebhookActive()
 	return s
 }
 
@@ -96,23 +98,15 @@ func (s *TelegramCrawlerService) getApiBaseURL(cfg *model.TelegramConfig) string
 	return "https://api.telegram.org"
 }
 
-// startBackgroundWorker 定时检查并拉取订阅频道更新
-func (s *TelegramCrawlerService) startBackgroundWorker() {
-	ticker := time.NewTicker(60 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		var cfg model.TelegramConfig
-		if err := s.db.First(&cfg).Error; err != nil {
-			continue
-		}
-		// 如果当前处于 Webhook 实时触发模式，则不执行 getUpdates 轮询以避免 Telegram 409 冲突
-		if cfg.SyncMode == "webhook" {
-			continue
-		}
-		if cfg.AutoSync && cfg.BotToken != "" {
-			_, _ = s.SyncNow()
-		}
+// ensureWebhookActive 系统启动时自动确保 Webhook 处于活跃注册状态 (纯 Webhook 实时触发模式，彻底取消后台定时轮询)
+func (s *TelegramCrawlerService) ensureWebhookActive() {
+	time.Sleep(2 * time.Second)
+	var cfg model.TelegramConfig
+	if err := s.db.First(&cfg).Error; err != nil {
+		return
+	}
+	if strings.TrimSpace(cfg.BotToken) != "" {
+		_ = s.SetWebhook(cfg.WebhookURL)
 	}
 }
 
@@ -574,5 +568,294 @@ func (s *TelegramCrawlerService) GetWebhookInfo() (map[string]interface{}, error
 		return nil, err
 	}
 	return result, nil
+}
+
+// ResolveChannel 根据输入的用户名前缀 (@xxx) 或 t.me 链接或数字 ID 智能解析频道真实信息
+func (s *TelegramCrawlerService) ResolveChannel(input string) (*model.TelegramChannel, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return nil, fmt.Errorf("频道输入不能为空")
+	}
+
+	chatTarget := input
+	if strings.Contains(input, "t.me/") {
+		parts := strings.Split(input, "t.me/")
+		if len(parts) > 1 {
+			target := strings.Trim(parts[1], "/")
+			target = strings.Split(target, "?")[0]
+			target = strings.Split(target, "/")[0]
+			if !strings.HasPrefix(target, "+") && !strings.HasPrefix(target, "joinchat") {
+				chatTarget = "@" + target
+			}
+		}
+	} else if !strings.HasPrefix(input, "@") && !strings.HasPrefix(input, "-") {
+		matched, _ := regexp.MatchString(`^[a-zA-Z0-9_]{4,}$`, input)
+		if matched {
+			chatTarget = "@" + input
+		}
+	}
+
+	var cfg model.TelegramConfig
+	if err := s.db.First(&cfg).Error; err != nil || strings.TrimSpace(cfg.BotToken) == "" {
+		return nil, fmt.Errorf("未配置 Telegram Bot Token，无法调用 Telegram API")
+	}
+
+	client := s.getClient(&cfg)
+	baseURL := s.getApiBaseURL(&cfg)
+	apiURL := fmt.Sprintf("%s/bot%s/getChat?chat_id=%s", baseURL, cfg.BotToken, url.QueryEscape(chatTarget))
+
+	resp, err := client.Get(apiURL)
+	if err != nil {
+		return nil, fmt.Errorf("请求 Telegram getChat 失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var tgResp struct {
+		Ok          bool   `json:"ok"`
+		Description string `json:"description"`
+		Result      struct {
+			ID          int64  `json:"id"`
+			Title       string `json:"title"`
+			Username    string `json:"username"`
+			Type        string `json:"type"`
+			Description string `json:"description"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(body, &tgResp); err != nil {
+		return nil, fmt.Errorf("解析 Telegram 响应失败: %w", err)
+	}
+	if !tgResp.Ok {
+		return nil, fmt.Errorf("Telegram 无法找到该频道: %s (请确认频道是否为公开频道，或已将 Bot 加入该频道)", tgResp.Description)
+	}
+
+	driveType := "auto"
+	lowerTitle := strings.ToLower(tgResp.Result.Title + " " + tgResp.Result.Description + " " + tgResp.Result.Username)
+	if strings.Contains(lowerTitle, "夸克") || strings.Contains(lowerTitle, "quark") {
+		driveType = "quark"
+	} else if strings.Contains(lowerTitle, "百度") || strings.Contains(lowerTitle, "baidu") {
+		driveType = "baidu"
+	} else if strings.Contains(lowerTitle, "阿里") || strings.Contains(lowerTitle, "alipan") {
+		driveType = "alipan"
+	}
+
+	ch := &model.TelegramChannel{
+		ChannelID: fmt.Sprintf("%d", tgResp.Result.ID),
+		Name:      tgResp.Result.Title,
+		DriveType: driveType,
+		IsActive:  true,
+		Remark:    tgResp.Result.Description,
+	}
+	return ch, nil
+}
+
+// BroadcastResource 将入库发布的资料排版成高颜值图文消息，自动广播推送到站长自己的 Telegram 频道列表
+func (s *TelegramCrawlerService) BroadcastResource(res *model.Resource, customChannelID string) error {
+	var cfg model.TelegramConfig
+	if err := s.db.First(&cfg).Error; err != nil || strings.TrimSpace(cfg.BotToken) == "" {
+		return fmt.Errorf("Telegram 机器人未配置")
+	}
+
+	var targets []string
+	if strings.TrimSpace(customChannelID) != "" {
+		targets = append(targets, strings.TrimSpace(customChannelID))
+	} else {
+		// 从广播频道列表中获取所有处于激活状态的频道
+		var bChannels []model.TelegramBroadcastChannel
+		s.db.Where("is_active = ?", true).Find(&bChannels)
+		for _, bc := range bChannels {
+			if strings.TrimSpace(bc.ChannelID) != "" {
+				targets = append(targets, strings.TrimSpace(bc.ChannelID))
+			}
+		}
+		// 如果广播频道列表为空，回退到历史配置中的 BroadcastChannelID
+		if len(targets) == 0 && strings.TrimSpace(cfg.BroadcastChannelID) != "" {
+			targets = append(targets, strings.TrimSpace(cfg.BroadcastChannelID))
+		}
+	}
+
+	if len(targets) == 0 {
+		return fmt.Errorf("未配置任何活跃的广播频道，请先在【资源广播中枢】添加并启用至少一个广播频道")
+	}
+
+	var links []model.ResourceLink
+	s.db.Where("resource_id = ? AND status = ?", res.ID, "active").Find(&links)
+	if len(links) == 0 && len(res.Links) > 0 {
+		links = res.Links
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("📚 <b>【2026精选真题】%s</b>\n\n", htmlEscape(res.Title)))
+
+	sb.WriteString(fmt.Sprintf("📌 <b>分类信息</b>：%s · %s · %s", htmlEscape(res.Stage), htmlEscape(res.Grade), htmlEscape(res.Subject)))
+	if res.Edition != "" {
+		sb.WriteString(fmt.Sprintf(" (%s)", htmlEscape(res.Edition)))
+	}
+	sb.WriteString("\n")
+
+	if res.FileType != "" || res.FileSize != "" {
+		sb.WriteString(fmt.Sprintf("💾 <b>资料规格</b>：%s", htmlEscape(res.FileType)))
+		if res.FileSize != "" {
+			sb.WriteString(fmt.Sprintf(" · %s", htmlEscape(res.FileSize)))
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("\n")
+
+	if len(links) > 0 {
+		for _, l := range links {
+			driveName := "网盘"
+			switch strings.ToLower(l.DriveType) {
+			case "quark":
+				driveName = "夸克网盘"
+			case "baidu":
+				driveName = "百度网盘"
+			case "alipan":
+				driveName = "阿里网盘"
+			case "xunlei":
+				driveName = "迅雷网盘"
+			}
+			sb.WriteString(fmt.Sprintf("📂 <b>%s</b>：\n", driveName))
+			sb.WriteString(fmt.Sprintf("🔗 直达链接：<a href=\"%s\">%s</a>\n", l.ShareURL, l.ShareURL))
+			if l.ExtractCode != "" {
+				sb.WriteString(fmt.Sprintf("🔑 提取密码：<code>%s</code>\n", htmlEscape(l.ExtractCode)))
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	slugOrID := strings.TrimSpace(res.Slug)
+	if slugOrID == "" {
+		slugOrID = res.ID.String()
+	}
+	landingURL := fmt.Sprintf("https://xuebaw.com/resource/%s", slugOrID)
+	sb.WriteString(fmt.Sprintf("🌐 <b>学霸网全套真题与微课在线预览与A4打印</b>：\n👉 <a href=\"%s\">%s</a>\n\n", landingURL, landingURL))
+	sb.WriteString("⚡ <i>学霸网 (xuebaw.com) · 每日精选名校试卷与课件实时更新</i>")
+
+	msgText := sb.String()
+	var successCount int
+	var lastErr error
+
+	for _, target := range targets {
+		if !strings.HasPrefix(target, "@") && !strings.HasPrefix(target, "-") {
+			target = "@" + target
+		}
+		if err := s.sendTelegramMessage(&cfg, target, msgText); err != nil {
+			log.Printf("[BroadcastResource] 推送到频道 %s 失败: %v", target, err)
+			lastErr = err
+		} else {
+			successCount++
+			s.db.Model(&model.TelegramBroadcastChannel{}).
+				Where("channel_id = ? OR channel_id = ?", target, strings.TrimPrefix(target, "@")).
+				UpdateColumn("item_count", gorm.Expr("item_count + ?", 1))
+		}
+	}
+
+	if successCount == 0 && lastErr != nil {
+		return fmt.Errorf("广播推送失败: %w", lastErr)
+	}
+
+	return nil
+}
+
+// SendTestBroadcast 发送一条测试广播验证机器人发帖权限 (支持指定频道或测试全部活跃频道)
+func (s *TelegramCrawlerService) SendTestBroadcast(targetChannel string) error {
+	var cfg model.TelegramConfig
+	if err := s.db.First(&cfg).Error; err != nil || strings.TrimSpace(cfg.BotToken) == "" {
+		return fmt.Errorf("Telegram 机器人未配置")
+	}
+
+	var targets []string
+	if strings.TrimSpace(targetChannel) != "" {
+		targets = append(targets, strings.TrimSpace(targetChannel))
+	} else {
+		var bChannels []model.TelegramBroadcastChannel
+		s.db.Where("is_active = ?", true).Find(&bChannels)
+		for _, bc := range bChannels {
+			if strings.TrimSpace(bc.ChannelID) != "" {
+				targets = append(targets, strings.TrimSpace(bc.ChannelID))
+			}
+		}
+		if len(targets) == 0 && strings.TrimSpace(cfg.BroadcastChannelID) != "" {
+			targets = append(targets, strings.TrimSpace(cfg.BroadcastChannelID))
+		}
+	}
+
+	if len(targets) == 0 {
+		return fmt.Errorf("请提供广播频道或先在【资源广播中枢】添加并启用至少一个广播频道")
+	}
+
+	testMsg := "🎉 <b>学霸网资源发布机器人 · 广播通道连接成功！</b>\n\n" +
+		"✅ 本频道已成功与【学霸网资源中台】建立专属推送链路。\n" +
+		"⚡ 后续在管理后台审核发布新资料或从采集草稿池一键入库时，将自动秒级广播到本频道，向全体订阅者推送最新试卷与网盘转存直达链接！\n\n" +
+		"🌐 官方主站：<a href=\"https://xuebaw.com\">https://xuebaw.com</a>"
+
+	var successCount int
+	var lastErr error
+	for _, target := range targets {
+		if !strings.HasPrefix(target, "@") && !strings.HasPrefix(target, "-") {
+			target = "@" + target
+		}
+		if err := s.sendTelegramMessage(&cfg, target, testMsg); err != nil {
+			log.Printf("[SendTestBroadcast] 测试推送到频道 %s 失败: %v", target, err)
+			lastErr = err
+		} else {
+			successCount++
+		}
+	}
+
+	if successCount == 0 && lastErr != nil {
+		return fmt.Errorf("测试广播发送失败: %w (请确保已将 Bot 添加为频道管理员并开启发帖权限)", lastErr)
+	}
+
+	return nil
+}
+
+func (s *TelegramCrawlerService) sendTelegramMessage(cfg *model.TelegramConfig, chatID string, text string) error {
+	client := s.getClient(cfg)
+	baseURL := s.getApiBaseURL(cfg)
+	apiURL := fmt.Sprintf("%s/bot%s/sendMessage", baseURL, cfg.BotToken)
+
+	payload := map[string]interface{}{
+		"chat_id":                  chatID,
+		"text":                     text,
+		"parse_mode":               "HTML",
+		"disable_web_page_preview": false,
+	}
+	bodyBytes, _ := json.Marshal(payload)
+
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("连接 Telegram API 失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var tgResp struct {
+		Ok          bool   `json:"ok"`
+		Description string `json:"description"`
+	}
+	if err := json.Unmarshal(body, &tgResp); err != nil {
+		return fmt.Errorf("解析 Telegram 响应失败: %s", string(body))
+	}
+	if !tgResp.Ok {
+		return fmt.Errorf("Telegram 拒绝发送: %s (请确保已将 Bot 添加为该频道的管理员，并赋予'发布消息'权限)", tgResp.Description)
+	}
+
+	return nil
+}
+
+func htmlEscape(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
 }
 

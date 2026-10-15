@@ -608,6 +608,10 @@ export class ResourceService {
     return this.http.put(`${this.baseUrl}/api/v1/admin/crawler/config`, data);
   }
 
+  toggleCrawlerMasterSwitch(): Observable<{ message: string; is_enabled: boolean; config: TelegramConfigDto }> {
+    return this.http.patch<{ message: string; is_enabled: boolean; config: TelegramConfigDto }>(`${this.baseUrl}/api/v1/admin/crawler/toggle-master`, {});
+  }
+
   syncCrawlerNow(): Observable<{ success: boolean; result: any }> {
     return this.http.post<{ success: boolean; result: any }>(`${this.baseUrl}/api/v1/admin/crawler/sync`, {});
   }
@@ -640,6 +644,38 @@ export class ResourceService {
     return this.http.get(`${this.baseUrl}/api/v1/admin/crawler/webhook/info`);
   }
 
+  resolveCrawlerChannel(input: string): Observable<{ message: string; channel: TelegramChannelDto }> {
+    return this.http.post<{ message: string; channel: TelegramChannelDto }>(`${this.baseUrl}/api/v1/admin/crawler/channels/resolve`, { input });
+  }
+
+  sendCrawlerTestBroadcast(targetChannel?: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/api/v1/admin/crawler/broadcast/test`, { target_channel: targetChannel });
+  }
+
+  broadcastResourceToTelegram(resourceId: string, customChannelId?: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/api/v1/admin/crawler/broadcast/${resourceId}`, { custom_channel_id: customChannelId });
+  }
+
+  getBroadcastChannels(): Observable<{ channels: TelegramBroadcastChannelDto[] }> {
+    return this.http.get<{ channels: TelegramBroadcastChannelDto[] }>(`${this.baseUrl}/api/v1/admin/crawler/broadcast-channels`);
+  }
+
+  createBroadcastChannel(data: { channel_id: string; name?: string; remark?: string }): Observable<{ message: string; channel: TelegramBroadcastChannelDto }> {
+    return this.http.post<{ message: string; channel: TelegramBroadcastChannelDto }>(`${this.baseUrl}/api/v1/admin/crawler/broadcast-channels`, data);
+  }
+
+  resolveBroadcastChannel(input: string): Observable<{ message: string; channel: TelegramBroadcastChannelDto }> {
+    return this.http.post<{ message: string; channel: TelegramBroadcastChannelDto }>(`${this.baseUrl}/api/v1/admin/crawler/broadcast-channels/resolve`, { input });
+  }
+
+  toggleBroadcastChannel(id: string): Observable<{ message: string; is_active: boolean; channel: TelegramBroadcastChannelDto }> {
+    return this.http.patch<{ message: string; is_active: boolean; channel: TelegramBroadcastChannelDto }>(`${this.baseUrl}/api/v1/admin/crawler/broadcast-channels/${id}/toggle`, {});
+  }
+
+  deleteBroadcastChannel(id: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/api/v1/admin/crawler/broadcast-channels/${id}`);
+  }
+
   deleteCrawlerChannel(id: string): Observable<any> {
     return this.http.delete(`${this.baseUrl}/api/v1/admin/crawler/channels/${id}`);
   }
@@ -670,6 +706,102 @@ export class ResourceService {
 
   batchCrawlerDraftsAction(action: 'ignore' | 'delete', ids: string[]): Observable<any> {
     return this.http.post(`${this.baseUrl}/api/v1/admin/crawler/drafts/batch`, { action, ids });
+  }
+
+  // --- 邮件营销与推广中枢接口 ---
+  getEmailConfig(): Observable<EmailConfigDto> {
+    return this.http.get<{ code: number; data: EmailConfigDto }>(`${this.baseUrl}/api/v1/admin/email/config`).pipe(
+      map(res => res.data)
+    );
+  }
+
+  saveEmailConfig(cfg: Partial<EmailConfigDto>): Observable<EmailConfigDto> {
+    return this.http.put<{ code: number; message: string; data: EmailConfigDto }>(`${this.baseUrl}/api/v1/admin/email/config`, cfg).pipe(
+      map(res => res.data)
+    );
+  }
+
+  sendTestEmail(toEmail: string): Observable<{ message: string }> {
+    return this.http.post<{ code: number; message: string }>(`${this.baseUrl}/api/v1/admin/email/test`, { to_email: toEmail });
+  }
+
+  extractEmailContacts(data: { raw_text: string; group_tag?: string; source?: string }): Observable<ContactExtractionResultDto> {
+    return this.http.post<{ code: number; message: string; data: ContactExtractionResultDto }>(`${this.baseUrl}/api/v1/admin/email/contacts/extract`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  getEmailContacts(params: { page?: number; page_size?: number; group_tag?: string; search?: string }): Observable<{ items: EmailContactDto[]; total: number }> {
+    let q = `?page=${params.page || 1}&page_size=${params.page_size || 50}`;
+    if (params.group_tag && params.group_tag !== 'all') q += `&group_tag=${params.group_tag}`;
+    if (params.search) q += `&search=${encodeURIComponent(params.search)}`;
+    return this.http.get<{ code: number; data: { items: EmailContactDto[]; total: number } }>(`${this.baseUrl}/api/v1/admin/email/contacts${q}`).pipe(
+      map(res => res.data || { items: [], total: 0 })
+    );
+  }
+
+  deleteEmailContact(id: string): Observable<boolean> {
+    return this.http.delete<{ code: number }>(`${this.baseUrl}/api/v1/admin/email/contacts/${id}`).pipe(
+      map(res => res.code === 200)
+    );
+  }
+
+  batchDeleteEmailContacts(ids: string[]): Observable<boolean> {
+    return this.http.post<{ code: number }>(`${this.baseUrl}/api/v1/admin/email/contacts/batch-delete`, { ids }).pipe(
+      map(res => res.code === 200)
+    );
+  }
+
+  sendEmailCampaign(data: SendCampaignDto): Observable<EmailCampaignLogDto> {
+    return this.http.post<{ code: number; message: string; data: EmailCampaignLogDto }>(`${this.baseUrl}/api/v1/admin/email/campaign/send`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  getEmailCampaignLogs(page: number = 1, pageSize: number = 20): Observable<{ items: EmailCampaignLogDto[]; total: number }> {
+    return this.http.get<{ code: number; data: { items: EmailCampaignLogDto[]; total: number } }>(`${this.baseUrl}/api/v1/admin/email/campaigns?page=${page}&page_size=${pageSize}`).pipe(
+      map(res => res.data || { items: [], total: 0 })
+    );
+  }
+
+  getEmailStats(): Observable<EmailStatsDto> {
+    return this.http.get<{ code: number; data: EmailStatsDto }>(`${this.baseUrl}/api/v1/admin/email/stats`).pipe(
+      map(res => res.data)
+    );
+  }
+
+  // --- SEO 搜索引擎主动批量收录与索引中枢 API (百度普通收录 API & 微软必应 IndexNow) ---
+  getSeoConfig(): Observable<SeoConfigDto> {
+    return this.http.get<SeoConfigDto>(`${this.baseUrl}/api/v1/admin/seo/config`);
+  }
+
+  saveSeoConfig(cfg: Partial<SeoConfigDto>): Observable<{ message: string; config: SeoConfigDto }> {
+    return this.http.put<{ message: string; config: SeoConfigDto }>(`${this.baseUrl}/api/v1/admin/seo/config`, cfg);
+  }
+
+  getSeoStats(): Observable<SeoStatsDto> {
+    return this.http.get<SeoStatsDto>(`${this.baseUrl}/api/v1/admin/seo/stats`);
+  }
+
+  getSeoLogs(page: number = 1, pageSize: number = 20): Observable<{ logs: SeoPushLogDto[]; total: number; page: number; page_size: number }> {
+    return this.http.get<{ logs: SeoPushLogDto[]; total: number; page: number; page_size: number }>(
+      `${this.baseUrl}/api/v1/admin/seo/logs?page=${page}&page_size=${pageSize}`
+    );
+  }
+
+  batchPushSeo(engine: string = 'all', resourceIds?: string[], customUrls?: string[]): Observable<SeoBatchPushSummaryDto> {
+    return this.http.post<SeoBatchPushSummaryDto>(`${this.baseUrl}/api/v1/admin/seo/push`, {
+      engine,
+      resource_ids: resourceIds || [],
+      custom_urls: customUrls || []
+    });
+  }
+
+  pushAllSeo(engine: string = 'all', limit: number = 1000): Observable<SeoBatchPushSummaryDto> {
+    return this.http.post<SeoBatchPushSummaryDto>(`${this.baseUrl}/api/v1/admin/seo/push-all`, {
+      engine,
+      limit
+    });
   }
 }
 
@@ -816,6 +948,10 @@ export interface TelegramConfigDto {
   proxy_url?: string;
   api_base_url?: string;
   auto_sync: boolean;
+  is_enabled?: boolean;
+  broadcast_channel_id?: string;
+  auto_broadcast?: boolean;
+  broadcast_template?: string;
   sync_interval_seconds: number;
   last_update_id?: number;
   last_sync_at?: string;
@@ -828,6 +964,16 @@ export interface TelegramChannelDto {
   channel_id: string;
   name: string;
   drive_type: string;
+  is_active: boolean;
+  item_count: number;
+  remark?: string;
+  created_at?: string;
+}
+
+export interface TelegramBroadcastChannelDto {
+  id: string;
+  channel_id: string;
+  name: string;
   is_active: boolean;
   item_count: number;
   remark?: string;
@@ -860,5 +1006,134 @@ export interface CrawlerStatsDto {
   monitored_channels: number;
 }
 
+export interface EmailConfigDto {
+  id?: string;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  smtp_pass?: string;
+  sender_name: string;
+  sender_email: string;
+  daily_limit: number;
+  interval_seconds: number;
+  is_enabled: boolean;
+  last_tested_at?: string;
+  last_test_status?: string;
+  last_test_msg?: string;
+  updated_at?: string;
+}
 
+export interface EmailContactDto {
+  id: string;
+  email: string;
+  name?: string;
+  group_tag: string;
+  source: string;
+  send_count: number;
+  last_sent_at?: string;
+  status: 'active' | 'unsubscribed' | 'bounced';
+  remark?: string;
+  created_at: string;
+  updated_at?: string;
+}
 
+export interface ContactExtractionResultDto {
+  total_found: number;
+  batch_unique_count: number;
+  existing_count: number;
+  new_inserted_count: number;
+  sample_emails: string[];
+}
+
+export interface SendCampaignDto {
+  campaign_type: 'resource' | 'site';
+  resource_id?: string;
+  subject?: string;
+  custom_message?: string;
+  target_type: 'all' | 'tag' | 'manual';
+  target_tag?: string;
+  manual_emails?: string;
+  skip_recent_days?: number;
+}
+
+export interface EmailCampaignLogDto {
+  id: string;
+  campaign_type: string;
+  resource_id?: string;
+  resource_title?: string;
+  subject: string;
+  total_count: number;
+  success_count: number;
+  failed_count: number;
+  target_tag?: string;
+  status: 'sending' | 'completed' | 'failed';
+  error_message?: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface EmailStatsDto {
+  total_contacts: number;
+  active_contacts: number;
+  total_sent_success: number;
+  total_campaigns: number;
+}
+
+// --- SEO 搜索引擎主动收录与索引 DTOs ---
+export interface SeoConfigDto {
+  id?: string;
+  site_domain: string;
+  baidu_token: string;
+  baidu_active: boolean;
+  bing_api_key: string;
+  bing_active: boolean;
+  auto_push_on_publish: boolean;
+  daily_push_limit: number;
+  today_pushed_count: number;
+  total_pushed_count: number;
+  last_push_at?: string;
+  baidu_remain_quota: number;
+  updated_at?: string;
+}
+
+export interface SeoPushLogDto {
+  id: string;
+  engine: string;
+  url_count: number;
+  urls: string[];
+  status: 'success' | 'partial' | 'failed';
+  result_summary: string;
+  response_body?: string;
+  error_message?: string;
+  created_at: string;
+}
+
+export interface SeoStatsDto {
+  site_domain: string;
+  baidu_active: boolean;
+  baidu_token_set: boolean;
+  baidu_remain_quota: number;
+  bing_active: boolean;
+  bing_key_set: boolean;
+  auto_push: boolean;
+  today_pushed_count: number;
+  total_pushed_count: number;
+  last_push_at?: string;
+  total_resources: number;
+  published_resources: number;
+  total_logs: number;
+  success_logs: number;
+  latest_logs: SeoPushLogDto[];
+}
+
+export interface SeoBatchPushSummaryDto {
+  total_urls: number;
+  baidu_success: number;
+  baidu_remain: number;
+  baidu_error?: string;
+  bing_success: boolean;
+  bing_error?: string;
+  status: 'success' | 'partial' | 'failed';
+  urls: string[];
+  summary_message: string;
+}

@@ -40,6 +40,12 @@ func Init(dsn string) (*gorm.DB, error) {
 		&model.ResourceRequest{},
 		&model.TelegramConfig{},
 		&model.TelegramChannel{},
+		&model.TelegramBroadcastChannel{},
+		&model.EmailConfig{},
+		&model.EmailContact{},
+		&model.EmailCampaignLog{},
+		&model.SeoConfig{},
+		&model.SeoPushLog{},
 	}
 	for _, m := range models {
 		if err := db.AutoMigrate(m); err != nil {
@@ -485,6 +491,43 @@ func seedInitialData(db *gorm.DB) {
 			db.Create(&d)
 		}
 		log.Println("Seeded initial sample ResourceDrafts successfully!")
+	}
+
+	// 10. 初始化默认邮件发信配置
+	var emailConfigCount int64
+	db.Model(&model.EmailConfig{}).Count(&emailConfigCount)
+	if emailConfigCount == 0 {
+		defaultEmailConfig := model.EmailConfig{
+			ID:              "global",
+			SMTPHost:        "smtp.qq.com",
+			SMTPPort:        465,
+			SenderName:      "学霸网精选真题",
+			SenderEmail:     "",
+			DailyLimit:      500,
+			IntervalSeconds: 1.5,
+			IsEnabled:       true,
+		}
+		db.Create(&defaultEmailConfig)
+		log.Println("Seeded default EmailConfig successfully!")
+	}
+
+	// 11. 初始化默认搜索引擎主动收录配置 (SeoConfig)
+	var seoConfigCount int64
+	db.Model(&model.SeoConfig{}).Count(&seoConfigCount)
+	if seoConfigCount == 0 {
+		defaultSeoConfig := model.SeoConfig{
+			ID:                "global",
+			SiteDomain:        "https://xuebaw.com",
+			BaiduToken:        "",
+			BaiduActive:       true,
+			BingApiKey:        "7f8a9b2c3d4e5f60718293a4b5c6d7e8",
+			BingActive:        true,
+			AutoPushOnPublish: true,
+			DailyPushLimit:    100000,
+			BaiduRemainQuota:  100000,
+		}
+		db.Create(&defaultSeoConfig)
+		log.Println("Seeded default SeoConfig successfully!")
 	}
 }
 
