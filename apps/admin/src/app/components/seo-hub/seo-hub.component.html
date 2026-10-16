@@ -1,140 +1,117 @@
-<div class="email-hub-container">
-  <!-- 顶部深邃绿科技质感横幅 (全站统一高级设计语言) -->
+<div style="display: flex; flex-direction: column; gap: 20px;">
+  <!-- 1. 顶部业务横幅与核心看板 (完全对齐 Telegram 运营中枢顶级 Banner 质感) -->
   <div class="account-hero-banner" style="background: linear-gradient(135deg, #064e3b 0%, #047857 55%, #059669 100%);">
-    <div class="hero-content-wrapper">
-      <div class="hero-main-layout">
-        <div class="hero-brand-lockup">
-          <div class="hero-icon-box" style="background: rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.3);">
-            <span class="banner-emoji">🔍</span>
-          </div>
-          <div class="hero-title-group">
-            <div class="hero-badge-row">
-              <span class="hero-tag" style="background: rgba(167, 243, 208, 0.2); color: #a7f3d0; border-color: rgba(167, 243, 208, 0.4);">
-                Baidu Search API + Microsoft Bing IndexNow
-              </span>
-              <span class="hero-live-pill" style="background: rgba(16, 185, 129, 0.25); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.5);">
-                <span class="live-dot" style="background: #34d399;"></span>
-                {{ config().auto_push_on_publish ? '发布即自动秒推 · 监听中' : '全自动推送已暂停' }}
-              </span>
-            </div>
-            <h2 class="hero-title">{{ i18n.t('seo.title') }}</h2>
-            <p class="hero-subtitle">{{ i18n.t('seo.subtitle') }}</p>
-          </div>
-        </div>
+    <div class="hero-left">
+      <div class="hero-badge" style="background: rgba(167, 243, 208, 0.2); border-color: rgba(167, 243, 208, 0.4); color: #a7f3d0;">
+        🔍 Baidu Search API + Microsoft Bing IndexNow
+      </div>
+      <h2>{{ i18n.t('seo.title') }}</h2>
+      <p>{{ i18n.t('seo.subtitle') }}</p>
+      
+      <!-- 快捷操作按钮组 (与 Telegram 运营中枢完全一致的设计语言) -->
+      <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
+        <button 
+          type="button" 
+          class="btn btn-primary" 
+          (click)="pushAllPublished()" 
+          [disabled]="isPushing()"
+          style="background: #ffffff; color: #047857; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <span>⚡</span>
+          <span>{{ isPushing() ? i18n.t('seo.pushing') : i18n.t('seo.pushAllBtn') }}</span>
+        </button>
 
-        <!-- 顶栏快捷行动按钮组 -->
-        <div class="hero-actions">
-          <button 
-            type="button" 
-            class="hero-btn-primary" 
-            (click)="pushAllPublished()" 
-            [disabled]="isPushing()" 
-            title="一键将全站所有已发布的试卷与真题资料秒级推送到百度与必应">
-            <span class="btn-icon">⚡</span>
-            <span>{{ isPushing() ? i18n.t('seo.pushing') : i18n.t('seo.pushAllBtn') }}</span>
-          </button>
-          
-          <button 
-            type="button" 
-            class="hero-btn-secondary" 
-            (click)="openSitemap()" 
-            title="在新窗口查看全站自动生成的 XML Sitemap 站点地图">
-            <span class="btn-icon">🗺️</span>
-            <span>{{ i18n.t('seo.viewSitemap') }}</span>
-          </button>
-        </div>
+        <button 
+          type="button" 
+          class="btn btn-secondary" 
+          (click)="openSitemap()"
+          style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <span>🗺️</span>
+          <span>{{ i18n.t('seo.viewSitemap') }}</span>
+        </button>
+
+        <button 
+          type="button" 
+          class="btn btn-secondary" 
+          (click)="activeSubTab.set('config')"
+          style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <span>⚙️</span>
+          <span>{{ i18n.t('seo.tabConfig') }}</span>
+        </button>
       </div>
 
-      <!-- 四大核心 SEO 运营指标看板 -->
-      <div class="hero-kpi-grid">
-        <div class="hero-kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-icon">🚀</span>
-            <span class="kpi-title">{{ i18n.t('seo.todayPushed') }}</span>
-          </div>
-          <div class="kpi-value-row">
-            <span class="kpi-number" style="color: #6ee7b7;">{{ stats().today_pushed_count }}</span>
-            <span class="kpi-unit">条</span>
-          </div>
-          <span class="kpi-footnote">百度与必应已接收</span>
-        </div>
+      <!-- 自动推送状态提示 -->
+      <div style="margin-top: 10px;">
+        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 3px 10px; border-radius: 20px;"
+              [style.background]="config().auto_push_on_publish ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.12)'"
+              [style.color]="config().auto_push_on_publish ? '#6ee7b7' : '#94a3b8'">
+          <span style="width: 7px; height: 7px; border-radius: 50%; display: inline-block;"
+                [style.background]="config().auto_push_on_publish ? '#34d399' : '#64748b'"
+                [class.live-dot-anim]="config().auto_push_on_publish"></span>
+          {{ config().auto_push_on_publish ? '发布即自动秒推 · 监听中' : '全自动推送已暂停' }}
+        </span>
+      </div>
+    </div>
 
-        <div class="hero-kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-icon">📈</span>
-            <span class="kpi-title">{{ i18n.t('seo.totalPushed') }}</span>
-          </div>
-          <div class="kpi-value-row">
-            <span class="kpi-number" style="color: #38bdf8;">{{ stats().total_pushed_count }}</span>
-            <span class="kpi-unit">条</span>
-          </div>
-          <span class="kpi-footnote">历史累计主动提交</span>
-        </div>
-
-        <div class="hero-kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-icon">🛡️</span>
-            <span class="kpi-title">{{ i18n.t('seo.baiduQuota') }}</span>
-          </div>
-          <div class="kpi-value-row">
-            <span class="kpi-number" style="color: #fde047;">{{ stats().baidu_remain_quota || 100000 }}</span>
-            <span class="kpi-unit">条</span>
-          </div>
-          <span class="kpi-footnote">百度接口实时剩余</span>
-        </div>
-
-        <div class="hero-kpi-card">
-          <div class="kpi-label-row">
-            <span class="kpi-icon">⏱️</span>
-            <span class="kpi-title">{{ i18n.t('seo.lastPushTime') }}</span>
-          </div>
-          <div class="kpi-value-row">
-            <span class="kpi-number" style="font-size: 15px; color: #e2e8f0; line-height: 1.6;">
-              {{ formatDate(stats().last_push_at) }}
-            </span>
-          </div>
-          <span class="kpi-footnote">最新推送时间记录</span>
-        </div>
+    <!-- 四大关键核心指标统计卡片 (与 Telegram 运营中枢完全一致的统计卡片布局) -->
+    <div class="hero-stats">
+      <div class="hero-stat-item">
+        <span class="stat-num" style="color: #6ee7b7;">
+          {{ stats().today_pushed_count }}
+        </span>
+        <span class="stat-label">{{ i18n.t('seo.todayPushed') }}</span>
+      </div>
+      <div class="hero-stat-item">
+        <span class="stat-num" style="color: #38bdf8;">
+          {{ stats().total_pushed_count }}
+        </span>
+        <span class="stat-label">{{ i18n.t('seo.totalPushed') }}</span>
+      </div>
+      <div class="hero-stat-item">
+        <span class="stat-num" style="color: #fde047;">
+          {{ stats().baidu_remain_quota || 100000 }}
+        </span>
+        <span class="stat-label">{{ i18n.t('seo.baiduQuota') }}</span>
+      </div>
+      <div class="hero-stat-item">
+        <span class="stat-num" style="font-size: 14px; color: #e2e8f0;">
+          {{ formatDate(stats().last_push_at) }}
+        </span>
+        <span class="stat-label">{{ i18n.t('seo.lastPushTime') }}</span>
       </div>
     </div>
   </div>
 
-  <!-- 子选项卡胶囊栏 -->
+  <!-- 2. 三大 Sub-Tabs 导航栏 (对齐 Telegram crawler-subnav-bar) -->
   <div class="crawler-subnav-bar">
-    <div class="subnav-left">
-      <button 
-        type="button" 
-        class="crawler-subnav-btn" 
-        [class.active]="activeSubTab() === 'batch'" 
-        (click)="activeSubTab.set('batch')">
-        <span class="btn-icon">🚀</span>
-        <span>{{ i18n.t('seo.tabBatch') }}</span>
-      </button>
+    <button 
+      type="button" 
+      class="crawler-subtab-btn" 
+      [class.active]="activeSubTab() === 'batch'" 
+      (click)="activeSubTab.set('batch')">
+      <span>🚀</span> {{ i18n.t('seo.tabBatch') }}
+    </button>
 
-      <button 
-        type="button" 
-        class="crawler-subnav-btn" 
-        [class.active]="activeSubTab() === 'config'" 
-        (click)="activeSubTab.set('config')">
-        <span class="btn-icon">⚙️</span>
-        <span>{{ i18n.t('seo.tabConfig') }}</span>
-      </button>
+    <button 
+      type="button" 
+      class="crawler-subtab-btn" 
+      [class.active]="activeSubTab() === 'config'" 
+      (click)="activeSubTab.set('config')">
+      <span>⚙️</span> {{ i18n.t('seo.tabConfig') }}
+    </button>
 
-      <button 
-        type="button" 
-        class="crawler-subnav-btn" 
-        [class.active]="activeSubTab() === 'logs'" 
-        (click)="activeSubTab.set('logs')">
-        <span class="btn-icon">📋</span>
-        <span>{{ i18n.t('seo.tabLogs') }}</span>
-        @if (logsTotal() > 0) {
-          <span class="subnav-badge">{{ logsTotal() }}</span>
-        }
-      </button>
-    </div>
+    <button 
+      type="button" 
+      class="crawler-subtab-btn" 
+      [class.active]="activeSubTab() === 'logs'" 
+      (click)="activeSubTab.set('logs')">
+      <span>📋</span> {{ i18n.t('seo.tabLogs') }}
+      @if (logsTotal() > 0) {
+        <span class="subtab-badge">{{ logsTotal() }}</span>
+      }
+    </button>
 
-    <div class="subnav-right" style="display: flex; align-items: center; gap: 10px;">
-      <span style="font-size: 12px; color: #64748b;">
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 12px; color: var(--text-muted, #64748b);">
         在库已上架资料: <strong style="color: #059669;">{{ stats().published_resources }}</strong> 套
       </span>
     </div>
@@ -142,7 +119,7 @@
 
   <!-- ================= Tab 1: 批量收录与一键秒推 ================= -->
   @if (activeSubTab() === 'batch') {
-    <div class="seo-tab-content">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
       <!-- 快捷推送结果反馈提示条 -->
       @if (lastPushSummary()) {
         <div class="push-result-banner" [class.success]="lastPushSummary()?.status === 'success'" [class.partial]="lastPushSummary()?.status === 'partial'" [class.failed]="lastPushSummary()?.status === 'failed'">
@@ -163,9 +140,9 @@
 
       <div class="seo-grid-2cols">
         <!-- 左侧卡片：全站一键秒推与引擎选择 -->
-        <div class="card">
+        <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); border-left: 4px solid #059669;">
           <div class="card-header">
-            <h3>⚡ 极速全站/引擎选择推流</h3>
+            <h3>⚡ 极速全站 / 引擎选择推送</h3>
             <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
               主流搜索引擎直达
             </span>
@@ -173,7 +150,7 @@
           <div class="card-body">
             <!-- 目标搜索引擎单选栏 -->
             <div class="form-group">
-              <label class="form-label" style="font-weight: 700; color: #334155; margin-bottom: 8px;">
+              <label class="form-label" style="font-weight: 700; color: var(--text-main, #334155); margin-bottom: 8px;">
                 选择推送目标引擎
               </label>
               <div class="engine-selector-grid">
@@ -213,12 +190,12 @@
             </div>
 
             <!-- 全站已发布资料一键推送按钮 -->
-            <div class="full-push-panel" style="margin-top: 24px; padding: 20px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; text-align: center;">
+            <div style="margin-top: 24px; padding: 20px; background: var(--bg-secondary, #f8fafc); border: 1px dashed var(--border-color, #cbd5e1); border-radius: 12px; text-align: center;">
               <div style="font-size: 28px; margin-bottom: 8px;">🚀</div>
-              <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">
+              <h4 style="font-size: 15px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 6px;">
                 全站在库资料一键全量秒推
               </h4>
-              <p style="font-size: 13px; color: #64748b; margin-bottom: 16px; max-width: 420px; margin-left: auto; margin-right: auto;">
+              <p style="font-size: 13px; color: var(--text-muted, #64748b); margin-bottom: 16px; max-width: 420px; margin-left: auto; margin-right: auto;">
                 系统将自动抓取当前所有处于【展示中】的试卷资料 URL，格式化后以最高并发推送到选定的搜索引擎。
               </p>
 
@@ -235,13 +212,13 @@
         </div>
 
         <!-- 右侧卡片：自定义 URL 批量推送工作台 -->
-        <div class="card">
+        <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); border-left: 4px solid #0284c7;">
           <div class="card-header">
             <h3>📋 自定义 URL 批量粘贴推送</h3>
-            <span style="font-size: 12px; color: #64748b;">支持手动补推任意网页</span>
+            <span style="font-size: 12px; color: var(--text-muted, #64748b);">支持手动补推任意网页</span>
           </div>
           <div class="card-body">
-            <p style="font-size: 12.5px; color: #64748b; margin-bottom: 10px; line-height: 1.5;">
+            <p style="font-size: 12.5px; color: var(--text-muted, #64748b); margin-bottom: 10px; line-height: 1.5;">
               可在此直接粘贴需要加快收录的落地页链接（如首页、专题频道页、找卷需求页或特定试卷链接），每行一个。
             </p>
 
@@ -255,7 +232,7 @@
             </textarea>
 
             <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 14px;">
-              <div style="font-size: 12px; color: #64748b;">
+              <div style="font-size: 12px; color: var(--text-muted, #64748b);">
                 已输入: <strong>{{ customUrlsText().trim() ? customUrlsText().trim().split('\n').length : 0 }}</strong> 行链接
               </div>
               <button 
@@ -274,18 +251,18 @@
 
   <!-- ================= Tab 2: 百度与必应密钥配置 ================= -->
   @if (activeSubTab() === 'config') {
-    <div class="seo-tab-content">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
       <div class="seo-grid-2cols">
         <!-- 百度搜索资源平台配置卡片 -->
-        <div class="card">
+        <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); border-left: 4px solid #f59e0b;">
           <div class="card-header">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 20px;">⚡</span>
               <h3>百度搜索资源平台 API 配置</h3>
             </div>
-            <label class="switch-toggle-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
               <input type="checkbox" [(ngModel)]="config().baidu_active" style="width: 16px; height: 16px; cursor: pointer;" />
-              <span style="font-size: 12.5px; font-weight: 600; color: #334155;">启用百度推送</span>
+              <span style="font-size: 12.5px; font-weight: 600; color: var(--text-main, #334155);">启用百度推送</span>
             </label>
           </div>
           <div class="card-body">
@@ -303,25 +280,28 @@
               <span class="form-hint">{{ i18n.t('seo.baiduTokenHint') }}</span>
             </div>
 
-            <div class="guide-box-tip" style="padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 12px; color: #166534; line-height: 1.5;">
-              <strong>💡 百度 Token 获取极简 3 步指南：</strong><br />
-              1. 登录并打开 <a href="https://ziyuan.baidu.com/linksubmit/index" target="_blank" style="color: #047857; text-decoration: underline; font-weight: 600;">百度搜索资源平台 · 资源提交</a>；<br />
-              2. 在【普通收录】页面下方找到【API 提交】；<br />
-              3. 复制接口调用地址中 <code>token=XXXXXX</code> 的那串密钥填入上方即可！
+            <div style="padding: 14px 16px; background: #fefce8; border: 1px solid #fde68a; border-radius: 10px; font-size: 12.5px; color: #854d0e; line-height: 1.65;">
+              <strong style="font-size: 13px;">💡 百度 Token 获取步骤：</strong>
+              <ol style="padding-left: 18px; margin: 8px 0 0 0;">
+                <li>访问 <a href="https://ziyuan.baidu.com/linksubmit/index" target="_blank" style="color: #d97706; text-decoration: underline; font-weight: 600;">百度搜索资源平台 → 资源提交</a></li>
+                <li>在页面找到【<strong>普通收录</strong>】→ 切到【<strong>API 提交</strong>】</li>
+                <li>复制接口调用地址中 <code style="background: rgba(217, 119, 6, 0.12); padding: 1px 5px; border-radius: 4px; font-weight: 600;">token=XXXXXX</code> 的密钥值</li>
+                <li>粘贴到上方输入框 → 保存即可 ✅</li>
+              </ol>
             </div>
           </div>
         </div>
 
         <!-- 微软必应 IndexNow 配置卡片 -->
-        <div class="card">
+        <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); border-left: 4px solid #0284c7;">
           <div class="card-header">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 20px;">🔥</span>
-              <h3>微软必应 IndexNow 开放索引配置</h3>
+              <h3>微软必应 IndexNow 极速收录配置</h3>
             </div>
-            <label class="switch-toggle-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
               <input type="checkbox" [(ngModel)]="config().bing_active" style="width: 16px; height: 16px; cursor: pointer;" />
-              <span style="font-size: 12.5px; font-weight: 600; color: #334155;">启用必应推送</span>
+              <span style="font-size: 12.5px; font-weight: 600; color: var(--text-main, #334155);">启用必应推送</span>
             </label>
           </div>
           <div class="card-body">
@@ -332,29 +312,75 @@
                   <span class="required">*</span>
                 </label>
                 <button type="button" class="btn btn-sm btn-secondary" style="font-size: 11.5px; padding: 2px 8px;" (click)="generateRandomKey()">
-                  ⚡ 重新生成随机 Key
+                  🔄 重新生成随机 Key
                 </button>
               </div>
               <input 
                 type="text" 
                 class="form-control" 
+                style="font-family: monospace; letter-spacing: 0.5px;"
                 placeholder="例如: 7f8a9b2c3d4e5f60718293a4b5c6d7e8" 
                 [(ngModel)]="config().bing_api_key" 
               />
               <span class="form-hint">{{ i18n.t('seo.bingKeyHint') }}</span>
             </div>
 
-            <div class="guide-box-tip" style="padding: 12px 14px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; font-size: 12px; color: #0369a1; line-height: 1.5;">
-              <strong>💡 IndexNow 核心优势：</strong><br />
-              • 由 Microsoft Bing 主导的现代搜索引擎开放协议；<br />
-              • 提交一次，必应(Bing)、Yandex、Naver、Seznam 即可同步知晓新内容，极大加快全球索引与收录速度！
+            <!-- IndexNow 详细配置教程 -->
+            <div style="padding: 14px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; font-size: 12.5px; color: #1e40af; line-height: 1.65;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <strong style="font-size: 13.5px;">🌐 IndexNow 微软必应极速协议配置说明：</strong>
+                <span class="badge" style="background: #2563eb; color: #ffffff; font-size: 11px; padding: 2px 8px; border-radius: 12px;">
+                  免手动建文件 · 系统已内置响应
+                </span>
+              </div>
+              <p style="margin: 0 0 10px 0; color: #1e3a8a;">
+                IndexNow 协议要求向微软必应证明你对当前域名的所有权。协议规范要求访问 <code>https://{{ getDomainHost() }}/{{ config().bing_api_key }}.txt</code> 时返回这串 Key。
+              </p>
+              <div style="background: #ffffff; border: 1px solid #dbeafe; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <div>
+                    <span style="font-weight: 700; color: #1e40af;">🎉 系统已内置动态验证端点：</span>
+                    <span style="font-size: 12px; color: #64748b; margin-left: 4px;">本系统 API 已直接托管该验证路由</span>
+                  </div>
+                  <a [href]="getDomainKeyUrl()" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #0284c7; text-decoration: underline;">
+                    <span>🔗 点击在线测试密钥响应</span>
+                  </a>
+                </div>
+                <div style="margin-top: 6px; font-family: monospace; font-size: 11.5px; color: #475569; word-break: break-all;">
+                  请求地址: {{ getDomainKeyUrl() }}
+                </div>
+              </div>
+              <ol style="padding-left: 18px; margin: 0; color: #1e40af;">
+                <li>
+                  <strong>使用默认或自定 Key</strong>：上方输入框已为您预置随机 32 位 Key，亦可随时点击「重新生成随机 Key」；
+                </li>
+                <li style="margin-top: 4px;">
+                  <strong>保存本页配置</strong>：点击底部「保存配置」按钮；
+                </li>
+                <li style="margin-top: 4px;">
+                  <strong>一键推送即生效</strong>：切换到「批量收录与一键秒推」标签，点击推送，即可直达 Bing、Yandex、Naver 等全球引擎；
+                </li>
+                <li style="margin-top: 4px; font-size: 11.5px; color: #64748b;">
+                  <em>注：如全站使用了静态 CDN 或独立反代且未将根路径路由转交至 API 后端，只需在网站根目录放置一个名为 <code>{{ config().bing_api_key }}.txt</code> 的文本文件，内容单行填入此 Key 即可。</em>
+                </li>
+              </ol>
+            </div>
+
+            <div style="margin-top: 12px; padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; font-size: 12px; color: #166534; line-height: 1.5;">
+              <strong>✨ IndexNow 核心优势：</strong>
+              <ul style="padding-left: 16px; margin: 4px 0 0 0;">
+                <li>由 <strong>Microsoft Bing</strong> 联合全球引擎主导的开放收录协议；</li>
+                <li>一次推送，<strong>Bing / Yandex / Naver / Seznam</strong> 跨引擎联合秒级收录；</li>
+                <li>无传统搜索引擎每日额度限制，提交即进入爬虫优先抓取队列；</li>
+                <li>免繁琐的站长平台手工验证流程，通过 Key 校验即刻生效。</li>
+              </ul>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 全局自动化设置卡片 -->
-      <div class="card" style="margin-top: 16px;">
+      <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
         <div class="card-header">
           <h3>🌐 站点根域名与全自动推送策略</h3>
         </div>
@@ -372,15 +398,15 @@
                 <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
                   <input type="checkbox" [(ngModel)]="config().auto_push_on_publish" style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;" />
                   <div>
-                    <strong style="font-size: 13.5px; color: #0f172a;">{{ i18n.t('seo.autoPush') }}</strong>
-                    <p style="font-size: 12px; color: #64748b; margin-top: 2px;">{{ i18n.t('seo.autoPushDesc') }}</p>
+                    <strong style="font-size: 13.5px; color: var(--text-main, #0f172a);">{{ i18n.t('seo.autoPush') }}</strong>
+                    <p style="font-size: 12px; color: var(--text-muted, #64748b); margin-top: 2px;">{{ i18n.t('seo.autoPushDesc') }}</p>
                   </div>
                 </label>
               </div>
             </div>
           </div>
 
-          <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+          <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color, #f1f5f9); display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
             <button 
               type="button" 
               class="btn btn-primary" 
@@ -397,8 +423,8 @@
 
   <!-- ================= Tab 3: 推送历史与蜘蛛流水 ================= -->
   @if (activeSubTab() === 'logs') {
-    <div class="seo-tab-content">
-      <div class="card">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
         <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
           <h3>📋 搜索引擎收录推送流水记录</h3>
           <button type="button" class="btn btn-sm btn-secondary" (click)="loadLogs(1)">
@@ -407,7 +433,7 @@
         </div>
 
         @if (loadingLogs()) {
-          <div style="padding: 40px; text-align: center; color: #64748b;">正在拉取推送历史数据...</div>
+          <div style="padding: 40px; text-align: center; color: var(--text-muted, #64748b);">正在拉取推送历史数据...</div>
         } @else if (logs().length === 0) {
           <div style="padding: 40px; text-align: center; color: #94a3b8;">
             <span style="font-size: 32px; display: block; margin-bottom: 8px;">📭</span>
@@ -428,7 +454,7 @@
               <tbody>
                 @for (log of logs(); track log.id) {
                   <tr>
-                    <td style="font-size: 12.5px; color: #475569;">
+                    <td style="font-size: 12.5px; color: var(--text-secondary, #475569);">
                       {{ formatDate(log.created_at) }}
                     </td>
                     <td>
@@ -441,8 +467,8 @@
                       }
                     </td>
                     <td style="text-align: center;">
-                      <strong style="color: #0f172a; font-size: 13.5px;">{{ log.url_count }}</strong>
-                      <span style="font-size: 11px; color: #64748b;"> 条</span>
+                      <strong style="color: var(--text-main, #0f172a); font-size: 13.5px;">{{ log.url_count }}</strong>
+                      <span style="font-size: 11px; color: var(--text-muted, #64748b);"> 条</span>
                     </td>
                     <td style="text-align: center;">
                       @if (log.status === 'success') {

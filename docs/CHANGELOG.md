@@ -13,9 +13,10 @@
     - **百度搜索资源平台 API (普通收录 / 快速收录)**：
       - 基于 `http://data.zz.baidu.com/urls?site={domain}&token={token}` 构建高并发纯文本流提交管道；
       - 自动解析接口返回的 `remain`（剩余配额）、`success`（成功条数）、`not_same_site` 和 `not_valid`，精准统计；
-    - **微软必应 IndexNow 开放索引协议**：
+    - **微软必应 IndexNow 开放索引协议与免运维密钥验证服务**：
       - 直连 `https://api.indexnow.org/indexnow` 与 `https://www.bing.com/indexnow`；
       - 一次提交，必应(Bing)、Yandex、Naver、Seznam 等各大搜索引擎联盟自动同步抓取，实现全网极速索引；
+      - **原生提供 `/{key}.txt` 验证端点**：后端路由动态拦截 `/:keyfile`，依据数据库配置的 `bing_api_key` 自动验证匹配并输出纯文本，站长无需手动往服务器目录上传任何验证文件即可通过必应所有权校验；
     - **动态标准 XML 站点地图 (`/sitemap.xml`)**：
       - 自动为所有上架资料、频道与需求工单生成符合标准 Sitemap 协议的动态 XML；
       - 挂载在根路由 `/sitemap.xml` 及 `/api/v1/public/sitemap.xml`，配备 1 小时智能缓存；
@@ -23,13 +24,14 @@
       - 在资料录入发布 (`AdminCreateResource`) 与状态切换 (`AdminTogglePublish` / `AdminBatchTogglePublish`) 时自动触发后台异步协程，新试卷发布瞬间自动直达百度与必应；
   - **前端高质感独立组件与全站一键批量操作 (`apps/admin`)**：
     - **独立 Standalone 组件架构 (`SeoHubComponent`)**：
-      - 100% 沿用 Telegram 与邮件中枢设计系统规范（顶部深邃翡翠绿科技横幅、四大 KPI 看板、子选项卡胶囊栏）；
+      - **全栈视觉规范完全统一**：彻底对齐 Telegram 运营中枢与邮件营销中枢的顶级设计规范（`.account-hero-banner` 渐变科技横幅、四大 KPI 核心指标、`.crawler-subtab-btn` 选项卡胶囊与动画呼吸灯）；
       - **子选项卡 1【🚀 批量收录与一键秒推】**：
         - 目标引擎自由切换（`🌐 百度+必应双引擎`、`⚡ 仅百度普通收录`、`🔥 仅必应 IndexNow`）；
         - `[⚡ 全站在库资料一键秒推]`：单键将当前所有已上架发布的资料全部推送到搜索引擎；
         - `[📋 自定义 URL 批量粘贴推送]`：支持手动多行粘贴任意落地页链接并一键推送；
       - **子选项卡 2【⚙️ 百度与必应密钥配置】**：
         - 百度准入密钥 Token 配置与一键获取指南；
+        - **微软必应 IndexNow 极速协议自动化配置向导**：详尽解释协议原理与 2 步极速流程，清晰标示“系统已内置动态响应，免手动建文件”，并附带一键在线校验链接；
         - 必应 IndexNow Key 配置与 `[⚡ 重新生成随机 Key]` 一键生成辅助；
         - 全站规范域名与全自动推送开关配置；
       - **子选项卡 3【📋 搜索引擎推送流水】**：

@@ -207,6 +207,22 @@ export class SeoHubComponent implements OnInit {
   }
 
   openSitemap() {
-    window.open('http://localhost:4001/sitemap.xml', '_blank');
+    const domain = this.config().site_domain || 'https://xuebaw.com';
+    window.open(domain + '/sitemap.xml', '_blank');
+  }
+
+  getDomainHost(): string {
+    const domain = this.config().site_domain || 'https://xuebaw.com';
+    try {
+      return new URL(domain).host;
+    } catch {
+      return domain.replace(/^https?:\/\//, '');
+    }
+  }
+
+  getDomainKeyUrl(): string {
+    const domain = this.config().site_domain || 'https://xuebaw.com';
+    const key = this.config().bing_api_key || '7f8a9b2c3d4e5f60718293a4b5c6d7e8';
+    return `${domain.replace(/\/+$/, '')}/${key}.txt`;
   }
 }

@@ -150,3 +150,35 @@ func (h *SeoHandler) GetPublicSitemap(c fiber.Ctx) error {
 	c.Set("Cache-Control", "public, max-age=3600")
 	return c.SendString(xmlContent)
 }
+
+// ServeIndexNowKeyFile 动态响应 IndexNow 密钥验证文件 (/{key}.txt)
+// 微软 Bing IndexNow 协议要求网站根目录存在一个 {key}.txt 文件，内容即为 key 本身
+func (h *SeoHandler) ServeIndexNowKeyFile(c fiber.Ctx) error {
+	requestedFile := c.Params("keyfile") // 例如 "7f8a9b2c3d4e5f60718293a4b5c6d7e8.txt"
+	if requestedFile == "" {
+		return c.Status(fiber.StatusNotFound).SendString("Not Found")
+	}
+
+	// 仅处理 .txt 结尾的文件请求
+	if len(requestedFile) <= 4 || requestedFile[len(requestedFile)-4:] != ".txt" {
+		return c.Next()
+	}
+
+	requestedKey := requestedFile[:len(requestedFile)-4]
+
+	// 从数据库读取当前配置的 bing_api_key 进行比对
+	cfg, err := h.seoService.GetConfig()
+	if err != nil || cfg.BingApiKey == "" {
+		return c.Status(fiber.StatusNotFound).SendString("Not Found")
+	}
+
+	if requestedKey != cfg.BingApiKey {
+		return c.Status(fiber.StatusNotFound).SendString("Not Found")
+	}
+
+	c.Set("Content-Type", "text/plain; charset=utf-8")
+	c.Set("Cache-Control", "public, max-age=86400")
+	return c.SendString(cfg.BingApiKey)
+}
+
+
