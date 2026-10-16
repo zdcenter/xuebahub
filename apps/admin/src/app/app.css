@@ -1004,6 +1004,34 @@ body {
   transform: translateY(-1px);
 }
 
+/* 🎨 营销海报: 醒目活力金橙/珊瑚红高转化风格 */
+.btn-direct-action.poster {
+  flex: 1;
+  background: linear-gradient(135deg, #ea580c 0%, #d97706 100%);
+  color: #ffffff;
+  border-color: #c2410c;
+}
+
+.btn-direct-action.poster:hover {
+  background: linear-gradient(135deg, #c2410c 0%, #b45309 100%);
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+  transform: translateY(-1px);
+}
+
+/* 🎬 短视频脚本: 优雅深紫/霓虹高质感风格 */
+.btn-direct-action.video {
+  flex: 1;
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  color: #ffffff;
+  border-color: #5b21b6;
+}
+
+.btn-direct-action.video:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+  transform: translateY(-1px);
+}
+
 /* 📋 宣发文案: 翡翠绿轻卡片 */
 .btn-direct-action.copy {
   background: #f0fdf4;
@@ -3788,6 +3816,30 @@ tr.selected-row {
 .btn-copy-action:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
+}
+
+.btn-quick-paste {
+  background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28) !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-quick-paste:hover {
+  background: linear-gradient(135deg, #0369a1, #1d4ed8) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.42) !important;
+}
+
+.btn-quick-paste.active {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.25) !important;
 }
 
 .btn-site-promo {

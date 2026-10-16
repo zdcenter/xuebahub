@@ -1,0 +1,296 @@
+@if (isOpen()) {
+  <!-- 半透明背景遮罩 (点击可快速收起) -->
+  <div class="quick-drawer-backdrop" (click)="close()">
+    <!-- 右侧滑出式全高工作台 (Right Slide-over Drawer) -->
+    <div class="quick-drawer-container" (click)="$event.stopPropagation()">
+      <!-- 工作台头部 -->
+      <div class="drawer-header">
+        <div class="header-main">
+          <div class="header-brand">
+            <span class="header-icon">⚡</span>
+            <div>
+              <h2 class="header-title">极速粘贴解析工作台</h2>
+              <span class="header-badge">右上角驻留抽屉 · 支持单次多资源批量识别</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close-drawer" (click)="close()" title="收起工作台 (Esc)">
+            ✕ 收起
+          </button>
+        </div>
+
+        <!-- 顶部功能选项卡 -->
+        <div class="drawer-tabs">
+          <button 
+            type="button" 
+            class="tab-btn" 
+            [class.active]="activeTab() === 'paste'" 
+            (click)="activeTab.set('paste')">
+            <span>📋 极速粘贴解析</span>
+            @if (parsedItems().length > 0) {
+              <span class="tab-pill-badge">{{ parsedItems().length }}</span>
+            }
+          </button>
+          <button 
+            type="button" 
+            class="tab-btn" 
+            [class.active]="activeTab() === 'extension'" 
+            (click)="activeTab.set('extension')">
+            <span>🌐 浏览器采集助手 (油猴)</span>
+            <span class="tab-pill-badge gold">v1.3 左右分屏对照版</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 反馈横幅提示 -->
+      @if (feedback()) {
+        <div class="feedback-banner" [class.error]="feedback()?.startsWith('❌') || feedback()?.startsWith('⚠️')">
+          <span>{{ feedback() }}</span>
+          <button type="button" class="btn-close-feedback" (click)="feedback.set(null)">✕</button>
+        </div>
+      }
+
+      <!-- 抽屉滚动内容区 -->
+      <div class="drawer-body">
+        @if (activeTab() === 'paste') {
+          <!-- 1. 文本输入区域 -->
+          <div class="section-card">
+            <div class="card-header-row">
+              <span class="card-title">📝 粘贴杂乱文本 (支持单条或多条网盘链接混合)</span>
+              <div class="header-shortcuts">
+                <button type="button" class="btn-text-action" (click)="fillSampleText()">
+                  💡 填入多条示例 (2026/2025)
+                </button>
+                @if (rawText().trim()) {
+                  <button type="button" class="btn-text-action danger" (click)="clear()">
+                    清空
+                  </button>
+                }
+              </div>
+            </div>
+
+            <textarea 
+              id="quick-paste-box"
+              class="paste-textarea" 
+              rows="5"
+              [ngModel]="rawText()"
+              (ngModelChange)="onTextChange($event)"
+              placeholder="在此直接粘贴包含一个或多个夸克/百度网盘分享链接的文本。&#10;即使包含不同年份（如2026、2025等不同资料链接），系统也会逐一以列表形式识别并展示！">
+            </textarea>
+
+            <!-- 偏好与来源配置行 -->
+            <div class="controls-grid">
+              <div class="control-box">
+                <label class="control-label">来源标签：</label>
+                <input 
+                  type="text" 
+                  class="control-input" 
+                  [(ngModel)]="sourceName" 
+                  placeholder="如: 搜盘网 / 备考群"
+                />
+              </div>
+
+              <div class="control-box">
+                <label class="control-label">网盘匹配偏好：</label>
+                <select 
+                  class="control-select" 
+                  [(ngModel)]="defaultDrive"
+                  (ngModelChange)="parseContent(rawText())">
+                  <option value="auto">⚡ 自动智能识别</option>
+                  <option value="quark">⚡ 夸克网盘</option>
+                  <option value="baidu">📦 百度网盘</option>
+                  <option value="alipan">☁️ 阿里云盘</option>
+                  <option value="xunlei">⚡ 迅雷云盘</option>
+                  <option value="123pan">📂 123云盘</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. 识别到的资源列表 (支持多链接列表展示与勾选) -->
+          <div class="section-card preview-card">
+            <div class="card-header-row">
+              <div class="card-title-group">
+                <span class="card-title">🔍 识别到的网盘资源列表</span>
+                @if (parsedItems().length > 0) {
+                  <span class="badge-success">共 {{ parsedItems().length }} 个</span>
+                }
+              </div>
+
+              @if (parsedItems().length > 0) {
+                <div class="batch-select-actions">
+                  <span class="select-stat">已选 <strong>{{ getSelectedCount() }}</strong> 项</span>
+                  <button type="button" class="btn-text-action" (click)="toggleSelectAll(true)">全选</button>
+                  <span class="divider">|</span>
+                  <button type="button" class="btn-text-action" (click)="toggleSelectAll(false)">全不选</button>
+                </div>
+              }
+            </div>
+
+            @if (parsedItems().length > 0) {
+              <div class="items-list-container">
+                @for (item of parsedItems(); track item.id) {
+                  <div class="item-card" [class.selected]="item.selected">
+                    <input 
+                      type="checkbox" 
+                      class="item-checkbox" 
+                      [checked]="item.selected" 
+                      (change)="toggleItem(item.id)" 
+                    />
+                    <div class="item-body">
+                      <!-- 标题与网盘标签 -->
+                      <!-- 行 1：标题独立一行 -->
+                      <div class="item-title-row">
+                        <span class="tag-badge drive" [class.quark]="item.driveType === 'quark'" [class.baidu]="item.driveType === 'baidu'">
+                          {{ item.driveType === 'quark' ? '⚡ 夸克' : (item.driveType === 'baidu' ? '📦 百度' : item.driveType) }}
+                        </span>
+                        <input 
+                          type="text" 
+                          class="item-title-input" 
+                          [(ngModel)]="item.title" 
+                          placeholder="资料标题"
+                        />
+                      </div>
+
+                      <!-- 行 2：每个网盘地址独立一行 (完整显示不截断) -->
+                      <div class="item-url-row">
+                        <span class="url-icon">🔗</span>
+                        <a [href]="item.shareUrl" target="_blank" class="share-url" title="点击新标签验证有效性">
+                          {{ item.shareUrl }}
+                        </a>
+                        <span class="url-open-icon">↗</span>
+                      </div>
+
+                      <!-- 行 3：提取码与属性标签独立一行 -->
+                      <div class="item-code-row">
+                        <div class="code-wrap">
+                          <span class="code-icon">🔑</span>
+                          <span class="code-label">提取密码:</span>
+                          <input 
+                            type="text" 
+                            class="code-input" 
+                            [(ngModel)]="item.extractCode" 
+                            placeholder="免密"
+                          />
+                        </div>
+
+                        <div class="tag-group">
+                          <span class="prop-tag stage">
+                            @if (item.stage === 'primary') { 🎒 小学 }
+                            @else if (item.stage === 'junior') { 📘 初中 }
+                            @else if (item.stage === 'senior') { 🎓 高中 }
+                            @else if (item.stage === 'cert') { 💼 教师资格证 }
+                            @else { 🏛️ 职考 }
+                          </span>
+                          <span class="prop-tag subject">📖 {{ item.subject }}</span>
+                          <span class="prop-tag size">💾 {{ item.fileSize }}</span>
+                        </div>
+
+                        <button 
+                          type="button" 
+                          class="btn-single-direct" 
+                          (click)="submitToDirectEdit(item)" 
+                          title="把此条资料直接填入新增表单发布">
+                          ✍️ 发布此项
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-hint-box">
+                <span class="empty-icon">💡</span>
+                <p>在上方粘贴包含一个或多个网盘链接的文本，系统将在毫秒级内自动以<strong>列表形式</strong>提取并罗列出所有资源，支持逐项修改和一键批量入库！</p>
+              </div>
+            }
+          </div>
+        } @else {
+          <!-- Tab 2: 浏览器采集助手 (油猴脚本) -->
+          <div class="section-card extension-card">
+            <div class="ext-hero-box">
+              <span class="ext-hero-icon">🚀</span>
+              <div>
+                <h3 class="ext-hero-title">学霸网专属浏览器采集助手 (v1.3 原文对照版)</h3>
+                <p class="ext-hero-desc">右侧贴边滑出抽屉工作台，<strong>左侧原网页 100% 自由交互与滚动对照</strong>！智能剔除“点此访问”等无效锚文本提取真实试卷标题，紧凑卡片排版、完整直链展示、平滑零闪烁批量推送到草稿池！</p>
+              </div>
+            </div>
+
+            <!-- 快捷按钮栏 -->
+            <div class="ext-btn-row">
+              <button type="button" class="btn-ext-action copy" (click)="copyUserScript()">
+                📋 复制 v1.3 油猴脚本代码
+              </button>
+              <button type="button" class="btn-ext-action download" (click)="downloadUserScript()">
+                💾 下载脚本文件 (.user.js)
+              </button>
+            </div>
+
+            <!-- 参数配置看板 -->
+            <div class="ext-config-box">
+              <h4 class="config-box-title">⚙️ 预置后端同步参数</h4>
+              <div class="config-item">
+                <span class="config-key">API 接口地址：</span>
+                <span class="config-val code">{{ apiBaseUrl() }}</span>
+              </div>
+              <div class="config-item">
+                <span class="config-key">管理员 Auth Token：</span>
+                <span class="config-val code">{{ adminToken() ? (adminToken().slice(0, 16) + '...' + adminToken().slice(-8)) : '已自动同步当前登录凭证' }}</span>
+              </div>
+            </div>
+
+            <!-- 安装教程步骤 -->
+            <div class="ext-steps-box">
+              <h4 class="steps-box-title">📖 3 秒极速安装与更新教程</h4>
+              <div class="step-row">
+                <span class="step-num">1</span>
+                <div>
+                  <strong>浏览器安装 Tampermonkey (篡改猴)</strong>
+                  <p>Chrome 需在 <code>chrome://extensions/</code> 右上角打开【开发者模式】或在篡改猴详情中打开【允许用户脚本】。</p>
+                </div>
+              </div>
+              <div class="step-row">
+                <span class="step-num">2</span>
+                <div>
+                  <strong>覆盖保存新脚本 (v1.1)</strong>
+                  <p>点击上方【复制 v1.1 油猴脚本代码】覆盖粘贴并保存。</p>
+                </div>
+              </div>
+              <div class="step-row">
+                <span class="step-num">3</span>
+                <div>
+                  <strong>单页多资源批量采集实测</strong>
+                  <p>打开任何含有多个网盘链接的网页，点击右下角【⚡ 采集到学霸网】，即可看到全部资源列表，一键批量勾选入库！</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- 底部固定吸底操作条 -->
+      @if (activeTab() === 'paste') {
+        <div class="drawer-footer">
+          <button 
+            type="button" 
+            class="btn-footer-sub" 
+            (click)="submitToDrafts()"
+            [disabled]="getSelectedCount() === 0 || isSubmitting()">
+            @if (isSubmitting()) {
+              <span>⏳ 正在批量入库...</span>
+            } @else {
+              <span>📥 批量录入草稿箱 ({{ getSelectedCount() }} 个)</span>
+            }
+          </button>
+
+          <button 
+            type="button" 
+            class="btn-footer-main" 
+            (click)="submitToDirectEdit()"
+            [disabled]="getSelectedCount() === 0">
+            <span>✍️ 一键填入表单并直接发布 ➔</span>
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}

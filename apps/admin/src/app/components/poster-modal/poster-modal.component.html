@@ -1,0 +1,212 @@
+@if (isOpen()) {
+  <div class="poster-modal-overlay" (click)="close()">
+    <div class="poster-modal-container" (click)="$event.stopPropagation()">
+      <!-- 弹窗顶栏 -->
+      <div class="poster-modal-header">
+        <div class="header-left">
+          <div class="header-icon">🎨</div>
+          <div>
+            <h2 class="header-title">{{ i18n.t('poster.modalTitle') }}</h2>
+            <p class="header-subtitle">{{ i18n.t('poster.modalSubtitle') }}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="close()" title="关闭">✕</button>
+      </div>
+
+      <!-- 反馈提示条 -->
+      @if (feedbackMessage()) {
+        <div class="feedback-banner" [class.success]="feedbackType() === 'success'" [class.warning]="feedbackType() === 'warning'" [class.info]="feedbackType() === 'info'">
+          <span class="feedback-icon">
+            {{ feedbackType() === 'success' ? '🎉' : (feedbackType() === 'warning' ? '⚠️' : 'ℹ️') }}
+          </span>
+          <span class="feedback-text">{{ feedbackMessage() }}</span>
+          <button type="button" class="btn-close-feedback" (click)="feedbackMessage.set(null)">✕</button>
+        </div>
+      }
+
+      <!-- 核心工作区 (左侧预览 + 右侧微调控制台) -->
+      <div class="poster-modal-body">
+        <!-- 左侧：即时渲染预览区 -->
+        <div class="poster-preview-pane">
+          <div class="preview-header">
+            <span>{{ i18n.t('poster.previewTitle') }}</span>
+            <span class="badge-ratio">
+              {{ selectedRatio() === 'story' ? '9:16 竖版' : (selectedRatio() === 'square' ? '1:1 方版' : (selectedRatio() === 'banner' ? '16:9 横版' : '3:4 密卷版')) }}
+            </span>
+          </div>
+
+          <div class="poster-canvas-viewport" [attr.data-ratio]="selectedRatio()">
+            @if (isRendering()) {
+              <div class="rendering-indicator">
+                <span class="spinner"></span>
+                <span>{{ i18n.t('poster.generating') }}</span>
+              </div>
+            }
+
+            @if (previewDataUrl()) {
+              <img 
+                [src]="previewDataUrl()" 
+                alt="海报实时预览" 
+                class="poster-preview-img"
+              />
+            }
+          </div>
+
+          <!-- 贴心快捷提示 -->
+          <div class="poster-fast-tip">
+            {{ i18n.t('poster.tipFast') }}
+          </div>
+        </div>
+
+        <!-- 右侧：控制面板与参数微调 -->
+        <div class="poster-controls-pane">
+          <!-- 1. 版型尺寸选择 -->
+          <div class="control-section">
+            <label class="control-label">{{ i18n.t('poster.ratioTitle') }}</label>
+            <div class="pills-grid-4">
+              <button 
+                type="button" 
+                class="pill-choice-btn" 
+                [class.active]="selectedRatio() === 'story'" 
+                (click)="setRatio('story')">
+                <div class="pill-main-text">📱 9:16 竖版</div>
+                <div class="pill-sub-text">小红书 / 朋友圈</div>
+              </button>
+
+              <button 
+                type="button" 
+                class="pill-choice-btn" 
+                [class.active]="selectedRatio() === 'square'" 
+                (click)="setRatio('square')">
+                <div class="pill-main-text">💬 1:1 方形</div>
+                <div class="pill-sub-text">微信群 / QQ群聊</div>
+              </button>
+
+              <button 
+                type="button" 
+                class="pill-choice-btn" 
+                [class.active]="selectedRatio() === 'banner'" 
+                (click)="setRatio('banner')">
+                <div class="pill-main-text">🖥️ 16:9 横版</div>
+                <div class="pill-sub-text">B站动态 / 贴吧</div>
+              </button>
+
+              <button 
+                type="button" 
+                class="pill-choice-btn" 
+                [class.active]="selectedRatio() === 'exam'" 
+                (click)="setRatio('exam')">
+                <div class="pill-main-text">📄 3:4 卷面</div>
+                <div class="pill-sub-text">名校密卷权威风</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. 视觉风格选择 -->
+          <div class="control-section">
+            <label class="control-label">{{ i18n.t('poster.themeTitle') }}</label>
+            <div class="theme-pills-row">
+              <button 
+                type="button" 
+                class="theme-choice-btn academic" 
+                [class.active]="selectedTheme() === 'academic'" 
+                (click)="setTheme('academic')">
+                <span class="color-dot academic"></span>
+                <span>{{ i18n.t('poster.themeAcademic') }}</span>
+              </button>
+
+              <button 
+                type="button" 
+                class="theme-choice-btn xiaohongshu" 
+                [class.active]="selectedTheme() === 'xiaohongshu'" 
+                (click)="setTheme('xiaohongshu')">
+                <span class="color-dot xiaohongshu"></span>
+                <span>{{ i18n.t('poster.themeXiaohongshu') }}</span>
+              </button>
+
+              <button 
+                type="button" 
+                class="theme-choice-btn emerald" 
+                [class.active]="selectedTheme() === 'emerald'" 
+                (click)="setTheme('emerald')">
+                <span class="color-dot emerald"></span>
+                <span>{{ i18n.t('poster.themeEmerald') }}</span>
+              </button>
+
+              <button 
+                type="button" 
+                class="theme-choice-btn dark" 
+                [class.active]="selectedTheme() === 'dark'" 
+                (click)="setTheme('dark')">
+                <span class="color-dot dark"></span>
+                <span>{{ i18n.t('poster.themeDark') }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. 文案与落地页微调 -->
+          <div class="control-section">
+            <label class="control-label">{{ i18n.t('poster.editTitle') }}</label>
+            
+            <div class="form-group-item">
+              <span class="input-sublabel">{{ i18n.t('poster.titleLabel') }}</span>
+              <input 
+                type="text" 
+                class="poster-input" 
+                [(ngModel)]="customTitle" 
+                (ngModelChange)="onTextChange()" 
+                placeholder="海报大标题..."
+              />
+            </div>
+
+            <div class="form-group-item">
+              <span class="input-sublabel">{{ i18n.t('poster.subtitleLabel') }}</span>
+              <input 
+                type="text" 
+                class="poster-input" 
+                [(ngModel)]="customSubtitle" 
+                (ngModelChange)="onTextChange()" 
+                placeholder="副标题或转存引导语..."
+              />
+            </div>
+
+            <div class="form-group-item">
+              <span class="input-sublabel">{{ i18n.t('poster.targetUrlLabel') }}</span>
+              <div class="url-input-wrap">
+                <input 
+                  type="text" 
+                  class="poster-input url" 
+                  [(ngModel)]="customUrl" 
+                  (ngModelChange)="onTextChange()" 
+                  placeholder="https://xuebaw.com/resource/..."
+                />
+                <button type="button" class="btn-inline-action" (click)="copyTargetLink()" title="复制链接">
+                  🔗 复制
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部操作按钮群 -->
+          <div class="poster-actions-footer">
+            <button 
+              type="button" 
+              class="btn-poster-action primary" 
+              (click)="copyImage()" 
+              [disabled]="isRendering()">
+              <span>📋 {{ i18n.t('poster.btnCopyImage') }}</span>
+            </button>
+
+            <button 
+              type="button" 
+              class="btn-poster-action secondary" 
+              (click)="downloadImage()" 
+              [disabled]="isRendering()">
+              <span>💾 {{ i18n.t('poster.btnDownload') }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}

@@ -111,6 +111,14 @@
         </button>
         <button 
           type="button"
+          [class.active]="showQuickPasteModal()"
+          (click)="toggleQuickPasteModal()"
+          style="color: #0284c7; font-weight: 700;">
+          <span class="icon">⚡</span>
+          <span class="nav-label">极速粘贴解析</span>
+        </button>
+        <button 
+          type="button"
           [class.active]="currentTab() === 'requests'" 
           (click)="switchTab('requests')">
           <span class="icon">📝</span>
@@ -288,6 +296,9 @@
           </div>
         }
         <span class="badge quark">夸克主推转化率: 高</span>
+        <button type="button" class="btn btn-sm btn-quick-paste" [class.active]="showQuickPasteModal()" (click)="toggleQuickPasteModal()" title="展开/收起右上角极速粘贴解析工作台">
+          ⚡ 极速粘贴解析
+        </button>
         <button type="button" class="btn btn-sm btn-site-promo" (click)="openSitePromoModal()" title="提取学霸网主站全网宣发文案与推广物料">
           📢 {{ i18n.t('sitePromo.btn') }}
         </button>
@@ -327,6 +338,13 @@
               </div>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
+              <button 
+                type="button"
+                class="btn" 
+                style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; font-weight: 700; border: none; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);" 
+                (click)="openQuickPasteModal()">
+                ⚡ 快速粘贴入库
+              </button>
               <button class="btn" style="background: #e0f2fe; color: #0284c7; font-weight: 600;" (click)="openBatchCheckModal()">
                 🛡️ 一键巡检链接 (防封限频)
               </button>
@@ -440,7 +458,13 @@
               </div>
               <div class="batch-action-buttons">
                 <button type="button" class="btn btn-sm btn-batch-share" (click)="openBatchCopyModal()">
-                  {{ i18n.t('copyWriter.batchCopy') }}
+                  📢 {{ i18n.t('copyWriter.batchCopy') }}
+                </button>
+                <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #ea580c 0%, #d97706 100%); color: #ffffff; border: none; font-weight: 600; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);" (click)="openBatchPosterModal()" title="为选中的资料一键生成多套合辑营销海报">
+                  🎨 {{ i18n.t('poster.batchBtn') }}
+                </button>
+                <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #ffffff; border: none; font-weight: 600; box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);" (click)="openBatchVideoModal()" title="为选中的资料一键生成多套合辑短视频脚本与置顶词">
+                  🎬 {{ i18n.t('videoScript.batchBtn') }}
                 </button>
                 <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff; border: none; font-weight: 600; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);" (click)="batchPushSelectedToSeo()" title="将选中的资料批量推送到百度与必应搜索引擎加快收录">
                   ⚡ 百度/必应主动收录
@@ -659,7 +683,21 @@
                             class="btn-direct-action email" 
                             (click)="openEmailHubWithResource(res)" 
                             title="一键载入邮件营销中枢进行群发推广">
-                            <span>📧 邮件营销</span>
+                            <span>📧 邮件</span>
+                          </button>
+                          <button 
+                            type="button" 
+                            class="btn-direct-action poster" 
+                            (click)="openPosterModal(res)" 
+                            [title]="i18n.t('poster.btn') + ' - 一键生成高转化群聊/小红书/B站营销海报'">
+                            <span>🎨 {{ i18n.t('poster.btn') }}</span>
+                          </button>
+                          <button 
+                            type="button" 
+                            class="btn-direct-action video" 
+                            (click)="openVideoModal(res)" 
+                            [title]="i18n.t('videoScript.btn') + ' - 针对B站/小红书/抖音生成短视频分镜脚本与置顶引流评论'">
+                            <span>🎬 {{ i18n.t('videoScript.btn') }}</span>
                           </button>
                         </div>
 
@@ -6140,5 +6178,29 @@
       </div>
     </div>
   }
+
+  <!-- 🎨 智能营销海报生成器模态弹窗 (Poster Modal) -->
+  <app-poster-modal
+    [isOpen]="isPosterModalOpen()"
+    [resource]="activePosterResource()"
+    [batchResources]="activePosterBatch()"
+    (closed)="closePosterModal()">
+  </app-poster-modal>
+
+  <!-- 🎬 全渠道短视频爆款脚本与置顶引流中枢 (Video Script Modal) -->
+  <app-video-script-modal
+    [isOpen]="isVideoModalOpen()"
+    [resource]="activeVideoResource()"
+    [batchResources]="activeVideoBatch()"
+    (closed)="closeVideoModal()">
+  </app-video-script-modal>
+
+  <!-- ⚡ 快速粘贴智能解析入库独立弹窗 (Quick Paste Modal) -->
+  <app-quick-paste-modal
+    [isOpen]="showQuickPasteModal()"
+    (closed)="closeQuickPasteModal()"
+    (draftCreated)="onQuickPasteDraftCreated()"
+    (directPublish)="onQuickPasteDirectPublish($event)">
+  </app-quick-paste-modal>
 </div>
 

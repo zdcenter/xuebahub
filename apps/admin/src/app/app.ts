@@ -53,11 +53,14 @@ export const STAGE_OPTIONS: Record<string, StageConfigItem> = {
 
 import { EmailHubComponent } from './components/email-hub/email-hub.component';
 import { SeoHubComponent } from './components/seo-hub/seo-hub.component';
+import { PosterModalComponent } from './components/poster-modal/poster-modal.component';
+import { VideoScriptModalComponent } from './components/video-script-modal/video-script-modal.component';
+import { QuickPasteModalComponent, ParsedItem } from './components/quick-paste-modal/quick-paste-modal.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, EmailHubComponent, SeoHubComponent],
+  imports: [CommonModule, FormsModule, EmailHubComponent, SeoHubComponent, PosterModalComponent, VideoScriptModalComponent, QuickPasteModalComponent],
   templateUrl: './app.html'
 })
 export class App implements OnInit {
@@ -467,6 +470,7 @@ export class App implements OnInit {
   smartBroadcastChannelInput = '';
   isResolvingBroadcastChannel = signal<boolean>(false);
   showCrawlerPasteModal = signal<boolean>(false);
+  isPastingCrawler = signal<boolean>(false);
   showCrawlerRawModal = signal<boolean>(false);
   currentRawDraft = signal<ResourceDraftDto | null>(null);
 
@@ -546,21 +550,48 @@ export class App implements OnInit {
     });
   }
 
-  isPastingCrawler = signal<boolean>(false);
+  showQuickPasteModal = signal<boolean>(false);
+
+  toggleQuickPasteModal() {
+    this.showQuickPasteModal.set(!this.showQuickPasteModal());
+  }
+
+  openQuickPasteModal() {
+    this.showQuickPasteModal.set(true);
+  }
+
+  closeQuickPasteModal() {
+    this.showQuickPasteModal.set(false);
+  }
+
+  onQuickPasteDraftCreated() {
+    this.loadCrawlerDrafts();
+    this.loadCrawlerConfigAndStats();
+  }
+
+  onQuickPasteDirectPublish(item: ParsedItem) {
+    this.switchTab('add');
+    this.newResource.title = item.title;
+    this.newResource.file_size = item.fileSize || '15.0 MB';
+    this.newResource.stage = item.stage;
+    this.newResource.subject = item.subject;
+    if (item.driveType === 'quark') {
+      this.newResource.quarkUrl = item.shareUrl;
+    } else if (item.driveType === 'baidu') {
+      this.newResource.baiduUrl = item.shareUrl;
+      this.newResource.baiduCode = item.extractCode || '';
+    } else {
+      this.newResource.quarkUrl = item.shareUrl;
+    }
+    this.showToast('✅ 已将智能解析数据填入表单，核对后点击发布即可正式入库！', 'success');
+  }
 
   openCrawlerPasteModal() {
-    this.switchCrawlerSubTab('drafts');
-    setTimeout(() => {
-      const el = document.getElementById('fast-paste-textarea') as HTMLTextAreaElement | null;
-      if (el) {
-        el.focus();
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 100);
+    this.openQuickPasteModal();
   }
 
   closeCrawlerPasteModal() {
-    this.showCrawlerPasteModal.set(false);
+    this.closeQuickPasteModal();
   }
 
   onFastPasteKeyDown(event: KeyboardEvent) {
@@ -3271,6 +3302,66 @@ export class App implements OnInit {
 
   closeCopyModal() {
     this.isCopyModalOpen.set(false);
+  }
+
+  // --- 🎨 智能营销海报生成器状态与逻辑 ---
+  isPosterModalOpen = signal<boolean>(false);
+  activePosterResource = signal<ResourceItemDto | null>(null);
+  activePosterBatch = signal<ResourceItemDto[]>([]);
+
+  openPosterModal(res: ResourceItemDto) {
+    this.activePosterResource.set(res);
+    this.activePosterBatch.set([]);
+    this.isPosterModalOpen.set(true);
+  }
+
+  openBatchPosterModal() {
+    const selectedIds = this.selectedResourceIds();
+    if (selectedIds.length === 0) {
+      this.showToast('请先勾选需要生成海报的资料', 'error');
+      return;
+    }
+    const items = this.resources().filter(r => r.id && selectedIds.includes(r.id));
+    if (items.length === 0) return;
+    this.activePosterBatch.set(items);
+    this.activePosterResource.set(items[0]);
+    this.isPosterModalOpen.set(true);
+  }
+
+  closePosterModal() {
+    this.isPosterModalOpen.set(false);
+    this.activePosterResource.set(null);
+    this.activePosterBatch.set([]);
+  }
+
+  // --- 🎬 全渠道短视频爆款脚本生成中枢 ---
+  isVideoModalOpen = signal<boolean>(false);
+  activeVideoResource = signal<ResourceItemDto | null>(null);
+  activeVideoBatch = signal<ResourceItemDto[]>([]);
+
+  openVideoModal(res: ResourceItemDto) {
+    this.activeVideoResource.set(res);
+    this.activeVideoBatch.set([]);
+    this.isVideoModalOpen.set(true);
+  }
+
+  openBatchVideoModal() {
+    const selectedIds = this.selectedResourceIds();
+    if (selectedIds.length === 0) {
+      this.showToast('请先勾选需要生成视频脚本的资料', 'error');
+      return;
+    }
+    const items = this.resources().filter(r => r.id && selectedIds.includes(r.id));
+    if (items.length === 0) return;
+    this.activeVideoBatch.set(items);
+    this.activeVideoResource.set(items[0]);
+    this.isVideoModalOpen.set(true);
+  }
+
+  closeVideoModal() {
+    this.isVideoModalOpen.set(false);
+    this.activeVideoResource.set(null);
+    this.activeVideoBatch.set([]);
   }
 
   setCopyTab(tab: 'xiaohongshu' | 'wechat' | 'forum') {

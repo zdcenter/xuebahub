@@ -1,0 +1,302 @@
+@if (isOpen()) {
+  <div class="video-modal-overlay" (click)="close()">
+    <div class="video-modal-container" (click)="$event.stopPropagation()">
+      <!-- 弹窗头部 -->
+      <div class="video-modal-header">
+        <div class="header-left">
+          <div class="header-icon">🎬</div>
+          <div>
+            <h2 class="header-title">{{ i18n.t('videoScript.modalTitle') }}</h2>
+            <p class="header-subtitle">{{ i18n.t('videoScript.modalSubtitle') }}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close-modal" (click)="close()" title="关闭">✕</button>
+      </div>
+
+      <!-- 反馈提示横幅 -->
+      @if (feedbackMessage()) {
+        <div class="feedback-banner">
+          <span class="feedback-icon">🎉</span>
+          <span class="feedback-text">{{ feedbackMessage() }}</span>
+          <button type="button" class="btn-close-feedback" (click)="feedbackMessage.set(null)">✕</button>
+        </div>
+      }
+
+      <!-- 模式切换选项卡 (三大核心教材打法) -->
+      <div class="mode-tabs-bar">
+        <button 
+          type="button" 
+          class="mode-tab-btn" 
+          [class.active]="activeMode() === 'voiceover'" 
+          (click)="setMode('voiceover')">
+          {{ i18n.t('videoScript.tabVoiceover') }}
+        </button>
+
+        <button 
+          type="button" 
+          class="mode-tab-btn" 
+          [class.active]="activeMode() === 'slice'" 
+          (click)="setMode('slice')">
+          {{ i18n.t('videoScript.tabSlice') }}
+        </button>
+
+        <button 
+          type="button" 
+          class="mode-tab-btn" 
+          [class.active]="activeMode() === 'carousel'" 
+          (click)="setMode('carousel')">
+          {{ i18n.t('videoScript.tabCarousel') }}
+        </button>
+      </div>
+
+      <!-- 顶部一键快捷导出工具栏 -->
+      <div class="quick-export-bar">
+        <span class="export-label">⚡ 极速导出：</span>
+        <div class="export-buttons-group">
+          <button 
+            type="button" 
+            class="btn-quick-export gemini" 
+            (click)="copyText(geminiPrompt(), 'Google Gemini 提示词')">
+            {{ i18n.t('videoScript.copyGeminiPrompt') }}
+          </button>
+          <button 
+            type="button" 
+            class="btn-quick-export storyboard" 
+            (click)="copyText(getFullStoryboardText(), '完整分镜剧本')">
+            {{ i18n.t('videoScript.copyFullStoryboard') }}
+          </button>
+          <button 
+            type="button" 
+            class="btn-quick-export voiceover" 
+            (click)="copyText(getVoiceoverOnlyText(), '大白话纯口播台词')">
+            {{ i18n.t('videoScript.copyVoiceoverOnly') }}
+          </button>
+          <button 
+            type="button" 
+            class="btn-quick-export pinned" 
+            (click)="copyText(pinnedComment(), '置顶引流评论')">
+            {{ i18n.t('videoScript.copyPinnedComment') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 推荐视频标题行 -->
+      <div class="title-strip-card">
+        <div class="title-strip-header">
+          <label class="title-strip-label">{{ i18n.t('videoScript.titlePrompt') }}</label>
+          <button type="button" class="btn-copy-mini" (click)="copyText(videoTitle(), '视频标题')">
+            复制标题
+          </button>
+        </div>
+        <input 
+          type="text" 
+          class="title-strip-input" 
+          [(ngModel)]="videoTitle" 
+          placeholder="短视频吸引点击的爆款标题..."
+        />
+      </div>
+
+      <!-- 主体分栏工作台 -->
+      <div class="video-modal-body">
+        <!-- 左侧：Google Gemini 提示词 + 黄金置顶评论 + 标签 -->
+        <div class="side-panel">
+          <!-- 🤖 Google Gemini 视频生成专属 Prompt -->
+          <div class="studio-card gemini-card">
+            <div class="card-header-row">
+              <label class="card-label highlight-gemini">
+                {{ i18n.t('videoScript.geminiPromptTitle') }}
+              </label>
+              <button 
+                type="button" 
+                class="btn-copy-gemini" 
+                (click)="copyText(geminiPrompt(), 'Google Gemini 提示词')">
+                📋 复制 Prompt
+              </button>
+            </div>
+            <p class="gemini-hint">{{ i18n.t('videoScript.geminiPromptHint') }}</p>
+            <textarea 
+              class="script-textarea gemini" 
+              rows="10" 
+              [(ngModel)]="geminiPrompt">
+            </textarea>
+            <div class="gemini-badge-tip">
+              💡 <strong>使用方法</strong>：直接把上方提示词复制给 Google Gemini，Gemini 会自动将其扩写为高精度的视频运镜指令或 AI 视频画面描述！
+            </div>
+          </div>
+
+          <!-- 🔥 黄金置顶引流评论 (抗风控绝招) -->
+          <div class="studio-card pinned-card">
+            <div class="card-header-row">
+              <label class="card-label highlight-pinned">
+                {{ i18n.t('videoScript.pinnedTitle') }}
+              </label>
+              <button 
+                type="button" 
+                class="btn-copy-pinned" 
+                (click)="copyText(pinnedComment(), '置顶评论')">
+                📋 复制置顶评论
+              </button>
+            </div>
+            <textarea 
+              class="script-textarea pinned" 
+              rows="5" 
+              [(ngModel)]="pinnedComment">
+            </textarea>
+            <div class="pinned-tip">
+              🛡️ <strong>防风控机制</strong>：短视频画面出现二维码极易被限流降权。将此文案<strong>在视频发布后置顶于第一条评论</strong>，引导学生与家长在浏览器直接访问 <code>xuebaw.com</code> 免费转存，100% 安全且转化率最高！
+            </div>
+          </div>
+
+          <!-- 🏷️ 热门话题标签 -->
+          <div class="studio-card tags-card">
+            <div class="card-header-row">
+              <label class="card-label">{{ i18n.t('videoScript.tagsTitle') }}</label>
+              <button type="button" class="btn-copy-mini" (click)="copyText(tagsText(), '话题标签')">
+                复制标签
+              </button>
+            </div>
+            <input 
+              type="text" 
+              class="tags-input" 
+              [(ngModel)]="tagsText" 
+            />
+          </div>
+        </div>
+
+        <!-- 右侧：保姆级教材视频详细分镜表 (大白话台词 + 运镜机位 + 试卷特写 + 屏幕花字) -->
+        <div class="storyboard-panel">
+          <div class="storyboard-header-row">
+            <h3 class="storyboard-title">{{ i18n.t('videoScript.storyboardTitle') }}</h3>
+            <button 
+              type="button" 
+              class="btn-copy-all-shots" 
+              (click)="copyText(getFullStoryboardText(), '全部分镜')">
+              📋 复制全部分镜
+            </button>
+          </div>
+
+          <div class="shots-flow-container">
+            @for (shot of shots(); track shot.shotNumber) {
+              <div class="shot-card">
+                <!-- 镜头头部信息 -->
+                <div class="shot-card-top">
+                  <div class="shot-badge-group">
+                    <span class="shot-number-badge">SHOT {{ shot.shotNumber }}</span>
+                    <span class="shot-time-badge">⏱️ {{ shot.timeRange }}</span>
+                    <span class="shot-phase-name">{{ i18n.t(shot.nameKey) }}</span>
+                  </div>
+                  <button 
+                    type="button" 
+                    class="btn-copy-shot-mini" 
+                    (click)="copyText(shot.voiceover, '镜头 ' + shot.shotNumber + ' 台词')">
+                    复制台词
+                  </button>
+                </div>
+
+                <!-- 画面构图与运镜机位 (教辅试卷特写) -->
+                <div class="shot-row visual-row">
+                  <span class="shot-field-label">{{ i18n.t('videoScript.visualLabel') }}</span>
+                  <div class="shot-visual-box">
+                    {{ shot.visual }}
+                  </div>
+                </div>
+
+                <!-- 大白话口播台词 (大白话核心) -->
+                <div class="shot-row voiceover-row">
+                  <span class="shot-field-label voiceover">{{ i18n.t('videoScript.voiceoverLabel') }}</span>
+                  <textarea 
+                    class="shot-voiceover-input" 
+                    rows="3" 
+                    [(ngModel)]="shot.voiceover">
+                  </textarea>
+                </div>
+
+                <!-- 屏幕花字字幕 -->
+                <div class="shot-row overlay-row">
+                  <span class="shot-field-label overlay">{{ i18n.t('videoScript.textOverlayLabel') }}</span>
+                  <div class="shot-overlay-pill">
+                    {{ shot.overlayText }}
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- 🌐 真实学霸网官网实景参考卡片 (Shot 4 官方插图与直达链接) -->
+          <div class="website-mockup-card">
+            <div class="mockup-header-row">
+              <div class="mockup-title-group">
+                <span class="mockup-title">{{ i18n.t('videoScript.realWebsiteMockupTitle') }}</span>
+                <span class="mockup-badge">100% 官网真实还原</span>
+              </div>
+              <div class="mockup-actions-group">
+                <button type="button" class="btn-mockup-action" (click)="copyText(realWebsiteUrl(), '真实网页链接')">
+                  📋 {{ i18n.t('videoScript.copyRealWebsiteUrl') }}
+                </button>
+                <button type="button" class="btn-mockup-action primary" (click)="openRealWebsite()">
+                  🌐 {{ i18n.t('videoScript.openRealWebsite') }} ↗
+                </button>
+              </div>
+            </div>
+
+            <!-- 真实浏览器窗口缩影 -->
+            <div class="browser-frame">
+              <div class="browser-address-bar">
+                <div class="browser-dots">
+                  <span class="dot red"></span>
+                  <span class="dot yellow"></span>
+                  <span class="dot green"></span>
+                </div>
+                <div class="url-pill">
+                  <span class="lock-icon">🔒</span>
+                  <span class="url-text">{{ realWebsiteUrl() }}</span>
+                </div>
+              </div>
+
+              <!-- 真实网页内容视图 -->
+              <div class="web-content-canvas">
+                <div class="web-navbar-sim">
+                  <div class="brand-group">
+                    <span class="brand-logo-icon">🎓</span>
+                    <span class="brand-text">学霸网 <small>xuebaw.com</small></span>
+                    <span class="brand-badge">👑 官方真题精选</span>
+                  </div>
+                  <div class="nav-links-sim">
+                    <span>📚 小学</span>
+                    <span>📐 初中</span>
+                    <span>🎓 高中</span>
+                    <span>💼 职考</span>
+                  </div>
+                </div>
+
+                <div class="web-resource-sim">
+                  <h4 class="resource-title-sim">{{ resourceTitle() }}</h4>
+                  <div class="resource-tags-sim">
+                    <span class="tag-pill">{{ resourceGrade() }}</span>
+                    <span class="tag-pill">{{ resourceSubject() }}</span>
+                    <span class="tag-pill highlight">📄 100% 矢量无损高清 A4 打印</span>
+                    <span class="tag-pill highlight">🎬 配套名师解题微课原画</span>
+                  </div>
+
+                  <div class="conversion-banner-sim">
+                    ✨ 官方网盘极速直链 · 100% 矢量无损高清 A4 纸打印超清晰 · 配套名师原画微课
+                  </div>
+
+                  <div class="cloud-buttons-sim">
+                    <div class="btn-cloud quark">
+                      ⚡ 夸克网盘（极速推荐 · 免下载原画播放与打印）
+                    </div>
+                    <div class="btn-cloud baidu">
+                      百度网盘（备用通道）
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="mockup-hint">{{ i18n.t('videoScript.realWebsiteHint') }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}
