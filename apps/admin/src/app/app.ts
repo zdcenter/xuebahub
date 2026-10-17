@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ResourceService, ResourceItemDto, NetdiskAccountDto, TransferShareResultDto, ChannelDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto, HotSearchDto, SiteSettingDto, ResourceRequestDto, TelegramConfigDto, TelegramChannelDto, TelegramBroadcastChannelDto, ResourceDraftDto, CrawlerStatsDto } from './services/resource.service';
 import { CoverGeneratorService } from './services/cover-generator.service';
 import { I18nService } from './services/i18n.service';
+import { SmartMetaHelperService, AiConfig } from './services/smart-meta-helper.service';
 
 export interface StageConfigItem {
   key: string;
@@ -67,6 +68,30 @@ export class App implements OnInit {
   private resService = inject(ResourceService);
   private coverGen = inject(CoverGeneratorService);
   i18n = inject(I18nService);
+  smartMeta = inject(SmartMetaHelperService);
+
+  // 智能副标题轮换与 AI 大模型状态
+  newSubtitleIndex = 0;
+  editSubtitleIndex = 0;
+  cachedNewSubtitles: string[] = [];
+  cachedEditSubtitles: string[] = [];
+
+  isAiGenerating = signal<boolean>(false);
+  showAiSettingsModal = signal<boolean>(false);
+  aiConfigState: AiConfig = this.smartMeta.getAiConfig();
+  isTestingAiConnection = signal<boolean>(false);
+  aiConfigVersion = signal<number>(0);
+  suggestedTitleNew = signal<string>('');
+  suggestedTitleEdit = signal<string>('');
+
+  currentAiProviderLabel = computed(() => {
+    this.aiConfigVersion();
+    const cfg = this.smartMeta.getAiConfig();
+    if (cfg.provider === 'gemini') return 'Google Gemini';
+    if (cfg.provider === 'deepseek') return 'DeepSeek';
+    if (cfg.provider === 'custom') return '自定义 OpenAI';
+    return '本地规则引擎';
+  });
 
   // ⚡ 列表行内直接修改转存数与浏览量
   editingStatsId = signal<string | null>(null);
@@ -573,8 +598,25 @@ export class App implements OnInit {
     this.switchTab('add');
     this.newResource.title = item.title;
     this.newResource.file_size = item.fileSize || '15.0 MB';
-    this.newResource.stage = item.stage;
-    this.newResource.subject = item.subject;
+
+    // 全自动智能推断：学科、学段、年级、教材版本、通俗 SEO 副标题与结构化内容说明
+    const meta = this.smartMeta.inferMeta(item.title);
+    this.newResource.stage = item.stage || meta.stage;
+    this.newResource.grade = meta.grade;
+    this.newResource.subject = item.subject || meta.subject;
+    this.newResource.edition = meta.edition;
+    this.newResource.channel_slug = meta.channel_slug;
+    this.newResource.subtitle = meta.selectedSubtitle;
+    this.cachedNewSubtitles = meta.subtitles;
+    this.newSubtitleIndex = 0;
+    if (!this.newResource.description || this.newResource.description.trim() === '') {
+      this.newResource.description = meta.description;
+    }
+    if (meta.has_video) {
+      this.newResource.has_video = true;
+    }
+    this.onStageChange('new');
+
     if (item.driveType === 'quark') {
       this.newResource.quarkUrl = item.shareUrl;
     } else if (item.driveType === 'baidu') {
@@ -583,7 +625,7 @@ export class App implements OnInit {
     } else {
       this.newResource.quarkUrl = item.shareUrl;
     }
-    this.showToast('✅ 已将智能解析数据填入表单，核对后点击发布即可正式入库！', 'success');
+    this.showToast('✅ 已将智能解析数据填入表单，已生成通俗副标题与使用说明！', 'success');
   }
 
   openCrawlerPasteModal() {
@@ -956,19 +998,23 @@ export class App implements OnInit {
     this.newResource.title = draft.title;
     this.newResource.file_size = draft.file_size && draft.file_size !== '未知' ? draft.file_size : '15.0 MB';
     
-    // 智能推断学段
-    const title = draft.title;
-    if (title.includes('小学') || title.includes('小升初') || (title.includes('年级') && (title.includes('一') || title.includes('二') || title.includes('三') || title.includes('四') || title.includes('五') || title.includes('六')))) {
-      this.newResource.stage = 'primary';
-    } else if (title.includes('初中') || title.includes('中考') || title.includes('七年级') || title.includes('八年级') || title.includes('九年级') || title.includes('初一') || title.includes('初二') || title.includes('初三')) {
-      this.newResource.stage = 'junior';
-    } else if (title.includes('高中') || title.includes('高考') || title.includes('高一') || title.includes('高二') || title.includes('高三')) {
-      this.newResource.stage = 'senior';
-    } else if (title.includes('教资') || title.includes('教师资格')) {
-      this.newResource.stage = 'cert';
-    } else if (title.includes('公考') || title.includes('行测') || title.includes('申论') || title.includes('考研')) {
-      this.newResource.stage = 'exam';
+    // 全自动智能推断：学科、学段、年级、教材版本、通俗 SEO 副标题与结构化内容介绍
+    const meta = this.smartMeta.inferMeta(draft.title);
+    this.newResource.stage = meta.stage;
+    this.newResource.grade = meta.grade;
+    this.newResource.subject = meta.subject;
+    this.newResource.edition = meta.edition;
+    this.newResource.channel_slug = meta.channel_slug;
+    this.newResource.subtitle = meta.selectedSubtitle;
+    this.cachedNewSubtitles = meta.subtitles;
+    this.newSubtitleIndex = 0;
+    if (!this.newResource.description || this.newResource.description.trim() === '') {
+      this.newResource.description = meta.description;
     }
+    if (meta.has_video) {
+      this.newResource.has_video = true;
+    }
+    this.onStageChange('new');
 
     if (draft.drive_type === 'quark') {
       this.newResource.quarkUrl = draft.share_url;
@@ -979,7 +1025,227 @@ export class App implements OnInit {
       this.newResource.quarkUrl = draft.share_url;
     }
 
-    this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 已将草稿数据填入表单，核对完善后保存即可正式入库！' : 'Draft imported to form!', 'success');
+    this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 已将草稿填入表单，已智能匹配学科并生成通俗副标题与说明！' : 'Draft imported with smart meta generated!', 'success');
+  }
+
+  // ⚡ 1. 本地智能推导（纯本地规则，0 延迟、0 费用、100% 离线稳定，排在前面）
+  runLocalInference(mode: 'new' | 'edit') {
+    const target = mode === 'new' ? this.newResource : this.editForm;
+    const title = target.title.trim();
+    if (!title) {
+      this.showToast(this.i18n.t('smart.titleRequired'), 'error');
+      return;
+    }
+
+    const meta = this.smartMeta.inferMeta(title);
+    target.stage = meta.stage;
+    target.grade = meta.grade;
+    target.subject = meta.subject;
+    target.edition = meta.edition;
+    target.channel_slug = meta.channel_slug;
+    target.subtitle = meta.selectedSubtitle;
+    target.description = meta.description;
+    if (meta.has_video) {
+      target.has_video = true;
+    }
+
+    if (mode === 'new') {
+      this.cachedNewSubtitles = meta.subtitles;
+      this.newSubtitleIndex = 0;
+      this.onStageChange('new');
+    } else {
+      this.cachedEditSubtitles = meta.subtitles;
+      this.editSubtitleIndex = 0;
+      this.onStageChange('edit');
+    }
+
+    if (meta.polished_title && meta.polished_title.trim() && meta.polished_title.trim() !== title) {
+      if (mode === 'new') {
+        this.suggestedTitleNew.set(meta.polished_title.trim());
+      } else {
+        this.suggestedTitleEdit.set(meta.polished_title.trim());
+      }
+    }
+
+    const msg = `⚡ 已使用【本地规则引擎】极速推导完成：${meta.subject}（无需配置 API，0延迟）`;
+    this.showToast(msg, 'success');
+  }
+
+  // ✨ 2. AI 云端大模型深度生成（明确调用 Google Gemini / DeepSeek，不暗中偷换，排在后面）
+  runAiGeneration(mode: 'new' | 'edit') {
+    const target = mode === 'new' ? this.newResource : this.editForm;
+    const title = target.title.trim();
+    if (!title) {
+      this.showToast(this.i18n.t('smart.titleRequired'), 'error');
+      return;
+    }
+
+    const cfg = this.smartMeta.getAiConfig();
+    if (cfg.provider === 'local') {
+      this.showToast('ℹ️ 当前处于本地模式。如需使用大模型，请点击【⚙️ AI 模型配置】切换为 Gemini 或 DeepSeek！', 'error');
+      this.openAiSettings();
+      return;
+    }
+
+    const key = cfg.provider === 'gemini' ? cfg.geminiApiKey : (cfg.provider === 'deepseek' ? cfg.deepseekApiKey : cfg.customApiKey);
+    if (!key || !key.trim()) {
+      const pName = cfg.provider === 'gemini' ? 'Google Gemini' : (cfg.provider === 'deepseek' ? 'DeepSeek' : 'OpenAI');
+      this.showToast(`⚠️ 请先在【⚙️ AI 模型配置】中填写您的 ${pName} API Key！`, 'error');
+      this.openAiSettings();
+      return;
+    }
+
+    this.isAiGenerating.set(true);
+    this.smartMeta.generateWithAi(title).subscribe({
+      next: (result) => {
+        this.isAiGenerating.set(false);
+        const meta = result.meta;
+        target.stage = meta.stage;
+        target.grade = meta.grade;
+        target.subject = meta.subject;
+        target.edition = meta.edition;
+        target.channel_slug = meta.channel_slug;
+        target.subtitle = meta.selectedSubtitle;
+        target.description = meta.description;
+        if (meta.has_video) {
+          target.has_video = true;
+        }
+
+        if (mode === 'new') {
+          this.cachedNewSubtitles = meta.subtitles;
+          this.newSubtitleIndex = 0;
+          this.onStageChange('new');
+        } else {
+          this.cachedEditSubtitles = meta.subtitles;
+          this.editSubtitleIndex = 0;
+          this.onStageChange('edit');
+        }
+
+        if (meta.polished_title && meta.polished_title.trim() && meta.polished_title.trim() !== title) {
+          if (mode === 'new') {
+            this.suggestedTitleNew.set(meta.polished_title.trim());
+          } else {
+            this.suggestedTitleEdit.set(meta.polished_title.trim());
+          }
+        }
+
+        const msg = `✨ [${result.providerUsed}] 深度分析完成！已生成 4 套高转化副标题与备考指南！`;
+        this.showToast(msg, 'success');
+      },
+      error: (err) => {
+        this.isAiGenerating.set(false);
+        const errDetail = err.error?.error || err.message || '网络连接超时';
+        this.showToast(`❌ AI 生成失败: ${errDetail}。您可点击前面的【⚡ 本地智能推导】极速录入！`, 'error');
+      }
+    });
+  }
+
+  adoptSuggestedTitle(mode: 'new' | 'edit') {
+    if (mode === 'new') {
+      const s = this.suggestedTitleNew();
+      if (s) {
+        this.newResource.title = s;
+        this.suggestedTitleNew.set('');
+        this.showToast('✓ ' + this.i18n.t('smart.titleAdopted'), 'success');
+      }
+    } else {
+      const s = this.suggestedTitleEdit();
+      if (s) {
+        this.editForm.title = s;
+        this.suggestedTitleEdit.set('');
+        this.showToast('✓ ' + this.i18n.t('smart.titleAdopted'), 'success');
+      }
+    }
+  }
+
+  dismissSuggestedTitle(mode: 'new' | 'edit') {
+    if (mode === 'new') {
+      this.suggestedTitleNew.set('');
+    } else {
+      this.suggestedTitleEdit.set('');
+    }
+  }
+
+  // 兼容别名
+  autoInferAndGenerate(mode: 'new' | 'edit') {
+    this.runAiGeneration(mode);
+  }
+
+  openAiSettings() {
+    this.aiConfigState = this.smartMeta.getAiConfig();
+    this.showAiSettingsModal.set(true);
+  }
+
+  closeAiSettings() {
+    this.showAiSettingsModal.set(false);
+  }
+
+  saveAiSettings() {
+    this.smartMeta.saveAiConfig(this.aiConfigState);
+    this.aiConfigVersion.update(v => v + 1);
+    this.showToast('✅ AI 大模型配置已成功保存！', 'success');
+    this.closeAiSettings();
+  }
+
+  testAiConnection() {
+    const cfg = this.aiConfigState;
+    if (cfg.provider === 'local') {
+      this.showToast('ℹ️ 当前选择的是本地极速规则引擎，无需联网测试，0秒即时可用！', 'success');
+      return;
+    }
+    const key = cfg.provider === 'gemini' ? cfg.geminiApiKey : (cfg.provider === 'deepseek' ? cfg.deepseekApiKey : cfg.customApiKey);
+    if (!key || !key.trim()) {
+      this.showToast('⚠️ 请先填写对应大模型的 API Key 再进行测试', 'error');
+      return;
+    }
+
+    this.isTestingAiConnection.set(true);
+    const model = cfg.provider === 'gemini' ? cfg.geminiModel : (cfg.provider === 'deepseek' ? cfg.deepseekModel : cfg.customModel);
+    const baseUrl = cfg.provider === 'custom' ? cfg.customBaseUrl : undefined;
+
+    this.smartMeta.testConnection({
+      provider: cfg.provider,
+      api_key: key.trim(),
+      model,
+      base_url: baseUrl
+    }).subscribe({
+      next: (res) => {
+        this.isTestingAiConnection.set(false);
+        this.showToast(res.message || '✅ 连通性测试通过！API Key 有效且模型响应正常！', 'success');
+      },
+      error: (err) => {
+        this.isTestingAiConnection.set(false);
+        const errMsg = err.error?.error || err.message || '网络连接超时或服务未就绪';
+        this.showToast('❌ 连通性测试失败: ' + errMsg, 'error');
+      }
+    });
+  }
+
+  // 🎲 3. 轮换切换通俗高转化副标题（明确告知用户当前是第几套文案）
+  cycleSubtitle(mode: 'new' | 'edit') {
+    const target = mode === 'new' ? this.newResource : this.editForm;
+    const title = target.title.trim();
+    if (!title) {
+      this.showToast(this.i18n.t('smart.titleRequired'), 'error');
+      return;
+    }
+
+    let subs = mode === 'new' ? this.cachedNewSubtitles : this.cachedEditSubtitles;
+    if (!subs || subs.length === 0) {
+      const meta = this.smartMeta.inferMeta(title);
+      subs = meta.subtitles;
+      if (mode === 'new') this.cachedNewSubtitles = subs;
+      else this.cachedEditSubtitles = subs;
+    }
+
+    let idx = mode === 'new' ? this.newSubtitleIndex : this.editSubtitleIndex;
+    idx = (idx + 1) % subs.length;
+    if (mode === 'new') this.newSubtitleIndex = idx;
+    else this.editSubtitleIndex = idx;
+
+    target.subtitle = subs[idx];
+    const msg = `🎲 已切换为第 ${idx + 1}/${subs.length} 套副标题: "${subs[idx]}"`;
+    this.showToast(msg, 'success');
   }
 
   // 新增表单数据绑定（支持智能联动、精细与通用）
@@ -2025,6 +2291,7 @@ export class App implements OnInit {
   }
 
   openEdit(item: ResourceItemDto) {
+    this.suggestedTitleEdit.set('');
     const quarkLink = item.links?.find(l => l.drive_type === 'quark');
     const baiduLink = item.links?.find(l => l.drive_type === 'baidu');
 

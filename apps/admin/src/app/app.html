@@ -745,14 +745,87 @@
 
           <form (ngSubmit)="saveNewResource()" class="form-grid">
             <div class="form-group full-width">
-              <label>资料完整标题 <span class="required">*</span></label>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                <label style="margin-bottom: 0;">资料完整标题 <span class="required">*</span></label>
+                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                  <!-- 1. 本地智能推导（在前面：0延迟、0成本、纯本地规则） -->
+                  <button 
+                    type="button" 
+                    class="btn btn-sm" 
+                    style="font-size: 11px; padding: 3px 10px; display: flex; align-items: center; gap: 4px; background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; font-weight: 600;"
+                    (click)="runLocalInference('new')"
+                    title="基于纯本地启发式规则，0延迟、0成本、100%离线极速识别学科、学段与高频副标题">
+                    <span>⚡ 本地智能推导</span>
+                  </button>
+
+                  <!-- 2. AI 云端大模型深度生成（在后面：Gemini / DeepSeek 深度生成） -->
+                  <button 
+                    type="button" 
+                    class="btn btn-sm btn-primary" 
+                    style="font-size: 11px; padding: 3px 10px; display: flex; align-items: center; gap: 4px;"
+                    (click)="runAiGeneration('new')"
+                    [disabled]="isAiGenerating()"
+                    title="调用配置的 Google Gemini / DeepSeek 深度生成原创高转化副标题与备考指南">
+                    @if (isAiGenerating()) {
+                      <span>{{ i18n.t('smart.aiGenerating') }}</span>
+                    } @else {
+                      <span>✨ {{ currentAiProviderLabel() }} 深度生成</span>
+                    }
+                  </button>
+
+                  <!-- 3. 换副标题 -->
+                  <button 
+                    type="button" 
+                    class="btn btn-sm btn-secondary" 
+                    style="font-size: 11px; padding: 3px 8px; display: flex; align-items: center; gap: 4px;"
+                    (click)="cycleSubtitle('new')"
+                    title="在当前生成的 4 套不同风格副标题间轮换">
+                    <span>{{ i18n.t('smart.cycleSubtitle') }}</span>
+                  </button>
+
+                  <!-- 4. AI 模型配置 -->
+                  <button 
+                    type="button" 
+                    class="btn btn-sm btn-secondary" 
+                    style="font-size: 11px; padding: 3px 8px; display: flex; align-items: center; gap: 4px; color: #0284c7; border-color: #bae6fd;"
+                    (click)="openAiSettings()"
+                    title="配置 Google Gemini / DeepSeek API Key 或切换模型">
+                    <span>{{ i18n.t('smart.aiConfigBtn') }}</span>
+                  </button>
+                </div>
+              </div>
               <input 
                 type="text" 
                 [(ngModel)]="newResource.title" 
                 name="title" 
-                placeholder="例如：2026春季人教版四年级下册数学期末夺冠押题卷" 
+                placeholder="例如：【新概念英语】第一至四册全套电子书+名师精讲音频视频" 
                 required 
               />
+              @if (suggestedTitleNew()) {
+                <div style="margin-top: 6px; padding: 8px 12px; background: var(--bg-hover, #f0fdf4); border: 1px solid var(--border-color, #bbf7d0); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                  <div style="font-size: 12px; color: var(--text-main, #166534); display: flex; align-items: center; gap: 6px; flex: 1; min-width: 240px;">
+                    <span style="font-weight: 600; white-space: nowrap;">{{ i18n.t('smart.suggestedTitleLabel') }}</span>
+                    <span style="word-break: break-all; font-weight: 500;">{{ suggestedTitleNew() }}</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-primary" 
+                      style="font-size: 11px; padding: 2px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px;"
+                      (click)="adoptSuggestedTitle('new')">
+                      <span>✓ {{ i18n.t('smart.adoptTitle') }}</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      class="btn btn-sm btn-secondary" 
+                      style="font-size: 11px; padding: 2px 6px; border-radius: 4px; opacity: 0.75;"
+                      (click)="dismissSuggestedTitle('new')"
+                      [title]="i18n.t('smart.dismiss')">
+                      <span>✕</span>
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
 
             <div class="form-group full-width">
@@ -4272,13 +4345,86 @@
 
         <form (ngSubmit)="saveEdit()" class="form-grid modal-body">
           <div class="form-group full-width">
-            <label>资料完整标题 <span class="required">*</span></label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+              <label style="margin-bottom: 0;">资料完整标题 <span class="required">*</span></label>
+              <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                <!-- 1. 本地智能推导（在前面：0延迟、0成本、纯本地规则） -->
+                <button 
+                  type="button" 
+                  class="btn btn-sm" 
+                  style="font-size: 11px; padding: 3px 10px; display: flex; align-items: center; gap: 4px; background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; font-weight: 600;"
+                  (click)="runLocalInference('edit')"
+                  title="基于纯本地启发式规则，0延迟、0成本、100%离线极速识别学科、学段与高频副标题">
+                  <span>⚡ 本地智能推导</span>
+                </button>
+
+                <!-- 2. AI 云端大模型深度生成（在后面：Gemini / DeepSeek 深度生成） -->
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-primary" 
+                  style="font-size: 11px; padding: 3px 10px; display: flex; align-items: center; gap: 4px;"
+                  (click)="runAiGeneration('edit')"
+                  [disabled]="isAiGenerating()"
+                  title="调用配置的 Google Gemini / DeepSeek 深度生成原创高转化副标题与备考指南">
+                  @if (isAiGenerating()) {
+                    <span>{{ i18n.t('smart.aiGenerating') }}</span>
+                  } @else {
+                    <span>✨ {{ currentAiProviderLabel() }} 深度生成</span>
+                  }
+                </button>
+
+                <!-- 3. 换副标题 -->
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-secondary" 
+                  style="font-size: 11px; padding: 3px 8px; display: flex; align-items: center; gap: 4px;"
+                  (click)="cycleSubtitle('edit')"
+                  title="在当前生成的 4 套不同风格副标题间轮换">
+                  <span>{{ i18n.t('smart.cycleSubtitle') }}</span>
+                </button>
+
+                <!-- 4. AI 模型配置 -->
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-secondary" 
+                  style="font-size: 11px; padding: 3px 8px; display: flex; align-items: center; gap: 4px; color: #0284c7; border-color: #bae6fd;"
+                  (click)="openAiSettings()"
+                  title="配置 Google Gemini / DeepSeek API Key 或切换模型">
+                  <span>{{ i18n.t('smart.aiConfigBtn') }}</span>
+                </button>
+              </div>
+            </div>
             <input 
               type="text" 
               [(ngModel)]="editForm.title" 
               name="edit_title" 
               required 
             />
+            @if (suggestedTitleEdit()) {
+              <div style="margin-top: 6px; padding: 8px 12px; background: var(--bg-hover, #f0fdf4); border: 1px solid var(--border-color, #bbf7d0); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <div style="font-size: 12px; color: var(--text-main, #166534); display: flex; align-items: center; gap: 6px; flex: 1; min-width: 240px;">
+                  <span style="font-weight: 600; white-space: nowrap;">{{ i18n.t('smart.suggestedTitleLabel') }}</span>
+                  <span style="word-break: break-all; font-weight: 500;">{{ suggestedTitleEdit() }}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <button 
+                    type="button" 
+                    class="btn btn-sm btn-primary" 
+                    style="font-size: 11px; padding: 2px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px;"
+                    (click)="adoptSuggestedTitle('edit')">
+                    <span>✓ {{ i18n.t('smart.adoptTitle') }}</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn btn-sm btn-secondary" 
+                    style="font-size: 11px; padding: 2px 6px; border-radius: 4px; opacity: 0.75;"
+                    (click)="dismissSuggestedTitle('edit')"
+                    [title]="i18n.t('smart.dismiss')">
+                    <span>✕</span>
+                  </button>
+                </div>
+              </div>
+            }
           </div>
 
           <div class="form-group full-width">
@@ -6202,5 +6348,187 @@
     (draftCreated)="onQuickPasteDraftCreated()"
     (directPublish)="onQuickPasteDirectPublish($event)">
   </app-quick-paste-modal>
+
+  <!-- 🤖 AI 大模型与本地专家引擎配置弹窗 (AI Config Modal) -->
+  @if (showAiSettingsModal()) {
+    <div class="modal-backdrop" (click)="closeAiSettings()">
+      <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 620px; background: #ffffff; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
+        <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 16px 20px;">
+          <div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <span>🤖</span> {{ i18n.t('smart.aiConfigTitle') }}
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">
+              {{ i18n.t('smart.aiConfigSubtitle') }}
+            </p>
+          </div>
+          <button type="button" class="modal-close-btn" (click)="closeAiSettings()">✕</button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+          <!-- 1. 引擎模式选择 -->
+          <div class="form-group" style="margin: 0;">
+            <label style="font-weight: 700; color: #1e293b; font-size: 13px; margin-bottom: 8px; display: block;">
+              {{ i18n.t('smart.providerLabel') }}
+            </label>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+              <label 
+                style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid; cursor: pointer; transition: all 0.15s;"
+                [style.border-color]="aiConfigState.provider === 'local' ? '#2563eb' : '#e2e8f0'"
+                [style.background]="aiConfigState.provider === 'local' ? '#eff6ff' : '#ffffff'">
+                <input type="radio" [(ngModel)]="aiConfigState.provider" name="ai_provider" value="local" style="margin: 0; accent-color: #2563eb;" />
+                <div>
+                  <div style="font-weight: 700; font-size: 13px; color: #1e293b;">{{ i18n.t('smart.providerLocal') }}</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">纯前端本地运行，100+细分教育专有词库秒级响应，永不超时，无需联网</div>
+                </div>
+              </label>
+
+              <label 
+                style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid; cursor: pointer; transition: all 0.15s;"
+                [style.border-color]="aiConfigState.provider === 'gemini' ? '#2563eb' : '#e2e8f0'"
+                [style.background]="aiConfigState.provider === 'gemini' ? '#eff6ff' : '#ffffff'">
+                <input type="radio" [(ngModel)]="aiConfigState.provider" name="ai_provider" value="gemini" style="margin: 0; accent-color: #2563eb;" />
+                <div>
+                  <div style="font-weight: 700; font-size: 13px; color: #1e293b;">{{ i18n.t('smart.providerGemini') }}</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Google 官方顶尖大模型，具备极强教材拆解与提示词理解力，生成语言极其丰富生动</div>
+                </div>
+              </label>
+
+              <label 
+                style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid; cursor: pointer; transition: all 0.15s;"
+                [style.border-color]="aiConfigState.provider === 'deepseek' ? '#2563eb' : '#e2e8f0'"
+                [style.background]="aiConfigState.provider === 'deepseek' ? '#eff6ff' : '#ffffff'">
+                <input type="radio" [(ngModel)]="aiConfigState.provider" name="ai_provider" value="deepseek" style="margin: 0; accent-color: #2563eb;" />
+                <div>
+                  <div style="font-weight: 700; font-size: 13px; color: #1e293b;">{{ i18n.t('smart.providerDeepSeek') }}</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">国内主流大模型，中文考纲理解极为地道，极低成本，高并发直连</div>
+                </div>
+              </label>
+
+              <label 
+                style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid; cursor: pointer; transition: all 0.15s;"
+                [style.border-color]="aiConfigState.provider === 'custom' ? '#2563eb' : '#e2e8f0'"
+                [style.background]="aiConfigState.provider === 'custom' ? '#eff6ff' : '#ffffff'">
+                <input type="radio" [(ngModel)]="aiConfigState.provider" name="ai_provider" value="custom" style="margin: 0; accent-color: #2563eb;" />
+                <div>
+                  <div style="font-weight: 700; font-size: 13px; color: #1e293b;">{{ i18n.t('smart.providerCustom') }}</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">兼容 OpenAI 格式的各类大模型转发中继或自建接口</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. Google Gemini 参数配置 -->
+          @if (aiConfigState.provider === 'gemini') {
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">
+                  Google Gemini API Key <span class="required" style="color: #ef4444;">*</span>
+                </label>
+                <input 
+                  type="password" 
+                  [(ngModel)]="aiConfigState.geminiApiKey" 
+                  placeholder="AIzaSy..." 
+                  style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 13px; font-family: monospace;"
+                />
+                <span style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: block;">
+                  可在 Google AI Studio (aistudio.google.com) 免费创建 API Key。
+                </span>
+              </div>
+
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">
+                  {{ i18n.t('smart.modelLabel') }}
+                </label>
+                <select [(ngModel)]="aiConfigState.geminiModel" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 13px;">
+                  <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (🌟 强烈推荐 · 配额独立充裕 · 极速响应)</option>
+                  <option value="gemini-flash-lite-latest">gemini-flash-lite-latest (自动匹配最新 Flash-Lite 轻量模型)</option>
+                  <option value="gemini-3.5-flash">gemini-3.5-flash (主力全功能模型 · 每日20次限额)</option>
+                  <option value="gemini-3.8-flash">gemini-3.8-flash (新代次 Flash 模型)</option>
+                  <option value="gemma-4-31b-it">gemma-4-31b-it (Google 开源多模态推理模型)</option>
+                </select>
+              </div>
+            </div>
+          }
+
+          <!-- 3. DeepSeek 参数配置 -->
+          @if (aiConfigState.provider === 'deepseek') {
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">
+                  DeepSeek API Key <span class="required" style="color: #ef4444;">*</span>
+                </label>
+                <input 
+                  type="password" 
+                  [(ngModel)]="aiConfigState.deepseekApiKey" 
+                  placeholder="sk-..." 
+                  style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 13px; font-family: monospace;"
+                />
+                <span style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: block;">
+                  可在 DeepSeek 开放平台 (platform.deepseek.com) 获取 API Key。
+                </span>
+              </div>
+
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">
+                  {{ i18n.t('smart.modelLabel') }}
+                </label>
+                <select [(ngModel)]="aiConfigState.deepseekModel" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 13px;">
+                  <option value="deepseek-chat">deepseek-chat (V3 通用大模型 · 响应迅速中文极强)</option>
+                </select>
+              </div>
+            </div>
+          }
+
+          <!-- 4. 自定义 OpenAI 兼容接口 -->
+          @if (aiConfigState.provider === 'custom') {
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Base URL 接口地址</label>
+                <input type="text" [(ngModel)]="aiConfigState.customBaseUrl" placeholder="https://api.openai.com/v1" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 13px;" />
+              </div>
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">API Key</label>
+                <input type="password" [(ngModel)]="aiConfigState.customApiKey" placeholder="sk-..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 13px;" />
+              </div>
+              <div>
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Model 模型名</label>
+                <input type="text" [(ngModel)]="aiConfigState.customModel" placeholder="gpt-4o-mini / qwen-plus" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-size: 13px;" />
+              </div>
+            </div>
+          }
+
+          <!-- 5. 贴心机制提醒 -->
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; font-size: 11px; color: #1e40af; line-height: 1.5;">
+            💡 <strong>双引擎架构指引</strong>：<br>
+            • <strong>⚡ 本地智能推导（在前面）</strong>：基于纯本地规则引擎，0 延迟、0 费用、100% 离线稳定，一键秒级推导学科与学段。<br>
+            • <strong>✨ AI 大模型生成（在后面）</strong>：调用 Google Gemini 或 DeepSeek 云端大模型，深度原创 4 种转化风格副标题与备考使用指南。如果未配置 Key 或接口异常会明确提示，绝不暗中偷换！
+          </div>
+        </div>
+
+        <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+          <div>
+            @if (aiConfigState.provider !== 'local') {
+              <button 
+                type="button" 
+                class="btn btn-secondary" 
+                style="font-size: 12px; padding: 6px 12px;"
+                (click)="testAiConnection()"
+                [disabled]="isTestingAiConnection()">
+                {{ isTestingAiConnection() ? i18n.t('smart.testingBtn') : i18n.t('smart.testBtn') }}
+              </button>
+            }
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary" (click)="closeAiSettings()">取消</button>
+            <button type="button" class="btn btn-primary" (click)="saveAiSettings()" style="padding: 6px 18px; font-weight: 700;">
+              💾 保存配置并生效
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 </div>
 

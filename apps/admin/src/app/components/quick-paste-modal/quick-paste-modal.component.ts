@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../../services/i18n.service';
 import { ResourceService } from '../../services/resource.service';
+import { SmartMetaHelperService } from '../../services/smart-meta-helper.service';
 
 export interface ParsedItem {
   id: string;
@@ -26,6 +27,7 @@ export interface ParsedItem {
 export class QuickPasteModalComponent {
   i18n = inject(I18nService);
   private resService = inject(ResourceService);
+  private smartMeta = inject(SmartMetaHelperService);
 
   isOpen = input<boolean>(false);
   closed = output<void>();
@@ -147,9 +149,10 @@ export class QuickPasteModalComponent {
               }
             }
 
-            // 5. 识别学段与学科
-            const stage = this.detectStage(title);
-            const subject = this.detectSubject(title);
+            // 5. 智能推断学段与学科（精准识别新概念英语、语法、奥数等专有名词）
+            const meta = this.smartMeta.inferMeta(title);
+            const stage = meta.stage;
+            const subject = meta.subject;
 
             items.push({
               id: 'item_' + Math.random().toString(36).slice(2, 8),
@@ -171,26 +174,12 @@ export class QuickPasteModalComponent {
   }
 
   private detectStage(title: string): string {
-    if (title.includes('小学') || title.includes('小升初') || /([一二三四五六123456])年级/.test(title)) {
-      return 'primary';
-    } else if (title.includes('初中') || title.includes('中考') || /([七八九789])年级|初[一二三]/.test(title)) {
-      return 'junior';
-    } else if (title.includes('高中') || title.includes('高考') || /高[一二三123]/.test(title)) {
-      return 'senior';
-    } else if (title.includes('教资') || title.includes('教师资格')) {
-      return 'cert';
-    } else if (title.includes('公考') || title.includes('行测') || title.includes('申论') || title.includes('考研')) {
-      return 'exam';
-    }
-    return 'primary';
+    return this.smartMeta.detectStage(title);
   }
 
   private detectSubject(title: string): string {
-    const subjects = ['数学', '语文', '英语', '物理', '化学', '生物', '历史', '地理', '政治', '科学', '道德与法治'];
-    for (const sub of subjects) {
-      if (title.includes(sub)) return sub;
-    }
-    return '数学';
+    const stage = this.detectStage(title);
+    return this.smartMeta.detectSubject(title, stage);
   }
 
   toggleSelectAll(select: boolean) {
