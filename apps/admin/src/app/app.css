@@ -2504,14 +2504,22 @@ input:focus, select:focus, textarea:focus {
 .account-item-card {
   padding: 18px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 12px;
   position: relative;
+  cursor: pointer;
 }
 
 .account-item-card:hover {
-  border-color: #94a3b8;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: var(--primary, #0284c7);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.account-item-card.is-selected {
+  border-color: #0284c7;
+  border-left: 5px solid #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2), 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: var(--bg-hover, #f8fafc);
 }
 
 .account-item-card.is-default {
@@ -2519,6 +2527,13 @@ input:focus, select:focus, textarea:focus {
   border-left: 5px solid #10b981;
   background: linear-gradient(to right, #f0fdf4, #ffffff 40%);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
+}
+
+.account-item-card.is-default.is-selected {
+  border-color: #10b981;
+  border-left: 5px solid #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25), 0 4px 14px rgba(16, 185, 129, 0.16);
+  background: linear-gradient(to right, #ecfdf5, #ffffff 45%);
 }
 
 .acc-card-header {

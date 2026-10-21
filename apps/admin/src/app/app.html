@@ -2677,17 +2677,65 @@
           <!-- 双栏主体：左侧账号表单，右侧账号列表 -->
           <div class="accounts-grid-layout">
             <!-- 左侧：添加/编辑账号表单 -->
+            <!-- 左侧：添加/编辑账号表单 -->
             <div class="card account-form-card" id="account-config-card">
               <div class="card-header">
-                <h3>{{ accountForm.id ? '✏️ 编辑网盘账号' : '➕ 配置网盘转存账号' }}</h3>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <h3 style="margin: 0; font-size: 15px; font-weight: 700;">
+                    {{ accountForm.id ? i18n.t('accounts.viewAndEditTitle') : i18n.t('accounts.configNewTitle') }}
+                  </h3>
+                  @if (accountForm.id) {
+                    <span class="badge" style="background: var(--bg-hover, #f1f5f9); color: var(--primary, #0284c7); border: 1px solid var(--border-color, #cbd5e1); font-size: 11px; font-weight: 600;">
+                      {{ i18n.t('accounts.loadedBadge') }}: {{ accountForm.account_name }}
+                    </span>
+                  }
+                </div>
                 <div style="display: flex; gap: 8px;">
                   @if (accountForm.id) {
-                    <button type="button" class="btn btn-sm btn-primary" (click)="startAddNewAccount()">➕ 新增其他账号</button>
-                    <button type="button" class="btn btn-sm btn-secondary" (click)="resetAccountForm()">清空表单</button>
+                    <button type="button" class="btn btn-sm btn-primary" (click)="startAddNewAccount()" style="font-weight: 600;">
+                      {{ i18n.t('accounts.addNewAccount') }}
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" (click)="resetAccountForm()">
+                      {{ i18n.t('accounts.clearNew') }}
+                    </button>
                   }
                 </div>
               </div>
               <form (ngSubmit)="saveAccountConfig()" class="account-form-body">
+                @if (currentSelectedAccount; as cur) {
+                  <div style="margin-bottom: 14px; background: var(--bg-hover, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 10px 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a); display: flex; align-items: center; gap: 6px;">
+                        <span>⚡ {{ cur.account_name }}</span>
+                        @if (cur.is_default) {
+                          <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 11px; font-weight: 700;">🟢 默认激活中</span>
+                        }
+                      </div>
+                      <div>
+                        @if (cur.status === 'valid') {
+                          @if (cur.is_over_quota) {
+                            <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px;">⚠️ 空间已超限</span>
+                          } @else {
+                            <span class="badge" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px;">🟢 连通正常</span>
+                          }
+                        } @else {
+                          <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px;">🔴 Cookie已失效</span>
+                        }
+                      </div>
+                    </div>
+                    <div style="display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted, #64748b);">
+                      <span>网盘昵称: <b style="color: var(--text-main, #0f172a);">{{ cur.nickname || '未同步' }}</b></span>
+                      <span>总容量: <b style="color: var(--text-main, #0f172a);">{{ cur.total_capacity || '--' }}</b></span>
+                      <span>剩余可用: <b [style.color]="cur.is_over_quota ? '#dc2626' : '#059669'">{{ cur.free_capacity || '--' }}</b></span>
+                      <span>验证时间: {{ cur.last_verified_at ? (cur.last_verified_at | date:'MM-dd HH:mm') : '未验证' }}</span>
+                    </div>
+                  </div>
+                } @else {
+                  <div style="margin-bottom: 14px; font-size: 12px; color: var(--text-muted, #64748b); background: var(--bg-secondary, #f8fafc); border: 1px dashed var(--border-color, #cbd5e1); border-radius: 8px; padding: 8px 12px;">
+                    {{ i18n.t('accounts.syncTip') }}
+                  </div>
+                }
+
                 <div class="form-group">
                   <label>网盘平台 <span class="required">*</span></label>
                   <select [(ngModel)]="accountForm.drive_type" name="acc_drive_type">
@@ -2736,16 +2784,25 @@
                 </div>
 
                 <div class="form-group">
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <label>网页端 Cookie 凭据 <span class="required">*</span></label>
-                    <span style="font-size: 11px; color: #0284c7; font-weight: 600;">{{ accountForm.id ? '（留空则保持原Cookie不变）' : '' }}</span>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <label style="margin: 0;">网页端 Cookie 凭据 <span class="required">*</span></label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      @if (accountForm.cookie) {
+                        <button type="button" class="btn btn-xs btn-secondary" (click)="copyCurrentCookie()" style="font-size: 11px; padding: 2px 8px; font-weight: 600;" title="一键复制完整 Cookie 到剪贴板">
+                          {{ i18n.t('accounts.copyCookie') }}
+                        </button>
+                      }
+                      <span style="font-size: 11px; color: var(--primary, #0284c7); font-weight: 600;">
+                        {{ accountForm.id ? (accountForm.cookie ? i18n.t('accounts.cookieLoadedNotice') : i18n.t('accounts.cookieKeepNotice')) : i18n.t('accounts.cookieRequired') }}
+                      </span>
+                    </div>
                   </div>
                   <textarea 
                     [(ngModel)]="accountForm.cookie" 
                     name="acc_cookie" 
-                    rows="4" 
-                    placeholder="请粘贴网页端 pan.quark.cn 登录后的 Cookie 字符串..."
-                    style="font-family: monospace; font-size: 12px; resize: vertical;"
+                    rows="5" 
+                    [placeholder]="i18n.t('accounts.cookiePlaceholder')"
+                    style="font-family: monospace; font-size: 12px; resize: vertical; line-height: 1.45; word-break: break-all;"
                   ></textarea>
                 </div>
 
@@ -2761,8 +2818,8 @@
                 </div>
 
                 <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
-                  <button type="submit" class="btn btn-primary" [disabled]="accountLoading()" style="padding: 10px 20px;">
-                    {{ accountLoading() ? '正在连通测试与保存...' : '💾 保存并立即验证连通性' }}
+                  <button type="submit" class="btn btn-primary" [disabled]="accountLoading()" style="padding: 10px 20px; font-weight: 600;">
+                    {{ accountLoading() ? '正在连通测试与保存...' : (accountForm.id ? i18n.t('accounts.saveAndVerify') : i18n.t('accounts.addAndVerify')) }}
                   </button>
                 </div>
               </form>
@@ -2789,15 +2846,20 @@
               @for (acc of accounts(); track acc.id) {
                 <div class="card account-item-card" 
                      [class.is-default]="acc.is_default" 
+                     [class.is-selected]="accountForm.id === acc.id"
                      [class.is-over-quota]="acc.is_over_quota"
-                     [style.cursor]="acc.is_default ? 'default' : 'pointer'"
-                     (click)="setDefaultAccount(acc, $event)">
+                     (click)="selectAccount(acc)">
                   <div class="acc-card-header">
                     <div style="display: flex; align-items: center; gap: 10px;">
                       <div class="drive-icon-badge quark">⚡</div>
                       <div>
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                           <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0;">{{ acc.account_name }}</h4>
+                          @if (accountForm.id === acc.id) {
+                            <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; font-weight: 700; font-size: 11px;">
+                              {{ i18n.t('accounts.selectedOnLeft') }}
+                            </span>
+                          }
                           @if (acc.is_default) {
                             <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-weight: 700;">🟢 默认激活中</span>
                           } @else {
@@ -2874,8 +2936,8 @@
                       <button type="button" class="btn btn-sm btn-secondary" (click)="openFolderPicker(acc); $event.stopPropagation()" title="选择个人网盘下的目标文件夹">
                         📁 选择目录
                       </button>
-                      <button type="button" class="btn btn-sm btn-secondary" (click)="editAccount(acc); $event.stopPropagation()">
-                        ✏️ 修改
+                      <button type="button" class="btn btn-sm btn-secondary" (click)="selectAccount(acc, true, true); $event.stopPropagation()" title="在左侧表单中查看完整凭据与修改配置">
+                        ✏️ 查看/修改
                       </button>
                       <button type="button" class="btn btn-sm" style="color: #dc2626; border-color: #fca5a5;" (click)="deleteAccount(acc.id!); $event.stopPropagation()">
                         🗑️ 删除

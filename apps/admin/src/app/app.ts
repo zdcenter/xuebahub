@@ -1640,17 +1640,71 @@ export class App implements OnInit {
   drivePickerBreadcrumbs = signal<{ fid: string; name: string }[]>([{ fid: '0', name: '根目录' }]);
   drivePickerSharingFid = signal<string | null>(null);
 
-  loadAccounts() {
+  get currentSelectedAccount(): NetdiskAccountDto | undefined {
+    return this.accounts().find(a => a.id === this.accountForm.id);
+  }
+
+  loadAccounts(preserveSelection = true) {
     this.accountLoading.set(true);
     this.resService.listAccounts().subscribe({
       next: (accs) => {
         this.accounts.set(accs);
         this.accountLoading.set(false);
+        if (accs.length > 0) {
+          const currentId = this.accountForm.id;
+          const target = (preserveSelection && currentId) ? accs.find(a => a.id === currentId) : null;
+          if (target) {
+            this.selectAccount(target, false, false);
+          } else if (!currentId || !preserveSelection) {
+            const def = accs.find(a => a.is_default) || accs[0];
+            this.selectAccount(def, false, false);
+          }
+        } else {
+          this.resetAccountForm();
+        }
       },
       error: () => {
         this.accountLoading.set(false);
       }
     });
+  }
+
+  selectAccount(acc: NetdiskAccountDto, smoothScroll = false, notify = false) {
+    this.accountForm = {
+      id: acc.id || '',
+      drive_type: acc.drive_type || 'quark',
+      account_name: acc.account_name,
+      cookie: acc.cookie || '',
+      target_folder_fid: acc.target_folder_fid || '0',
+      target_folder_name: this.formatFolderPath(acc.target_folder_name),
+      is_default: acc.is_default || false
+    };
+    if (notify) {
+      const msg = this.i18n.t('accounts.accountLoadedToast').replace('{name}', acc.account_name);
+      this.showToast(msg);
+    }
+    if (smoothScroll) {
+      const el = document.getElementById('account-config-card');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }
+
+  copyCurrentCookie() {
+    if (!this.accountForm.cookie) {
+      this.showToast(this.i18n.t('accounts.cookieEmpty'), 'error');
+      return;
+    }
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(this.accountForm.cookie).then(() => {
+        this.showToast(this.i18n.t('accounts.cookieCopied'), 'success');
+      }).catch(() => {
+        this.showToast(this.i18n.t('accounts.cookieCopyFailed'), 'error');
+      });
+    } else {
+      this.showToast(this.i18n.t('accounts.cookieCopyFailed'), 'error');
+    }
   }
 
   saveAccountConfig() {
@@ -1674,13 +1728,13 @@ export class App implements OnInit {
     this.resService.saveAccount(payload).subscribe({
       next: (saved) => {
         this.accountLoading.set(false);
-        this.loadAccounts();
-        this.resetAccountForm();
         if (saved.status === 'valid') {
-          this.showToast(`✅ 账号【${saved.account_name}】连通验证成功！容量: ${saved.total_capacity}`);
+          this.showToast(`✅ 账号【${saved.account_name}】连通验证成功！容量: ${saved.total_capacity}`, 'success');
         } else {
           this.showToast(`⚠️ 账号已保存，但验证提示: ${saved.error_message}`, 'error');
         }
+        this.accountForm.id = saved.id || this.accountForm.id;
+        this.loadAccounts(true);
       },
       error: (err) => {
         this.accountLoading.set(false);
@@ -1693,20 +1747,7 @@ export class App implements OnInit {
     if (event) {
       event.stopPropagation();
     }
-    this.accountForm = {
-      id: acc.id || '',
-      drive_type: acc.drive_type || 'quark',
-      account_name: acc.account_name,
-      cookie: '',
-      target_folder_fid: acc.target_folder_fid || '0',
-      target_folder_name: this.formatFolderPath(acc.target_folder_name),
-      is_default: acc.is_default || false
-    };
-    this.showToast(`已加载账号【${acc.account_name}】配置，可在左侧表单修改`);
-    const el = document.getElementById('account-config-card');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+    this.selectAccount(acc, true, true);
   }
 
   setDefaultAccount(acc: NetdiskAccountDto, event?: Event) {
@@ -1725,6 +1766,11 @@ export class App implements OnInit {
           ...item,
           is_default: item.id === acc.id
         })));
+        if (this.accountForm.id === acc.id) {
+          this.accountForm.is_default = true;
+        } else if (this.accountForm.id) {
+          this.accountForm.is_default = false;
+        }
         this.showToast(`⭐ 已成功将【${acc.account_name}】激活为当前默认网盘账号！`);
       },
       error: (err) => {
@@ -1735,7 +1781,7 @@ export class App implements OnInit {
 
   startAddNewAccount() {
     this.resetAccountForm();
-    this.showToast('已切换至新建网盘账号模式，请在左侧表单填写配置');
+    this.showToast(this.i18n.t('accounts.newAccountModeToast'));
     const el = document.getElementById('account-config-card');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });

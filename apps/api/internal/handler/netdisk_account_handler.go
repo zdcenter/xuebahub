@@ -29,6 +29,7 @@ type NetdiskAccountDTO struct {
 	DriveType        string     `json:"drive_type"`
 	AccountName      string     `json:"account_name"`
 	HasCookie        bool       `json:"has_cookie"`
+	Cookie           string     `json:"cookie"`
 	CookieMasked     string     `json:"cookie_masked"`
 	TargetFolderFID  string     `json:"target_folder_fid"`
 	TargetFolderName string     `json:"target_folder_name"`
@@ -58,6 +59,7 @@ func toDTO(acc model.NetdiskAccount) NetdiskAccountDTO {
 		DriveType:        acc.DriveType,
 		AccountName:      acc.AccountName,
 		HasCookie:        acc.Cookie != "",
+		Cookie:           acc.Cookie,
 		CookieMasked:     masked,
 		TargetFolderFID:  acc.TargetFolderFID,
 		TargetFolderName: acc.TargetFolderName,
