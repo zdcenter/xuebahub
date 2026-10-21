@@ -2,6 +2,35 @@
 
 ## [Unreleased] - 2026-10-21
 
+- **夸克网盘转存/验证与巡检引擎：彻底根除硬编码本地代理 7897 导致的连接拒绝错误 (`apps/api`)**:
+  - **核心痛点彻底根除**：
+    - 修复了后端服务在验证夸克账号（`drive-pc.quark.cn`）及巡检网盘链接有效性时，因内部硬编码兜底 `http://127.0.0.1:7897`（本地测试用代理端口）而在无代理的线上服务器出现 `proxyconnect tcp: dial tcp 127.0.0.1:7897: connect: connection refused` 的验证失败报错；
+  - **标准代理接入与直连回退机制**：
+    - 将 `apps/api/internal/service/quark_transfer.go` 与 `apps/api/internal/service/netdisk_checker.go` 中的 HTTP Transport 统一升级为 `http.ProxyFromEnvironment`；
+    - 国内网络服务默认直接直连阿里夸克云端网关，仅在用户显式配置系统代理环境变量时才走代理，确保线上部署与本地开发 100% 连通与稳定。
+
+- **前台学霸网「彻底剔除前端静态兜底假数据 & 边缘 CDN 缓存故障隔离机制」(`apps/web`)**:
+  - **彻底移除所有硬编码静态假数据 (Complete Removal of Static Mock Fallbacks)**：
+    - 坚决杜绝“前端自行硬编码假数据兜底”造成的学段串号、假资源以及误导站长排查真实数据的问题；
+    - 从 `ChannelPage.astro` 中彻底删除了 `allFallbacks`（包括 2026 高考数学、人教三年级下册、中考几何、新高考导数等静态测试数据）；
+    - 从 `pages/resource/[slug].astro` 中彻底移除了不存在资源时的假试卷数据，若资源不存在直接规范 302 重定向到首页；
+    - 列表和专区严格以数据库真实数据为唯一事实来源，接口若无数据或未找到则直接呈现真实空状态，严谨可靠；
+  - **动态缓存策略与异常隔离 (Dynamic Edge CDN Cache Strategy)**：
+    - 优化 `apps/web/src/components/ChannelPage.astro`、`index.astro` 与 `[channel].astro`：将原本静态硬编码的 `s-maxage=300` 缓存头改为根据后端实际 API 连通状态动态下发；
+    - 当 API 响应正常且拉取到数据时，激活 Cloudflare 边缘极速缓存（5分钟新鲜期+24小时后台静默异步刷新）；
+    - 当后端服务处于冷启动、构建期或网络波动异常时，动态下发 `no-cache, no-store, must-revalidate`，防止 CDN 边缘节点长久缓存故障状态。
+
+
+- **管理后台「🛡️ 去除底层技术栈泄露 & 侧边栏最左下角自动按编译时间生成版本编号」全面落地 (`apps/admin`)**:
+  - **彻底清除技术栈外露隐患 (Tech Stack Privacy & Security Clean)**：
+    - 严格遵循商业化系统安全交付准则，将后台此前暴露底层架构的文字（如 `PostgreSQL & Go API 已联通`、`PostgreSQL 数据库`、`前台 Astro 页面`、`Go Fiber 引擎活跃运行中`）全部替换为专业统一的系统业务术语（如 `核心系统服务在线`、`在库资源总览`、`全站数据实时同步驱动`、`云端巡检引擎活跃运行中`）；
+    - 避免向外部使用者或测试者暴露底层数据库、语言、Web 框架等技术信息，提升企业级专业感与安全防护；
+  - **左下角自动生成按年月日与时间编号的版本标记 (Auto Build Timestamp Versioning)**：
+    - 新增自动化版本构建机制（`apps/admin/scripts/generate-version.js`），在每次执行 `npm run build`、`ng build` 或 `npm start` 编译部署时，自动捕获当前编译时刻的年、月、日、时、分，生成唯一构建编码（如 `Build 20261021.1504`，完整格式 `v1.3.4 · 20261021.1504`）；
+    - 在管理后台**最左下角（侧边栏底部）**呈现高质感版本胶囊徽标，替代原技术说明文字；
+    - 配备在线状态呼吸绿灯 + `核心系统服务在线`，并支持点击版本胶囊一键复制完整版本与编译时间戳；
+    - 侧边栏收起折叠态优雅自适应，保留状态光点与悬停浮窗提示。
+
 - **管理后台「☁️ 网盘账号与转存换链配置 (Netdisk Accounts)」交互革新：右侧单选即显左侧详情与 Cookie 完整明文呈现 (`apps/admin` & `apps/api`)**:
   - **核心痛点解决**：
     - 针对以往“在右侧已托管网盘列表点击卡片误触发设为默认，必须去点卡片底部的‘修改’按钮左侧才能加载信息、且 Cookie 凭据完全被脱敏无法核对”的操作阻滞，重构为双栏主从联动交互；

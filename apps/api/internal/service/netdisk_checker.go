@@ -54,12 +54,7 @@ type NetdiskCheckerService struct {
 
 func NewNetdiskCheckerService(parser *NetdiskParserService) *NetdiskCheckerService {
 	tr := &http.Transport{
-		Proxy: func(req *http.Request) (*url.URL, error) {
-			if u, err := http.ProxyFromEnvironment(req); err == nil && u != nil {
-				return u, nil
-			}
-			return url.Parse("http://127.0.0.1:7897")
-		},
+		Proxy: http.ProxyFromEnvironment,
 	}
 	return &NetdiskCheckerService{
 		client: &http.Client{

@@ -5,6 +5,7 @@ import { ResourceService, ResourceItemDto, NetdiskAccountDto, TransferShareResul
 import { CoverGeneratorService } from './services/cover-generator.service';
 import { I18nService } from './services/i18n.service';
 import { SmartMetaHelperService, AiConfig } from './services/smart-meta-helper.service';
+import { APP_VERSION } from './version';
 
 export interface StageConfigItem {
   key: string;
@@ -83,6 +84,22 @@ export class App implements OnInit {
   aiConfigVersion = signal<number>(0);
   suggestedTitleNew = signal<string>('');
   suggestedTitleEdit = signal<string>('');
+
+  // 编译构建版本号信息
+  appVersion = APP_VERSION;
+
+  copyVersionInfo() {
+    const text = `${this.appVersion.fullText} (构建时间: ${this.appVersion.buildTime})`;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.showToast(`📋 ${this.i18n.t('system.versionCopied')} ${this.appVersion.fullText}`, 'success');
+      }).catch(() => {
+        this.showToast(text);
+      });
+    } else {
+      this.showToast(text);
+    }
+  }
 
   currentAiProviderLabel = computed(() => {
     this.aiConfigVersion();

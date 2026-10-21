@@ -90,42 +90,7 @@ try {
 } catch (e) {}
 
 if (!resource) {
-  resource = {
-    id: "demo",
-    slug: slug || "demo",
-    title: "2026春季人教版三年级下册数学期末冲刺夺冠押题卷（含高清解析与手写步骤）",
-    subtitle: "名校名师联合精选必考压轴题，覆盖乘除法、面积计算、小数初步",
-    description: "本套试卷专为三年级下册期末复习研发，包含3套名校期末全真模拟密卷及1套名师压轴重点突破卷。试卷排版严格按照标准 A4 试卷规格设计，配有答题卡、手撕解析与解题思路大纲。全部题目均配有名师手写解答，适合家长为孩子打印冲刺满分使用。",
-    stage: "小学阶段",
-    grade: "三年级",
-    subject: "数学",
-    edition: "人教版统编教材",
-    fileType: "PDF 清晰可打印版",
-    fileSize: "12.4 MB",
-    pageCount: 28,
-    viewCount: 0,
-    saveCount: 0,
-    createdAt: "2026-03-28",
-    previewImages: [],
-    fileTree: [],
-    links: [
-      {
-        id: "demo-quark",
-        drive_type: "quark",
-        drive_name: "夸克网盘（极速推荐）",
-        desc: "手机APP转存免下载，在线高清直接查看与PDF打印",
-        file_size: "12.4 MB",
-        file_type: "PDF清晰可打印版",
-        resource_desc: "手机APP转存免下载，原画质在线看视频与打印",
-        click_count: 380,
-        updated_at: "2026-10-04",
-        share_url: "https://pan.quark.cn/s/demo_quark_share",
-        extract_code: "",
-        password_hint: "无提取码，一键转存",
-        is_primary: true
-      }
-    ]
-  };
+  return Astro.redirect('/', 302);
 }
 
 if (resource && Array.isArray(resource.links)) {

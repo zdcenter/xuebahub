@@ -67,12 +67,7 @@ type QuarkTransferService struct {
 
 func NewQuarkTransferService() *QuarkTransferService {
 	tr := &http.Transport{
-		Proxy: func(req *http.Request) (*url.URL, error) {
-			if u, err := http.ProxyFromEnvironment(req); err == nil && u != nil {
-				return u, nil
-			}
-			return url.Parse("http://127.0.0.1:7897")
-		},
+		Proxy: http.ProxyFromEnvironment,
 	}
 	return &QuarkTransferService{
 		client: &http.Client{

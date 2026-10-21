@@ -15,7 +15,7 @@
         <div class="login-brand">
           <div class="login-logo-circle">🎓</div>
           <h2>学霸网 · 后台管理系统</h2>
-          <p>请输入管理员安全凭证以解锁数据库操作权限</p>
+          <p>{{ i18n.t('system.loginSecurityTip') }}</p>
         </div>
 
         <form (submit)="$event.preventDefault(); onLogin()" class="login-form">
@@ -237,7 +237,12 @@
     <div class="sidebar-footer">
       <div class="admin-badge">
         <span class="status-dot"></span>
-        <span>PostgreSQL & Go API 已联通</span>
+        <span class="status-text">{{ i18n.t('system.onlineStatus') }}</span>
+      </div>
+      <div class="version-badge" 
+           (click)="copyVersionInfo()" 
+           [title]="(i18n.lang() === 'zh-CN' ? '版本: ' : 'Version: ') + appVersion.version + ' | ' + (i18n.lang() === 'zh-CN' ? '构建时间: ' : 'Build Time: ') + appVersion.buildTime + (i18n.lang() === 'zh-CN' ? '（点击复制）' : ' (Click to copy)')">
+        <span>{{ appVersion.fullText }}</span>
       </div>
     </div>
   </aside>
@@ -255,7 +260,7 @@
         </button>
         <div>
           <h1>
-            @if (currentTab() === 'list') { 📚 资料库管理 (实时数据库) }
+            @if (currentTab() === 'list') { 📚 资料库管理 ({{ i18n.t('system.resListTitle') }}) }
             @if (currentTab() === 'add') { ✍️ 录入并发布新试卷/视频 }
             @if (currentTab() === 'stats') { 📊 推广收益与转化分析 }
             @if (currentTab() === 'crawler') { ✈️ {{ i18n.t('crawler.title') }} }
@@ -312,7 +317,7 @@
         <div class="card table-card">
           <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-              <h3 style="margin: 0;">PostgreSQL 数据库在库资料 (共 {{ resources().length }} 套)</h3>
+              <h3 style="margin: 0;">{{ i18n.t('system.resListTitle') }} (共 {{ resources().length }} 套)</h3>
               <div class="filter-tab-pills">
                 <button 
                   type="button"
@@ -740,7 +745,7 @@
         <div class="card form-card">
           <div class="card-header">
             <h3>录入并发布试卷 / 视频微课</h3>
-            <span class="text-muted">（提交后自动写入 PostgreSQL 数据库，前台 Astro 页面立即同步）</span>
+            <span class="text-muted">（{{ i18n.t('system.autoSyncFront') }}）</span>
           </div>
 
           <form (ngSubmit)="saveNewResource()" class="form-grid">
@@ -1238,7 +1243,7 @@
 
             <div class="form-actions full-width">
               <button type="button" class="btn btn-secondary" (click)="switchTab('list')">取消</button>
-              <button type="submit" class="btn btn-primary">立即发布到数据库 ➔</button>
+              <button type="submit" class="btn btn-primary">{{ i18n.t('system.publishBtn') }}</button>
             </div>
           </form>
         </div>
@@ -1252,7 +1257,7 @@
             <div class="hero-content">
               <div class="hero-tag">
                 <span class="live-dot"></span>
-                <span>PostgreSQL 实时全站数据驱动</span>
+                <span>{{ i18n.t('system.realtimeData') }}</span>
               </div>
               <h2>📊 网盘转存与网站运营监控中心</h2>
               <p>实时监控拉新转化率、各网盘渠道分布占比、资源链路存活健康度与全网热门搜索需求</p>
@@ -2165,14 +2170,14 @@
 
 
 
-          <!-- 模块 C：Go 协程多源搜索聚合与合规监控 -->
+          <!-- 模块 C：云端多源搜索聚合与探活引擎监控 -->
           <div class="card" style="box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
             <div class="card-header">
-              <h3>Go 协程多源搜索聚合与探活引擎监控</h3>
-              <span class="badge text-success">Go Fiber 引擎活跃运行中 (协程池健康)</span>
+              <h3>云端多源搜索聚合与探活引擎监控</h3>
+              <span class="badge text-success">{{ i18n.t('system.crawlerEngineActive') }}</span>
             </div>
             <div style="padding: 20px; color: #64748b; line-height: 1.8; font-size: 13px;">
-              <p style="margin: 0 0 10px 0;">基于 Go Fiber v3 的高性能协程监控模块持续守护全站资源生命周期，当前活动引擎通道：</p>
+              <p style="margin: 0 0 10px 0;">{{ i18n.t('system.crawlerEngineDesc') }}</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
                 <div style="padding: 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
                   <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px;">⚡ 夸克网盘公开资源通道</div>
