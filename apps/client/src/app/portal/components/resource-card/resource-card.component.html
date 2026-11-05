@@ -1,0 +1,107 @@
+<article class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-blue-400 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between group">
+  <!-- 左侧：类型图标徽标 + 中间信息密集流 -->
+  <div class="p-4 sm:p-5 flex items-start space-x-3.5 sm:space-x-4 flex-1 min-w-0">
+    <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl border text-center shadow-2xs group-hover:scale-105 transition-all"
+         [ngClass]="isVideo ? 'bg-gradient-to-br from-blue-50 to-indigo-100/70 border-blue-200' : (isPdf ? 'bg-gradient-to-br from-rose-50 to-red-100/70 border-rose-200' : 'bg-gradient-to-br from-slate-50 to-blue-50/70 border-slate-200')">
+      <div *ngIf="isVideo" class="flex flex-col items-center">
+        <span class="text-xl leading-none">🎬</span>
+        <span class="text-[9px] font-mono font-bold mt-1 text-blue-700">微课视频</span>
+      </div>
+      <div *ngIf="!isVideo && isPdf" class="flex flex-col items-center">
+        <span class="text-xl leading-none">📄</span>
+        <span class="text-[9px] font-mono font-bold mt-1 text-rose-600">PDF真题</span>
+      </div>
+      <div *ngIf="!isVideo && !isPdf" class="flex flex-col items-center">
+        <span class="text-xl leading-none">📚</span>
+        <span class="text-[9px] font-mono font-bold mt-1 text-slate-700">{{ resource.file_type || '资料' }}</span>
+      </div>
+    </div>
+
+    <!-- 资料详情本体 -->
+    <div class="flex-1 min-w-0 space-y-1.5">
+      <!-- 标签与状态流 -->
+      <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+        <span *ngIf="resource.stage" class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-md border border-blue-200/60">
+          {{ resource.stage }}
+        </span>
+        <span *ngIf="resource.grade" class="px-2 py-0.5 bg-slate-100 text-slate-700 font-medium rounded-md">
+          {{ resource.grade }}
+        </span>
+        <span *ngIf="resource.subject" class="px-2 py-0.5 bg-emerald-50 text-emerald-800 font-medium rounded-md border border-emerald-200/60">
+          {{ resource.subject }}
+        </span>
+        <span *ngIf="resource.edition" class="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-md border border-slate-200">
+          {{ resource.edition }}
+        </span>
+        <span *ngIf="resource.region" class="px-2 py-0.5 bg-sky-50 text-sky-700 font-medium rounded-md border border-sky-200/60">
+          📍 {{ resource.region }}
+        </span>
+        <span *ngIf="resource.is_recommended" class="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 font-bold rounded-md">
+          🔥 热门精选
+        </span>
+        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium rounded-md">
+          🟢 存活可用
+        </span>
+      </div>
+
+      <!-- 核心标题 -->
+      <h3 class="text-base sm:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+        <a [routerLink]="['/resource', resource.slug || resource.id]" class="hover:underline">
+          {{ resource.title }}
+        </a>
+      </h3>
+
+      <!-- 描述特色副标题 -->
+      <p *ngIf="resource.subtitle || resource.description" class="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+        {{ resource.subtitle || resource.description }}
+      </p>
+
+      <!-- 规格与社会认同数据 -->
+      <div class="flex flex-wrap items-center gap-3 sm:gap-4 pt-1 text-xs text-slate-400 font-mono">
+        <span class="text-slate-600 font-medium flex items-center gap-1">
+          <span>🕒</span> <strong class="text-slate-700 font-semibold">{{ formattedDate }}</strong>
+        </span>
+        <span class="text-slate-600 font-medium flex items-center gap-1">
+          <span>💾</span> 大小：<strong class="text-slate-700 font-semibold">{{ resource.file_size || '12.8 MB' }}</strong>
+        </span>
+        <span class="hidden sm:inline-flex items-center gap-1">
+          <span>👁️</span> {{ resource.view_count || 1280 }} 次查阅
+        </span>
+        <span class="text-blue-600 font-semibold flex items-center gap-1">
+          <span>⚡</span> {{ resource.save_count || 390 }} 人已极速转存
+        </span>
+        <span *ngIf="hasBaidu" class="hidden md:inline-flex px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded text-[11px]">
+          📦 包含百度网盘备用
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧：直达转化行动区 -->
+  <div class="px-4 py-3 sm:px-5 sm:py-5 bg-slate-50/80 sm:bg-transparent border-t border-slate-100 sm:border-0 flex sm:flex-row lg:flex-col items-stretch lg:items-end justify-end gap-2 flex-shrink-0">
+    <div class="flex flex-col items-stretch lg:items-end gap-1 flex-1 lg:flex-initial">
+      <a *ngIf="primaryLink"
+         [href]="primaryLink.share_url"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="py-2 px-3.5 sm:px-4 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 whitespace-nowrap bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/90 shadow-2xs hover:shadow-xs transition"
+         title="建议先保存到自己网盘：下载无损高清真题原件，可享 A4 极清打印与 4K 微课原画">
+        <span class="text-amber-500 text-xs leading-none">⚡</span>
+        <span>转存到夸克网盘</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+      </a>
+      <span class="text-[10px] text-amber-700 font-medium text-center lg:text-right hidden sm:block select-none">
+        💡 转存享无损A4打印&4K
+      </span>
+    </div>
+
+    <div class="flex items-center gap-1.5 flex-1 lg:flex-initial">
+      <a [routerLink]="['/resource', resource.slug || resource.id]"
+         class="flex-1 py-2 px-3 sm:px-3.5 text-xs font-medium text-slate-600 bg-slate-100/90 hover:bg-slate-200/90 hover:text-slate-900 border border-slate-200/60 rounded-xl transition text-center whitespace-nowrap shadow-2xs sm:shadow-none">
+        试看详情 ➔
+      </a>
+    </div>
+  </div>
+</article>

@@ -2,18 +2,23 @@ package handler
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"netdisk/api/internal/database"
 	"netdisk/api/internal/model"
 	"netdisk/api/internal/service"
 	"encoding/base64"
+	"io"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -57,6 +62,39 @@ func NormalizeStage(stage string) string {
 	}
 }
 
+// IsKnownStage 判断是否属于标准学段或常见中文学段
+func IsKnownStage(val string) bool {
+	switch strings.ToLower(strings.TrimSpace(val)) {
+	case "primary", "junior", "senior", "cert", "exam", "kindergarten",
+		"小学", "小学阶段", "小学专区",
+		"初中", "初中冲刺", "初中专区",
+		"高中", "高中专区", "高中高考专项",
+		"成人考证", "考证", "教师资格证", "教资",
+		"考公考研", "考公", "考研", "幼小衔接":
+		return true
+	default:
+		return false
+	}
+}
+
+// ExpandGradeAliases 将年级拓展为其等价别名，实现初中（初一/七年级、初二/八年级、初三/九年级）的无缝双向智能兼容
+func ExpandGradeAliases(grade string) []string {
+	g := strings.TrimSpace(grade)
+	if g == "" || g == "all" {
+		return nil
+	}
+	switch {
+	case strings.Contains(g, "七年级") || strings.Contains(g, "初一") || g == "grade-7":
+		return []string{"七年级", "初一", "初一/七年级"}
+	case strings.Contains(g, "八年级") || strings.Contains(g, "初二") || g == "grade-8":
+		return []string{"八年级", "初二", "初二/八年级"}
+	case strings.Contains(g, "九年级") || strings.Contains(g, "初三") || g == "grade-9":
+		return []string{"九年级", "初三", "初三/九年级", "中考"}
+	default:
+		return []string{g}
+	}
+}
+
 // ListPublicResources 前台公开资源列表，支持多维条件筛选
 func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 	stage := c.Query("stage")       // primary, junior, senior, cert, exam
@@ -69,8 +107,8 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 	if page < 1 {
 		page = 1
 	}
-	if pageSize < 1 || pageSize > 50 {
-		pageSize = 12
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 24
 	}
 
 	channel := c.Query("channel")
@@ -80,18 +118,38 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 		Where("channel_slug IN (SELECT slug FROM channels WHERE is_active = true)").
 		Preload("Links")
 
+	// 智能兼容：如果客户端将学段（primary, junior, senior, cert, exam 等）作为 channel 传入
 	if channel != "" && channel != "all" {
-		query = query.Where("channel_slug = ?", channel)
+		if IsKnownStage(channel) {
+			if stage == "" {
+				stage = channel
+			}
+		} else {
+			query = query.Where("channel_slug = ?", channel)
+		}
 	}
 	if stage != "" && stage != "all" {
 		stdStage := NormalizeStage(stage)
 		query = query.Where("stage = ?", stdStage)
 	}
-	if grade != "" {
-		query = query.Where("grade = ?", grade)
+	if grade != "" && grade != "all" {
+		aliases := ExpandGradeAliases(grade)
+		if len(aliases) == 1 {
+			query = query.Where("(grade = ? OR grade ILIKE ?)", aliases[0], "%"+aliases[0]+"%")
+		} else {
+			query = query.Where("grade IN (?)", aliases)
+		}
 	}
 	if subject != "" {
 		query = query.Where("subject = ?", subject)
+	}
+	edition := c.Query("edition")
+	if edition != "" && edition != "all" {
+		query = query.Where("(edition = ? OR edition ILIKE ?)", edition, "%"+edition+"%")
+	}
+	term := c.Query("term")
+	if term != "" && term != "all" {
+		query = query.Where("(term = ? OR term ILIKE ?)", term, "%"+term+"%")
 	}
 	school := c.Query("school")
 	if school != "" {
@@ -153,6 +211,74 @@ func (h *ResourceHandler) GetPublicResourceDetail(c fiber.Ctx) error {
 		"code": 200,
 		"data": res,
 	})
+}
+
+// HandleSmartRedirect 智能专属网盘短链直跳 (防失效·后台换源·302极速直达网盘)
+func (h *ResourceHandler) HandleSmartRedirect(c fiber.Ctx) error {
+	identifier := strings.TrimSpace(c.Params("id_or_slug"))
+
+	// 动态检测站点基准 URL (支持本地开发 localhost / 局域网 IP / 线上域名，以及环境变量 SITE_BASE_URL)
+	siteBase := os.Getenv("SITE_BASE_URL")
+	if siteBase == "" {
+		if origin := c.Get("Origin"); origin != "" {
+			siteBase = origin
+		} else if referer := c.Get("Referer"); referer != "" {
+			if u, err := url.Parse(referer); err == nil && u.Host != "" {
+				siteBase = fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+			}
+		}
+		if siteBase == "" {
+			host := c.Hostname()
+			if strings.Contains(host, "localhost") || strings.Contains(host, "127.0.0.1") {
+				siteBase = fmt.Sprintf("%s://%s", c.Protocol(), host)
+			} else {
+				siteBase = "https://xuebaw.com"
+			}
+		}
+	}
+	siteBase = strings.TrimRight(siteBase, "/")
+
+	if identifier == "" {
+		return c.Redirect().Status(fiber.StatusFound).To(siteBase)
+	}
+
+	var res model.Resource
+	err := database.DB.Preload("Links").
+		Where("(slug = ? OR id::text = ?) AND is_published = ?", identifier, identifier, true).
+		First(&res).Error
+
+	if err != nil {
+		// 找不到资源时，降级重定向到主页
+		return c.Redirect().Status(fiber.StatusFound).To(siteBase)
+	}
+
+	// 浏览量自增 +1
+	database.DB.Model(&res).UpdateColumn("view_count", gorm.Expr("view_count + ?", 1))
+
+	// 查找优先级最高的主网盘链接，排除已标记失效的链接
+	var targetLink *model.ResourceLink
+	for i := range res.Links {
+		l := &res.Links[i]
+		if l.Status != "invalid" && l.ShareURL != "" {
+			if l.IsPrimary {
+				targetLink = l
+				break
+			}
+			if targetLink == nil {
+				targetLink = l
+			}
+		}
+	}
+
+	// 若存在可用网盘链接，转存量自增并 302 重定向到网盘真实地址
+	if targetLink != nil && targetLink.ShareURL != "" {
+		database.DB.Model(&res).UpdateColumn("save_count", gorm.Expr("save_count + ?", 1))
+		database.DB.Model(targetLink).UpdateColumn("save_count", gorm.Expr("save_count + ?", 1))
+		return c.Redirect().Status(fiber.StatusFound).To(targetLink.ShareURL)
+	}
+
+	// 若暂无可用网盘链接，优雅降级重定向到站内落地页
+	return c.Redirect().Status(fiber.StatusFound).To(fmt.Sprintf("%s/resource/%s", siteBase, res.Slug))
 }
 
 // GetPublicResourceCover 获取资源动态封面缩略图（优先 302 重定向至 Cloudflare R2，次选本地缓存直出，避免依赖服务器底层 node/chrome）
@@ -341,6 +467,61 @@ func (h *ResourceHandler) GetPublicRelatedResources(c fiber.Ctx) error {
 	})
 }
 
+// fetchAndUploadRemoteImage 从外部网络抓取图片并转存上传至 Cloudflare R2
+func (h *ResourceHandler) fetchAndUploadRemoteImage(slug string, remoteURL string) string {
+	if h.r2 == nil || !h.r2.IsConfigured() || remoteURL == "" {
+		return remoteURL
+	}
+	// 避免对已经是 R2 域名的链接重复转存
+	if strings.Contains(remoteURL, h.r2.GetPublicURL("")) {
+		return remoteURL
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", remoteURL, nil)
+	if err != nil {
+		log.Printf("[CoverTransfer] NewRequest failed for %s: %v", remoteURL, err)
+		return remoteURL
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Referer", remoteURL)
+
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		log.Printf("[CoverTransfer] HTTP fetch failed for %s: %v", remoteURL, err)
+		return remoteURL
+	}
+	defer resp.Body.Close()
+
+	// 限制下载最大 10MB
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+	if err != nil || len(data) == 0 {
+		log.Printf("[CoverTransfer] Read body empty or error for %s: %v", remoteURL, err)
+		return remoteURL
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	ext := ".png"
+	if strings.Contains(contentType, "jpeg") || strings.Contains(contentType, "jpg") {
+		contentType = "image/jpeg"
+		ext = ".jpg"
+	} else if strings.Contains(contentType, "webp") {
+		contentType = "image/webp"
+		ext = ".webp"
+	} else {
+		contentType = "image/png"
+	}
+
+	r2Key := fmt.Sprintf("covers/%s-%d%s", slug, time.Now().Unix(), ext)
+	r2URL, err := h.r2.UploadObject(r2Key, data, contentType)
+	if err != nil {
+		log.Printf("[CoverTransfer] R2 UploadObject error for %s: %v", slug, err)
+		return remoteURL
+	}
+	log.Printf("[CoverTransfer] Successfully transferred remote cover to R2: %s -> %s", remoteURL, r2URL)
+	return r2URL
+}
+
 func (h *ResourceHandler) processCoverImage(slug string, coverImage string) string {
 	if coverImage == "" {
 		return ""
@@ -355,7 +536,7 @@ func (h *ResourceHandler) processCoverImage(slug string, coverImage string) stri
 				return ""
 			}
 			if len(decoded) > 0 && h.r2 != nil && h.r2.IsConfigured() {
-				r2Key := fmt.Sprintf("covers/%s.png", slug)
+				r2Key := fmt.Sprintf("covers/%s-%d.png", slug, time.Now().Unix())
 				r2URL, err := h.r2.UploadObject(r2Key, decoded, "image/png")
 				if err != nil {
 					log.Printf("[CoverUpload] R2 upload error for %s: %v", slug, err)
@@ -373,6 +554,39 @@ func (h *ResourceHandler) processCoverImage(slug string, coverImage string) stri
 		return ""
 	}
 	return coverImage
+}
+
+func (h *ResourceHandler) processPosterImage(slug string, posterImage string) string {
+	if posterImage == "" {
+		return ""
+	}
+	// 如果是 base64 格式宣传海报，自动解码并直传至 Cloudflare R2
+	if strings.HasPrefix(posterImage, "data:image/") {
+		parts := strings.SplitN(posterImage, ",", 2)
+		if len(parts) == 2 {
+			decoded, err := base64.StdEncoding.DecodeString(parts[1])
+			if err != nil {
+				log.Printf("[PosterUpload] Base64 decode failed for %s: %v", slug, err)
+				return ""
+			}
+			if len(decoded) > 0 && h.r2 != nil && h.r2.IsConfigured() {
+				r2Key := fmt.Sprintf("posters/%s-%d.png", slug, time.Now().Unix())
+				r2URL, err := h.r2.UploadObject(r2Key, decoded, "image/png")
+				if err != nil {
+					log.Printf("[PosterUpload] R2 upload error for %s: %v", slug, err)
+					return ""
+				}
+				log.Printf("[PosterUpload] Successfully uploaded poster for %s to R2: %s", slug, r2URL)
+				return r2URL
+			}
+		}
+		return ""
+	}
+	if len(posterImage) > 500 {
+		log.Printf("[PosterUpload] Poster image URL too long (%d chars), skipping", len(posterImage))
+		return ""
+	}
+	return posterImage
 }
 
 // AdminCreateResource 后台创建资源
@@ -395,6 +609,9 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 	// 自动将 base64 封面直传至 Cloudflare R2 并替换为公网 CDN URL
 	if res.CoverImage != "" {
 		res.CoverImage = h.processCoverImage(res.Slug, res.CoverImage)
+	}
+	if res.PosterImage != "" {
+		res.PosterImage = h.processPosterImage(res.Slug, res.PosterImage)
 	}
 
 	if err := database.DB.Create(&res).Error; err != nil {
@@ -433,6 +650,11 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 		}(res)
 	}
 
+	// Cloudflare 边缘节点缓存自动化主动刷新 (Purge Cache)
+	if h.seo != nil {
+		h.seo.PurgeForResource(&res)
+	}
+
 	return c.JSON(fiber.Map{
 		"code":    200,
 		"message": "创建成功",
@@ -440,12 +662,29 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 	})
 }
 
-// AdminListResources 后台所有资源列表（支持按频道和学段过滤）
+// AdminListResources 后台所有资源列表（支持按频道、学段、年级、分册学期、学科、教材版本、名校、搜索词和状态过滤，并实现完整服务端真分页）
 func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 	channel := c.Query("channel")
 	stage := c.Query("stage")
+	grade := strings.TrimSpace(c.Query("grade"))
+	term := strings.TrimSpace(c.Query("term"))
+	subject := strings.TrimSpace(c.Query("subject"))
+	edition := strings.TrimSpace(c.Query("edition"))
+	school := strings.TrimSpace(c.Query("school"))
+	keyword := strings.TrimSpace(c.Query("q"))
+	statusFilter := c.Query("filter") // all | invalid | reported
+
 	page, _ := strconv.Atoi(c.Query("page", "1"))
-	pageSize, _ := strconv.Atoi(c.Query("limit", "100"))
+	pageSize, _ := strconv.Atoi(c.Query("limit", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	if pageSize > 200 {
+		pageSize = 200
+	}
 
 	query := database.DB.Model(&model.Resource{})
 	if channel != "" && channel != "all" {
@@ -453,6 +692,40 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 	}
 	if stage != "" && stage != "all" {
 		query = query.Where("stage = ?", NormalizeStage(stage))
+	}
+	if grade != "" && grade != "all" {
+		aliases := ExpandGradeAliases(grade)
+		if len(aliases) == 1 {
+			query = query.Where("(grade = ? OR grade ILIKE ?)", aliases[0], "%"+aliases[0]+"%")
+		} else {
+			query = query.Where("grade IN (?)", aliases)
+		}
+	}
+	if term != "" && term != "all" {
+		query = query.Where("(term = ? OR term ILIKE ?)", term, "%"+term+"%")
+	}
+	if subject != "" && subject != "all" {
+		query = query.Where("(subject = ? OR subject ILIKE ?)", subject, "%"+subject+"%")
+	}
+	if edition != "" && edition != "all" {
+		cleanEd := strings.Split(edition, " ")[0]
+		if cleanEd == "" {
+			cleanEd = edition
+		}
+		query = query.Where("(edition = ? OR edition ILIKE ? OR edition ILIKE ?)", edition, "%"+cleanEd+"%", "%"+edition+"%")
+	}
+	if school != "" && school != "all" {
+		query = query.Where("(school = ? OR school ILIKE ?)", school, "%"+school+"%")
+	}
+	if keyword != "" {
+		likePattern := "%" + keyword + "%"
+		query = query.Where("(title ILIKE ? OR subject ILIKE ? OR grade ILIKE ? OR school ILIKE ? OR region ILIKE ?)",
+			likePattern, likePattern, likePattern, likePattern, likePattern)
+	}
+	if statusFilter == "invalid" {
+		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND resource_links.status = 'invalid')")
+	} else if statusFilter == "reported" {
+		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND resource_links.status = 'reported')")
 	}
 
 	var total int64
@@ -462,11 +735,68 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 	offset := (page - 1) * pageSize
 	query.Preload("Links").Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&list)
 
+	// 统计各频道的总数（Single Source of Truth，供后台顶部频道 Tab 展示真实数量）
+	var channelStats []struct {
+		ChannelSlug string `json:"channel_slug"`
+		Count       int64  `json:"count"`
+	}
+	database.DB.Model(&model.Resource{}).
+		Select("COALESCE(NULLIF(channel_slug, ''), 'edu') as channel_slug, count(*) as count").
+		Group("COALESCE(NULLIF(channel_slug, ''), 'edu')").
+		Scan(&channelStats)
+
+	channelCounts := fiber.Map{
+		"all":  int64(0),
+		"edu":  int64(0),
+		"book": int64(0),
+	}
+	var totalAll int64 = 0
+	for _, stat := range channelStats {
+		channelCounts[stat.ChannelSlug] = stat.Count
+		totalAll += stat.Count
+	}
+	channelCounts["all"] = totalAll
+
+	// 统计各学段总数（基于当前选中的频道，若全部则基于全局）
+	stageCountQuery := database.DB.Model(&model.Resource{})
+	if channel != "" && channel != "all" {
+		stageCountQuery = stageCountQuery.Where("channel_slug = ?", channel)
+	}
+	var stageStats []struct {
+		Stage string `json:"stage"`
+		Count int64  `json:"count"`
+	}
+	stageCountQuery.Select("stage, count(*) as count").Group("stage").Scan(&stageStats)
+	stageCounts := fiber.Map{
+		"all":     int64(0),
+		"primary": int64(0),
+		"junior":  int64(0),
+		"senior":  int64(0),
+		"cert":    int64(0),
+		"exam":    int64(0),
+	}
+	var stageChannelTotal int64 = 0
+	for _, s := range stageStats {
+		stageCounts[s.Stage] = s.Count
+		stageChannelTotal += s.Count
+	}
+	stageCounts["all"] = stageChannelTotal
+
+	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+	if totalPages < 1 {
+		totalPages = 1
+	}
+
 	return c.JSON(fiber.Map{
 		"code": 200,
 		"data": fiber.Map{
-			"items": list,
-			"total": total,
+			"items":          list,
+			"total":          total,
+			"page":           page,
+			"limit":          pageSize,
+			"total_pages":    totalPages,
+			"channel_counts": channelCounts,
+			"stage_counts":   stageCounts,
 		},
 	})
 }
@@ -498,6 +828,7 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 	existing.Description = req.Description
 	existing.Stage = NormalizeStage(req.Stage)
 	existing.Grade = req.Grade
+	existing.Term = req.Term
 	existing.Subject = req.Subject
 	existing.Edition = req.Edition
 	existing.Region = req.Region
@@ -507,6 +838,11 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 	existing.PageCount = req.PageCount
 	if req.CoverImage != "" {
 		existing.CoverImage = h.processCoverImage(existing.Slug, req.CoverImage)
+	} else {
+		existing.CoverImage = ""
+	}
+	if req.PosterImage != "" {
+		existing.PosterImage = h.processPosterImage(existing.Slug, req.PosterImage)
 	}
 	existing.IsRecommended = req.IsRecommended
 	existing.IsPublished = req.IsPublished
@@ -553,6 +889,11 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 
 	if existing.Region != "" && existing.School != "" {
 		go EnsureRegionAndSchool(database.DB, existing.Region, existing.School, existing.Stage)
+	}
+
+	// Cloudflare 边缘节点缓存自动化主动刷新
+	if h.seo != nil {
+		h.seo.PurgeForResource(&existing)
 	}
 
 	return c.JSON(fiber.Map{
@@ -620,7 +961,65 @@ func (h *ResourceHandler) AdminUploadCover(c fiber.Ctx) error {
 		req.Slug = fmt.Sprintf("cover-%d", time.Now().UnixNano())
 	}
 
-	r2URL := h.processCoverImage(req.Slug, req.ImageData)
+	var r2URL string
+	if strings.HasPrefix(req.ImageData, "http://") || strings.HasPrefix(req.ImageData, "https://") {
+		r2URL = h.fetchAndUploadRemoteImage(req.Slug, req.ImageData)
+	} else {
+		r2URL = h.processCoverImage(req.Slug, req.ImageData)
+	}
+
+	if r2URL == "" || ((strings.HasPrefix(req.ImageData, "http://") || strings.HasPrefix(req.ImageData, "https://")) && r2URL == req.ImageData && !strings.Contains(r2URL, h.r2.GetPublicURL(""))) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "封面转存失败，请确认外部图片链接有效且可公开访问",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"code": 200,
+		"data": fiber.Map{
+			"url":  r2URL,
+			"slug": req.Slug,
+		},
+	})
+}
+
+// AdminUploadPoster 后台直接上传或保存宣传海报至 Cloudflare R2
+func (h *ResourceHandler) AdminUploadPoster(c fiber.Ctx) error {
+	type UploadReq struct {
+		ResourceID string `json:"resource_id"`
+		Slug       string `json:"slug"`
+		ImageData  string `json:"image_data"`
+	}
+
+	var req UploadReq
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "请求格式错误"})
+	}
+
+	if req.ImageData == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "图片数据为空"})
+	}
+
+	if req.Slug == "" {
+		req.Slug = fmt.Sprintf("poster-%d", time.Now().UnixNano())
+	}
+
+	r2URL := h.processPosterImage(req.Slug, req.ImageData)
+	if r2URL == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "宣传海报转存至 Cloudflare R2 失败",
+		})
+	}
+
+	// 若提供了 resource_id，直接同步持久化到数据库对应资源的 poster_image 字段
+	if req.ResourceID != "" {
+		if resUUID, err := uuid.Parse(req.ResourceID); err == nil {
+			database.DB.Model(&model.Resource{}).Where("id = ?", resUUID).Update("poster_image", r2URL)
+		}
+	}
+
 	return c.JSON(fiber.Map{
 		"code": 200,
 		"data": fiber.Map{
@@ -636,6 +1035,12 @@ func (h *ResourceHandler) AdminDeleteResource(c fiber.Ctx) error {
 	resUUID, err := uuid.Parse(idStr)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效资源ID"})
+	}
+
+	// 记录待删除资源信息以通知 Cloudflare 刷新缓存
+	var delRes model.Resource
+	if err := database.DB.First(&delRes, "id = ?", resUUID).Error; err == nil && h.seo != nil {
+		h.seo.PurgeForResource(&delRes)
 	}
 
 	// 级联删除关联的链接
@@ -674,6 +1079,11 @@ func (h *ResourceHandler) AdminTogglePublish(c fiber.Ctx) error {
 				h.seo.BatchPush("all", []uuid.UUID{pushedRes.ID}, nil)
 			}
 		}(res)
+	}
+
+	// Cloudflare 边缘节点缓存自动化主动刷新
+	if h.seo != nil {
+		h.seo.PurgeForResource(&res)
 	}
 
 	return c.JSON(fiber.Map{
@@ -732,6 +1142,13 @@ func (h *ResourceHandler) AdminBatchTogglePublish(c fiber.Ctx) error {
 		}(parsedIDs)
 	}
 
+	// Cloudflare 边缘节点缓存自动化主动批量刷新
+	if h.seo != nil && len(parsedIDs) > 0 {
+		var affectedResources []model.Resource
+		database.DB.Where("id IN (?)", parsedIDs).Find(&affectedResources)
+		h.seo.PurgeForResources(affectedResources)
+	}
+
 	return c.JSON(fiber.Map{
 		"code":    200,
 		"message": "批量切换状态成功",
@@ -769,6 +1186,12 @@ func (h *ResourceHandler) AdminBatchDeleteResources(c fiber.Ctx) error {
 		})
 	}
 
+	if h.seo != nil && len(parsedIDs) > 0 {
+		var toDelete []model.Resource
+		database.DB.Where("id IN (?)", parsedIDs).Find(&toDelete)
+		h.seo.PurgeForResources(toDelete)
+	}
+
 	// 1. 级联删除关联的链接
 	database.DB.Where("resource_id IN (?)", parsedIDs).Delete(&model.ResourceLink{})
 	// 2. 批量物理删除资料
@@ -784,6 +1207,120 @@ func (h *ResourceHandler) AdminBatchDeleteResources(c fiber.Ctx) error {
 		"message": "批量删除成功",
 		"data": fiber.Map{
 			"deleted_count": len(parsedIDs),
+		},
+	})
+}
+
+// AdminBatchImportResources 跨站资料包批量导入并直接上架
+func (h *ResourceHandler) AdminBatchImportResources(c fiber.Ctx) error {
+	type ImportPayload struct {
+		AutoPublish *bool            `json:"auto_publish"`
+		Resources   []model.Resource `json:"resources"`
+	}
+
+	var req ImportPayload
+	if err := c.Bind().JSON(&req); err != nil || len(req.Resources) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "请提供有效的资料数据包",
+		})
+	}
+
+	autoPublish := true
+	if req.AutoPublish != nil {
+		autoPublish = *req.AutoPublish
+	}
+
+	importedCount := 0
+	var importedIDs []uuid.UUID
+
+	for _, item := range req.Resources {
+		cleanTitle := strings.TrimSpace(item.Title)
+		if cleanTitle == "" {
+			continue
+		}
+		item.Title = cleanTitle
+
+		// 重新生成主键与防止冲突的唯一 Slug
+		item.ID = uuid.New()
+		item.CreatedAt = time.Now()
+		item.UpdatedAt = time.Now()
+		item.Slug = fmt.Sprintf("res-%d-%s", time.Now().UnixNano(), uuid.New().String()[:8])
+		if item.ChannelSlug == "" {
+			item.ChannelSlug = "edu"
+		}
+		if item.Stage != "" {
+			item.Stage = NormalizeStage(item.Stage)
+		}
+		item.IsPublished = autoPublish
+
+		// 保证网盘目录树 FileTree 完整保留并合法存储
+		if len(item.FileTree) == 0 || string(item.FileTree) == "null" {
+			item.FileTree = datatypes.JSON([]byte("[]"))
+		}
+
+		// 封面与宣传海报转存或保持
+		if item.CoverImage != "" {
+			item.CoverImage = h.processCoverImage(item.Slug, item.CoverImage)
+		}
+		if item.PosterImage != "" {
+			item.PosterImage = h.processPosterImage(item.Slug, item.PosterImage)
+		}
+
+		// 级联处理 links
+		newLinks := make([]model.ResourceLink, 0, len(item.Links))
+		for _, l := range item.Links {
+			if strings.TrimSpace(l.ShareURL) == "" {
+				continue
+			}
+			l.ID = uuid.New()
+			l.ResourceID = item.ID
+			l.CreatedAt = time.Now()
+			l.UpdatedAt = time.Now()
+			if l.Status == "" {
+				l.Status = "active"
+			}
+			newLinks = append(newLinks, l)
+		}
+		item.Links = newLinks
+
+		// 写入数据库
+		if err := database.DB.Create(&item).Error; err != nil {
+			log.Printf("[BatchImport] Failed to create resource %s: %v", item.Title, err)
+			continue
+		}
+
+		importedCount++
+		importedIDs = append(importedIDs, item.ID)
+
+		if item.Region != "" && item.School != "" {
+			go EnsureRegionAndSchool(database.DB, item.Region, item.School, item.Stage)
+		}
+	}
+
+	// 百度/必应主动收录
+	if autoPublish && h.seo != nil && len(importedIDs) > 0 {
+		go func(ids []uuid.UUID) {
+			var seoCfg model.SeoConfig
+			if err := database.DB.Where("id = ?", "global").First(&seoCfg).Error; err == nil && seoCfg.AutoPushOnPublish {
+				h.seo.BatchPush("all", ids, nil)
+			}
+		}(importedIDs)
+	}
+
+	// Cloudflare 边缘节点缓存自动化主动批量刷新
+	if autoPublish && h.seo != nil && len(importedIDs) > 0 {
+		var importedResources []model.Resource
+		database.DB.Where("id IN (?)", importedIDs).Find(&importedResources)
+		h.seo.PurgeForResources(importedResources)
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "批量导入完成",
+		"data": fiber.Map{
+			"total":    len(req.Resources),
+			"imported": importedCount,
 		},
 	})
 }

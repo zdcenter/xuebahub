@@ -1,0 +1,185 @@
+@if (isOpen()) {
+  <!-- 半透明背景遮罩 -->
+  <div class="transfer-backdrop" (click)="close()">
+    <!-- 模态弹窗容器 -->
+    <div class="transfer-modal-card" (click)="$event.stopPropagation()">
+      
+      <!-- 弹窗顶部 Header -->
+      <div class="modal-header">
+        <div class="header-left">
+          <div class="header-icon-badge">📋</div>
+          <div>
+            <h2 class="modal-title">{{ i18n.t('transfer.modalTitle') }}</h2>
+            <p class="modal-subtitle">{{ i18n.t('transfer.modalSubtitle') }}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" (click)="close()" title="Esc">✕</button>
+      </div>
+
+      <!-- 反馈横幅提示 -->
+      @if (feedback()) {
+        <div class="feedback-banner" [class.error]="feedback()?.startsWith('❌') || feedback()?.startsWith('⚠️')">
+          <span>{{ feedback() }}</span>
+          <button type="button" class="btn-close-feedback" (click)="feedback.set(null)">✕</button>
+        </div>
+      }
+
+      <!-- 弹窗主体内容区 -->
+      <div class="modal-body">
+        
+        <!-- 1. 粘贴输入区域 -->
+        <div class="input-card">
+          <div class="input-header-row">
+            <span class="input-label">📝 粘贴资料数据包代码 / JSON 结构</span>
+            <div class="input-actions">
+              <button type="button" class="btn-action-text" (click)="readClipboard()">
+                {{ i18n.t('transfer.readClipboard') }}
+              </button>
+              <button type="button" class="btn-action-text" (click)="fillSamplePackage()">
+                {{ i18n.t('transfer.sample') }}
+              </button>
+              @if (rawText().trim()) {
+                <button type="button" class="btn-action-text danger" (click)="clear()">
+                  {{ i18n.t('transfer.clear') }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <textarea
+            id="transfer-paste-box"
+            class="transfer-textarea"
+            rows="5"
+            [ngModel]="rawText()"
+            (ngModelChange)="onTextChange($event)"
+            [placeholder]="i18n.t('transfer.pastePlaceholder')">
+          </textarea>
+        </div>
+
+        <!-- 2. 解析成功后的预览与复选表格 -->
+        @if (parsedItems().length > 0) {
+          <div class="preview-section">
+            <div class="preview-header-bar">
+              <div class="preview-stats">
+                <span class="preview-badge">
+                  ✅ {{ i18n.t('transfer.parsedSuccess').replace('{count}', parsedItems().length.toString()) }}
+                </span>
+                <span class="status-tag published">
+                  {{ i18n.t('transfer.statusPublished') }}
+                </span>
+              </div>
+              <div class="table-actions">
+                <button 
+                  type="button" 
+                  class="btn-select-all" 
+                  (click)="toggleSelectAll(!isAllSelected())">
+                  {{ isAllSelected() ? '取消全选' : '全选所有' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="preview-table-wrapper">
+              <table class="preview-table">
+                <thead>
+                  <tr>
+                    <th style="width: 44px; text-align: center;">
+                      <input 
+                        type="checkbox" 
+                        class="custom-chk"
+                        [checked]="isAllSelected()"
+                        (change)="toggleSelectAll(!isAllSelected())"
+                      />
+                    </th>
+                    <th>{{ i18n.t('transfer.colTitle') }}</th>
+                    <th style="width: 140px;">{{ i18n.t('transfer.colMeta') }}</th>
+                    <th style="width: 220px;">{{ i18n.t('transfer.colLinks') }}</th>
+                    <th style="width: 110px; text-align: center;">{{ i18n.t('transfer.colStatus') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of parsedItems(); track item.id; let idx = $index) {
+                    <tr [class.selected-row]="item.selected" (click)="toggleItem(item.id)">
+                      <td style="text-align: center;" (click)="$event.stopPropagation()">
+                        <input 
+                          type="checkbox" 
+                          class="custom-chk"
+                          [checked]="item.selected"
+                          (change)="toggleItem(item.id)"
+                        />
+                      </td>
+                      <td>
+                        <div class="title-cell">
+                          <span class="item-title">{{ item.title }}</span>
+                          @if (item.subtitle) {
+                            <span class="item-subtitle">{{ item.subtitle }}</span>
+                          }
+                        </div>
+                      </td>
+                      <td>
+                        <div class="meta-cell">
+                          <span class="stage-tag">{{ getStageLabel(item.stage) }}</span>
+                          <span class="sub-text">{{ item.grade || '' }} {{ item.term || '' }} {{ item.subject || '' }}</span>
+                          @if (item.edition) {
+                            <span class="edition-badge">{{ item.edition }}</span>
+                          }
+                        </div>
+                      </td>
+                      <td>
+                        <div class="link-cell">
+                          <span class="drive-name">
+                            📁 {{ getDriveLabel(item.primary_drive) }}
+                          </span>
+                          <span class="link-url" [title]="item.primary_url">{{ item.primary_url }}</span>
+                          @if (item.extract_code) {
+                            <span class="pwd-tag">提取码: {{ item.extract_code }}</span>
+                          }
+                          @if (item.link_count > 1) {
+                            <span class="extra-links-tag">+{{ item.link_count - 1 }} 备用网盘</span>
+                          }
+                        </div>
+                      </td>
+                      <td style="text-align: center;">
+                        <span class="badge-publish-ready">
+                          🟢 已设为上架
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+      </div>
+
+      <!-- 弹窗底部操作 Footer -->
+      <div class="modal-footer">
+        <div class="footer-left-info">
+          @if (parsedItems().length > 0) {
+            <span>
+              已选择 <strong>{{ getSelectedCount() }}</strong> / {{ parsedItems().length }} 套资料
+            </span>
+          }
+        </div>
+        <div class="footer-buttons">
+          <button type="button" class="btn-cancel" (click)="close()">
+            {{ i18n.t('common.cancel') }}
+          </button>
+          <button 
+            type="button" 
+            class="btn-submit-import" 
+            [disabled]="isSubmitting() || getSelectedCount() === 0"
+            (click)="submitImport()">
+            @if (isSubmitting()) {
+              <span>⏳ {{ i18n.t('transfer.importing') }}</span>
+            } @else {
+              <span>{{ i18n.t('transfer.btnImport').replace('{count}', getSelectedCount().toString()) }}</span>
+            }
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+}

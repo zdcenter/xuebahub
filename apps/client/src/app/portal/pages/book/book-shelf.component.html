@@ -1,0 +1,226 @@
+<div class="min-h-screen bg-slate-50/60 pb-16">
+  <!-- 顶部 Banner 英雄区：数字图书馆氛围 -->
+  <div class="bg-gradient-to-r from-emerald-800 via-teal-700 to-slate-900 text-white relative overflow-hidden border-b border-emerald-900/30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative z-10">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold mb-3 backdrop-blur-md">
+            <span>📖</span> 全国统编标准教材库 · 2026 最新官方审定版
+          </div>
+          <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+            <span>统编电子教材与课本数字书架</span>
+          </h1>
+          <p class="mt-2 text-sm sm:text-base text-emerald-100/90 max-w-2xl leading-relaxed">
+            涵盖小学一年级至高中三年级全学科教材。全网主流版本（人教版、北师大版、苏教版等）矢量级高清 PDF，支持手机 APP 免下载翻页阅读与原版 A4 高清双面打印。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 五维步进联动极简筛选器容器 -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-20">
+    <div class="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200/90 p-4 sm:p-6 space-y-3.5 backdrop-blur-md">
+      
+      <!-- 维度 1: 学段 (Stage) -->
+      <div class="flex items-start sm:items-center text-xs gap-2">
+        <span class="font-extrabold text-slate-700 w-16 sm:w-20 shrink-0 flex items-center gap-1 pt-1 sm:pt-0">
+          <span>🎓</span> 学段专区:
+        </span>
+        <div class="flex-1 flex flex-wrap gap-1.5">
+          <button (click)="setFilter('stage', 'all')"
+                  [class]="stageParam() === 'all' ? 'bg-emerald-700 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                  class="px-3 py-1 rounded-lg transition cursor-pointer">
+            全部学段
+          </button>
+          <button *ngFor="let st of stages()"
+                  (click)="setFilter('stage', st.slug)"
+                  [class]="stageParam() === st.slug ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                  class="px-3 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
+            <span>{{ st.icon || '📚' }}</span>
+            <span>{{ st.name }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 维度 2: 年级 (Grade) - 自适应联动 -->
+      <div class="flex items-start sm:items-center text-xs gap-2 border-t border-slate-100 pt-3">
+        <span class="font-extrabold text-slate-700 w-16 sm:w-20 shrink-0 flex items-center gap-1 pt-1 sm:pt-0">
+          <span>🎒</span> 年级适用:
+        </span>
+        <div class="flex-1 flex flex-wrap gap-1.5">
+          <button (click)="setFilter('grade', '')"
+                  [class]="!gradeParam() ? 'bg-emerald-700 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                  class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+            全部年级
+          </button>
+          <button *ngFor="let g of availableGrades()"
+                  (click)="setFilter('grade', g.name)"
+                  [class]="gradeParam() === g.name ? 'bg-emerald-700 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                  class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+            {{ g.name }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 维度 3: 学科 (Subject) - 自适应联动 -->
+      <div class="flex items-start sm:items-center text-xs gap-2 border-t border-slate-100 pt-3">
+        <span class="font-extrabold text-slate-700 w-16 sm:w-20 shrink-0 flex items-center gap-1 pt-1 sm:pt-0">
+          <span>📖</span> 教学科目:
+        </span>
+        <div class="flex-1 flex flex-wrap gap-1.5">
+          <button (click)="setFilter('subject', '')"
+                  [class]="!subjectParam() ? 'bg-emerald-700 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                  class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+            全部学科
+          </button>
+          <button *ngFor="let s of availableSubjects()"
+                  (click)="setFilter('subject', s.name)"
+                  [class]="subjectParam() === s.name ? 'bg-emerald-700 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                  class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
+            <span>{{ s.icon }}</span>
+            <span>{{ s.name }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 维度 4: 教材版本 (Edition) -->
+      <div class="flex items-start sm:items-center text-xs gap-2 border-t border-slate-100 pt-3">
+        <span class="font-extrabold text-slate-700 w-16 sm:w-20 shrink-0 flex items-center gap-1 pt-1 sm:pt-0">
+          <span>📚</span> 教材版本:
+        </span>
+        <div class="flex-1 flex flex-wrap gap-1.5">
+          <button (click)="setFilter('edition', '')"
+                  [class]="!editionParam() ? 'bg-emerald-700 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                  class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+            全部版本
+          </button>
+          <button *ngFor="let e of availableEditions()"
+                  (click)="setFilter('edition', e.name)"
+                  [class]="editionParam() === e.name ? 'bg-emerald-700 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                  class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
+            <span>{{ e.icon }}</span>
+            <span>{{ e.name }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 当前激活条件指示栏与重置 -->
+      <div *ngIf="stageParam() || gradeParam() || subjectParam() || editionParam()"
+           class="flex items-center justify-between text-xs pt-2.5 border-t border-slate-100 text-slate-500">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="font-bold text-slate-700">当前筛选条件:</span>
+          <span *ngIf="stageParam()" class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">
+            学段: {{ stageParam() }}
+          </span>
+          <span *ngIf="gradeParam()" class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">
+            年级: {{ gradeParam() }}
+          </span>
+          <span *ngIf="subjectParam()" class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">
+            学科: {{ subjectParam() }}
+          </span>
+          <span *ngIf="editionParam()" class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">
+            版本: {{ editionParam() }}
+          </span>
+        </div>
+        <button (click)="resetAllFilters()" class="text-xs text-rose-600 hover:text-rose-700 font-bold hover:underline shrink-0 cursor-pointer">
+          ✕ 清空全部筛选
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 数字书架主列表展示区 -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">📚</span>
+        <h2 class="text-lg sm:text-xl font-black text-slate-900">
+          {{ subjectParam() ? subjectParam() + '课本书架' : '精选正版教材书库' }}
+        </h2>
+        <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+          共 {{ totalCount() }} 本在库教材
+        </span>
+      </div>
+      <div class="text-xs text-slate-400 hidden sm:block">
+        💡 提示：点击任意课本封面即可查阅高清目录试读与获取夸克极速转存链接
+      </div>
+    </div>
+
+    <!-- 课本卡片网格 -->
+    <div *ngIf="books().length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+      <app-book-card *ngFor="let b of books()" [resource]="b"></app-book-card>
+    </div>
+
+    <!-- 分页导航条 (Pagination) -->
+    <div *ngIf="totalPages() > 1" class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200/80 pt-6">
+      <div class="text-xs sm:text-sm text-slate-500 font-medium">
+        显示第 <span class="text-slate-800 font-bold">{{ (page() - 1) * pageSize() + 1 }}</span> 至 
+        <span class="text-slate-800 font-bold">{{ Math.min(page() * pageSize(), totalCount()) }}</span> 本 · 
+        共 <span class="text-slate-800 font-bold">{{ totalCount() }}</span> 本教材 · 
+        第 <span class="text-emerald-700 font-bold">{{ page() }}</span> / {{ totalPages() }} 页
+      </div>
+
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <button (click)="onPageChange(page() - 1)"
+                [disabled]="page() <= 1"
+                class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer">
+          <span>‹</span> 上一页
+        </button>
+
+        <ng-container *ngFor="let p of visiblePages()">
+          <span *ngIf="p === -1" class="px-2 text-slate-400 font-bold text-xs">...</span>
+          <button *ngIf="p !== -1"
+                  (click)="onPageChange(p)"
+                  [class]="page() === p ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs font-bold' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 font-medium'"
+                  class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border text-xs sm:text-sm transition flex items-center justify-center cursor-pointer">
+            {{ p }}
+          </button>
+        </ng-container>
+
+        <button (click)="onPageChange(page() + 1)"
+                [disabled]="page() >= totalPages()"
+                class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer">
+          下一页 <span>›</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 空数据智能导流与友好反馈 -->
+    <div *ngIf="!isLoading() && books().length === 0"
+         class="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-16 text-center max-w-xl mx-auto shadow-xs my-8">
+      <div class="w-16 h-16 mx-auto mb-4 bg-emerald-50 rounded-2xl flex items-center justify-center text-3xl">
+        {{ stageParam() === 'cert' ? '🎓' : (stageParam() === 'exam' ? '🏛️' : '📖') }}
+      </div>
+      <h3 class="text-base sm:text-lg font-bold text-slate-800 mb-2">
+        {{ stageParam() === 'cert' ? '电子课本库暂未收录教师资格证教科书' : (stageParam() === 'exam' ? '电子课本库暂未收录公考考研专用教材' : '当前筛选条件下暂无对应的课本') }}
+      </h3>
+      <p class="text-xs sm:text-sm text-slate-500 mb-6 leading-relaxed">
+        <span *ngIf="stageParam() === 'cert'">
+          教师资格证（科目一综合素质、科目二教育知识、科目三学科知识）历年真题与冲刺笔记已收录在<strong class="text-emerald-700">【教师资格专区】</strong>。
+        </span>
+        <span *ngIf="stageParam() === 'exam'">
+          公务员国考/省考行测申论与考研政治英语真题核心资料已收录在<strong class="text-emerald-700">【考公考研专区】</strong>。
+        </span>
+        <span *ngIf="stageParam() !== 'cert' && stageParam() !== 'exam'">
+          你可以尝试清空部分年级或版本限制，或者直接在后台录入上传对应的正版教材资源。
+        </span>
+      </p>
+      <div class="flex justify-center gap-3 flex-wrap">
+        <a *ngIf="stageParam() === 'cert'" routerLink="/cert"
+           class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5">
+          <span>🎓 前往教师资格证专区</span>
+        </a>
+        <a *ngIf="stageParam() === 'exam'" routerLink="/exam"
+           class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5">
+          <span>🏛️ 前往考公考研专区</span>
+        </a>
+        <button (click)="resetAllFilters()"
+                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer">
+          🔄 重置所有筛选
+        </button>
+      </div>
+    </div>
+  </main>
+</div>

@@ -120,15 +120,17 @@ CREATE TABLE IF NOT EXISTS resources (
     
     -- 核心维度定位（支持高效检索与TDK生成）
     stage VARCHAR(30) NOT NULL DEFAULT 'general', -- primary, junior, senior, cert, exam, tools, games
-    grade VARCHAR(30),                            -- 一年级, 二年级 ... 初三, 高一, 通用, 平台分类
+    grade VARCHAR(30),                            -- 一年级, 二年级 ... 初三, 高一, 通用
+    term VARCHAR(30) DEFAULT '',                  -- 分册/学期：上册, 下册, 必修一, 选择性必修一
     subject VARCHAR(30),                          -- 语文, 数学, 英语, 物理, 素材类型, 游戏类型
     edition VARCHAR(50),                          -- 人教版, 北师大版, 统编版, 软件格式, 游戏版本
     region VARCHAR(100) DEFAULT '',               -- 所属省市地区（如：广西-柳州）
     school VARCHAR(100) DEFAULT '',               -- 归属名校/命题单位（如：柳州十二中）
     category_id INT REFERENCES categories(id) ON DELETE SET NULL,
     
-    -- 诱惑力核心：试卷真实试看展示与转化物料
+    -- 诱惑力核心：出版物真实书皮封面与独立营销海报
     cover_image VARCHAR(500),
+    poster_image TEXT,
     preview_images JSONB DEFAULT '[]'::jsonb, -- 试卷前1~3页高清预览图数组，建立极强信任感
     
     -- 文件属性
@@ -238,34 +240,80 @@ CREATE INDEX IF NOT EXISTS idx_netdisk_accounts_drive_type ON netdisk_accounts(d
 -- --------------------------------------------------------------------
 -- 初始化预置分类与种子数据
 -- --------------------------------------------------------------------
-INSERT INTO categories (name, slug, type, sort_order, is_hot) VALUES
-('小学阶段', 'primary', 'stage', 1, true),
-('初中阶段', 'junior', 'stage', 2, true),
-('高中阶段', 'senior', 'stage', 3, true),
-('成人考证', 'cert', 'stage', 4, true),
-('考公考研', 'exam', 'stage', 5, true)
-ON CONFLICT (slug) DO NOTHING;
+-- 初始化预置标准化 K12 教材分类体系字典数据
+-- --------------------------------------------------------------------
+-- 1. 学段 (stage)
+INSERT INTO categories (name, slug, type, sort_order, icon, is_hot) VALUES
+('小学阶段', 'primary', 'stage', 1, '🎓', true),
+('初中阶段', 'junior', 'stage', 2, '🏫', true),
+('高中阶段', 'senior', 'stage', 3, '🏛️', true),
+('幼小衔接', 'kindergarten', 'stage', 4, '🧸', false),
+('教师资格证', 'cert', 'stage', 5, '📜', true),
+('考公考研', 'exam', 'stage', 6, '🎯', true)
+ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, icon = EXCLUDED.icon, is_hot = EXCLUDED.is_hot;
 
-INSERT INTO categories (name, slug, type, sort_order) VALUES
-('一年级', 'grade-1', 'grade', 1),
-('二年级', 'grade-2', 'grade', 2),
-('三年级', 'grade-3', 'grade', 3),
-('四年级', 'grade-4', 'grade', 4),
-('五年级', 'grade-5', 'grade', 5),
-('六年级', 'grade-6', 'grade', 6),
-('初一/七年级', 'grade-7', 'grade', 7),
-('初二/八年级', 'grade-8', 'grade', 8),
-('初三/中考冲刺', 'grade-9', 'grade', 9)
-ON CONFLICT (slug) DO NOTHING;
+-- 2. 年级 (grade)
+INSERT INTO categories (name, slug, type, sort_order, icon, is_hot) VALUES
+('一年级', 'grade-1', 'grade', 1, '🎒', true),
+('二年级', 'grade-2', 'grade', 2, '🎒', true),
+('三年级', 'grade-3', 'grade', 3, '🎒', true),
+('四年级', 'grade-4', 'grade', 4, '🎒', true),
+('五年级', 'grade-5', 'grade', 5, '🎒', true),
+('六年级', 'grade-6', 'grade', 6, '🎒', true),
+('初一/七年级', 'grade-7', 'grade', 7, '🎒', true),
+('初二/八年级', 'grade-8', 'grade', 8, '🎒', true),
+('初三/九年级', 'grade-9', 'grade', 9, '🎒', true),
+('高一', 'grade-10', 'grade', 10, '🎒', true),
+('高二', 'grade-11', 'grade', 11, '🎒', true),
+('高三', 'grade-12', 'grade', 12, '🎒', true)
+ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, icon = EXCLUDED.icon, is_hot = EXCLUDED.is_hot;
 
-INSERT INTO categories (name, slug, type, sort_order) VALUES
-('语文', 'subject-chinese', 'subject', 1),
-('数学', 'subject-math', 'subject', 2),
-('英语', 'subject-english', 'subject', 3),
-('奥数与思维培优', 'subject-olympiad', 'subject', 4),
-('教师资格证', 'subject-ntce', 'subject', 5),
-('国家公务员与省考', 'subject-gwy', 'subject', 6)
-ON CONFLICT (slug) DO NOTHING;
+-- 3. 学期 / 分册 (term)
+INSERT INTO categories (name, slug, type, sort_order, icon, is_hot) VALUES
+('上册 (秋季)', 'term-up', 'term', 1, '🍂', true),
+('下册 (春季)', 'term-down', 'term', 2, '🌸', true),
+('全一册', 'term-full', 'term', 3, '📘', false),
+('必修·第一册', 'term-bx-1', 'term', 4, '📕', true),
+('必修·第二册', 'term-bx-2', 'term', 5, '📕', true),
+('必修·第三册', 'term-bx-3', 'term', 6, '📕', false),
+('选择性必修·第一册', 'term-xx-1', 'term', 7, '📗', true),
+('选择性必修·第二册', 'term-xx-2', 'term', 8, '📗', false),
+('选择性必修·第三册', 'term-xx-3', 'term', 9, '📗', false)
+ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, icon = EXCLUDED.icon, is_hot = EXCLUDED.is_hot;
+
+-- 4. 学科 (subject)
+INSERT INTO categories (name, slug, type, sort_order, icon, is_hot) VALUES
+('语文', 'subject-chinese', 'subject', 1, '📖', true),
+('数学', 'subject-math', 'subject', 2, '📐', true),
+('英语', 'subject-english', 'subject', 3, '🔤', true),
+('科学', 'subject-science', 'subject', 4, '🔬', true),
+('道德与法治', 'subject-morality', 'subject', 5, '⚖️', true),
+('物理', 'subject-physics', 'subject', 6, '⚡', true),
+('化学', 'subject-chemistry', 'subject', 7, '🧪', true),
+('生物', 'subject-biology', 'subject', 8, '🧬', true),
+('历史', 'subject-history', 'subject', 9, '📜', false),
+('地理', 'subject-geography', 'subject', 10, '🌍', false),
+('思想政治', 'subject-politics', 'subject', 11, '🏛️', false),
+('信息技术/编程', 'subject-it', 'subject', 12, '💻', false),
+('奥数与思维培优', 'subject-olympiad', 'subject', 13, '🧠', true)
+ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, icon = EXCLUDED.icon, is_hot = EXCLUDED.is_hot;
+
+-- 5. 教材版本 (edition)
+INSERT INTO categories (name, slug, type, sort_order, icon, is_hot) VALUES
+('人教版 (教育部统编)', 'edition-renjiao', 'edition', 1, '📚', true),
+('北师大版 (BNU)', 'edition-beishida', 'edition', 2, '📚', true),
+('苏教版 (江苏凤凰)', 'edition-sujiao', 'edition', 3, '📚', true),
+('外研版 (英语)', 'edition-waiyan', 'edition', 4, '🔤', true),
+('译林版 (英语)', 'edition-yilin', 'edition', 5, '🔤', true),
+('沪教版 (上海教育)', 'edition-hujiao', 'edition', 6, '📚', false),
+('鲁教版 (山东教育)', 'edition-lujiao', 'edition', 7, '📚', false),
+('冀教版 (河北教育)', 'edition-jijiao', 'edition', 8, '📚', false),
+('湘教版 (湖南教育)', 'edition-xiangjiao', 'edition', 9, '📚', false),
+('粤教版 (广东教育)', 'edition-yuejiao', 'edition', 10, '📚', false),
+('仁爱版 (英语)', 'edition-renai', 'edition', 11, '🔤', false),
+('教科版 (科学为主)', 'edition-jiaoke', 'edition', 12, '🔬', false),
+('浙教版 (浙江教育)', 'edition-zhejiao', 'edition', 13, '📚', false)
+ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order, icon = EXCLUDED.icon, is_hot = EXCLUDED.is_hot;
 
 -- --------------------------------------------------------------------
 -- 初始化预置重点地区与名校字典数据

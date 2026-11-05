@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -449,6 +450,9 @@ func (s *SeoService) GetStats() (map[string]interface{}, error) {
 		"total_logs":          totalLogs,
 		"success_logs":        successLogs,
 		"latest_logs":         latestLogs,
+		"cf_purge_active":     cfg.CfPurgeActive,
+		"cf_configured":       (cfg.CfZoneID != "" && cfg.CfApiToken != "") || (os.Getenv("CLOUDFLARE_ZONE_ID") != "" && os.Getenv("CLOUDFLARE_API_TOKEN") != ""),
+		"last_cf_purge_at":    cfg.LastCfPurgeAt,
 	}, nil
 }
 
@@ -487,4 +491,192 @@ func (s *SeoService) GenerateSitemapXML() (string, error) {
 
 	sb.WriteString(`</urlset>`)
 	return sb.String(), nil
+}
+
+// CloudflarePurgeRequest Cloudflare Cache Purge 请求载荷
+type CloudflarePurgeRequest struct {
+	PurgeEverything bool     `json:"purge_everything,omitempty"`
+	Files           []string `json:"files,omitempty"`
+}
+
+// CloudflarePurgeResponse Cloudflare 接口返回
+type CloudflarePurgeResponse struct {
+	Success  bool     `json:"success"`
+	Errors   []any    `json:"errors"`
+	Messages []string `json:"messages"`
+}
+
+// PurgeCloudflareCache 异步或同步调用 Cloudflare 免费 Cache Purge API 刷新边缘节点
+func (s *SeoService) PurgeCloudflareCache(zoneID, apiToken string, urls []string, purgeAll bool) (string, error) {
+	if zoneID == "" {
+		zoneID = os.Getenv("CLOUDFLARE_ZONE_ID")
+		if zoneID == "" {
+			zoneID = os.Getenv("CF_ZONE_ID")
+		}
+	}
+	if apiToken == "" {
+		apiToken = os.Getenv("CLOUDFLARE_API_TOKEN")
+		if apiToken == "" {
+			apiToken = os.Getenv("CF_API_TOKEN")
+		}
+	}
+
+	if zoneID == "" || apiToken == "" {
+		return "未配置 Cloudflare Zone ID 或 API Token，跳过边缘刷新", nil
+	}
+
+	endpoint := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/purge_cache", zoneID)
+
+	if purgeAll {
+		reqBody, _ := json.Marshal(CloudflarePurgeRequest{PurgeEverything: true})
+		httpReq, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(reqBody))
+		if err != nil {
+			return "", err
+		}
+		httpReq.Header.Set("Authorization", "Bearer "+apiToken)
+		httpReq.Header.Set("Content-Type", "application/json")
+
+		resp, err := s.client.Do(httpReq)
+		if err != nil {
+			return "", fmt.Errorf("请求 Cloudflare Purge API 失败: %w", err)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		var cfResp CloudflarePurgeResponse
+		_ = json.Unmarshal(body, &cfResp)
+		if !cfResp.Success && resp.StatusCode >= 400 {
+			return string(body), fmt.Errorf("Cloudflare Purge 全部失败 (HTTP %d): %s", resp.StatusCode, string(body))
+		}
+		return "已成功刷新 Cloudflare 全站边缘节点缓存", nil
+	}
+
+	if len(urls) == 0 {
+		return "无待刷新 URL", nil
+	}
+
+	// Cloudflare 免费版单次最多允许 30 个 URL，按 30 批次分片刷新
+	batchSize := 30
+	var successCount int
+	for i := 0; i < len(urls); i += batchSize {
+		end := i + batchSize
+		if end > len(urls) {
+			end = len(urls)
+		}
+		batch := urls[i:end]
+
+		reqBody, _ := json.Marshal(CloudflarePurgeRequest{Files: batch})
+		httpReq, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(reqBody))
+		if err != nil {
+			continue
+		}
+		httpReq.Header.Set("Authorization", "Bearer "+apiToken)
+		httpReq.Header.Set("Content-Type", "application/json")
+
+		resp, err := s.client.Do(httpReq)
+		if err != nil {
+			log.Printf("[CloudflarePurge] 批次刷新失败: %v", err)
+			continue
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		var cfResp CloudflarePurgeResponse
+		_ = json.Unmarshal(body, &cfResp)
+		if cfResp.Success || resp.StatusCode < 400 {
+			successCount += len(batch)
+		} else {
+			log.Printf("[CloudflarePurge] 批次刷新返回异常 (HTTP %d): %s", resp.StatusCode, string(body))
+		}
+	}
+
+	return fmt.Sprintf("已成功通知 Cloudflare 刷新 %d/%d 个边缘节点 URL 缓存", successCount, len(urls)), nil
+}
+
+// PurgeForResource 根据单条资源的更新/发布/下架，自动推导并刷新相关边缘页面
+func (s *SeoService) PurgeForResource(res *model.Resource) {
+	if res == nil {
+		return
+	}
+	cfg, err := s.GetConfig()
+	if err != nil || !cfg.CfPurgeActive {
+		return
+	}
+
+	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
+	if sitePrefix == "" {
+		sitePrefix = "https://xuebaw.com"
+	}
+
+	urls := []string{
+		fmt.Sprintf("%s/resource/%s", sitePrefix, res.Slug),
+		fmt.Sprintf("%s/", sitePrefix),
+		fmt.Sprintf("%s/sitemap.xml", sitePrefix),
+	}
+	if res.Stage != "" {
+		urls = append(urls, fmt.Sprintf("%s/%s", sitePrefix, res.Stage))
+	}
+	if res.ChannelSlug != "" && res.ChannelSlug != "all" && res.ChannelSlug != res.Stage {
+		urls = append(urls, fmt.Sprintf("%s/%s", sitePrefix, res.ChannelSlug))
+	}
+
+	go func() {
+		msg, err := s.PurgeCloudflareCache(cfg.CfZoneID, cfg.CfApiToken, urls, false)
+		if err != nil {
+			log.Printf("[CloudflarePurge] 资料「%s」边缘缓存刷新异常: %v", res.Title, err)
+		} else {
+			log.Printf("[CloudflarePurge] 资料「%s」%s", res.Title, msg)
+			now := time.Now()
+			s.db.Model(&model.SeoConfig{}).Where("id = ?", "global").Update("last_cf_purge_at", &now)
+		}
+	}()
+}
+
+// PurgeForResources 批量导入或批量更新时刷新相关 URL
+func (s *SeoService) PurgeForResources(resources []model.Resource) {
+	if len(resources) == 0 {
+		return
+	}
+	cfg, err := s.GetConfig()
+	if err != nil || !cfg.CfPurgeActive {
+		return
+	}
+
+	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
+	if sitePrefix == "" {
+		sitePrefix = "https://xuebaw.com"
+	}
+
+	urlMap := make(map[string]bool)
+	var urls []string
+
+	addUrl := func(u string) {
+		if !urlMap[u] {
+			urlMap[u] = true
+			urls = append(urls, u)
+		}
+	}
+
+	addUrl(fmt.Sprintf("%s/", sitePrefix))
+	addUrl(fmt.Sprintf("%s/sitemap.xml", sitePrefix))
+
+	for _, r := range resources {
+		addUrl(fmt.Sprintf("%s/resource/%s", sitePrefix, r.Slug))
+		if r.Stage != "" {
+			addUrl(fmt.Sprintf("%s/%s", sitePrefix, r.Stage))
+		}
+		if r.ChannelSlug != "" && r.ChannelSlug != "all" && r.ChannelSlug != r.Stage {
+			addUrl(fmt.Sprintf("%s/%s", sitePrefix, r.ChannelSlug))
+		}
+	}
+
+	go func() {
+		msg, err := s.PurgeCloudflareCache(cfg.CfZoneID, cfg.CfApiToken, urls, false)
+		if err != nil {
+			log.Printf("[CloudflarePurge] 批量边缘缓存刷新异常: %v", err)
+		} else {
+			log.Printf("[CloudflarePurge] %s", msg)
+			now := time.Now()
+			s.db.Model(&model.SeoConfig{}).Where("id = ?", "global").Update("last_cf_purge_at", &now)
+		}
+	}()
 }

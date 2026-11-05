@@ -23,9 +23,9 @@ type AdminUser struct {
 // Category 分类与学段年级字典
 type Category struct {
 	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name      string    `gorm:"type:varchar(50);not null" json:"name"`
-	Slug      string    `gorm:"type:varchar(50);uniqueIndex;not null" json:"slug"`
-	Type      string    `gorm:"type:varchar(30);index;not null" json:"type"` // stage, grade, subject, edition
+	Name      string    `gorm:"type:varchar(100);not null" json:"name"`
+	Slug      string    `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
+	Type      string    `gorm:"type:varchar(30);index;not null" json:"type"` // stage, grade, term, subject, edition, tag
 	ParentID  *uint     `json:"parent_id"`
 	SortOrder int       `gorm:"default:0" json:"sort_order"`
 	Icon      string    `gorm:"type:varchar(100)" json:"icon"`
@@ -36,7 +36,7 @@ type Category struct {
 // Channel 顶级频道模型（学习教辅备考）
 type Channel struct {
 	ID          uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
-	Slug        string    `gorm:"type:varchar(50);uniqueIndex;not null" json:"slug"` // edu
+	Slug        string    `gorm:"type:varchar(50);uniqueIndex;not null" json:"slug"` // edu, textbook
 	Name        string    `gorm:"type:varchar(100);not null" json:"name"`
 	Icon        string    `gorm:"type:varchar(50);default:'📦'" json:"icon"`
 	Description string    `gorm:"type:text" json:"description"`
@@ -50,12 +50,13 @@ type Channel struct {
 type Resource struct {
 	ID            uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	Slug          string         `gorm:"type:varchar(120);uniqueIndex;not null" json:"slug"`
-	ChannelSlug   string         `gorm:"type:varchar(50);default:'edu';index" json:"channel_slug"` // 所属顶级频道 slug (如: edu)
+	ChannelSlug   string         `gorm:"type:varchar(50);default:'edu';index" json:"channel_slug"` // 所属顶级频道 slug (如: edu, textbook)
 	Title         string         `gorm:"type:varchar(255);not null;index" json:"title"`
 	Subtitle      string         `gorm:"type:varchar(255)" json:"subtitle"`
 	Description   string         `gorm:"type:text" json:"description"`
 	Stage         string         `gorm:"type:varchar(30);index;default:'general'" json:"stage"` // primary, junior, senior, cert, exam
 	Grade         string         `gorm:"type:varchar(30);index" json:"grade"`                   // 一年级, 二年级, 初三, 高一, 通用
+	Term          string         `gorm:"type:varchar(30);index;default:''" json:"term"`         // 分册/学期，如 上册, 下册, 必修一
 	Subject       string         `gorm:"type:varchar(30);index" json:"subject"`                 // 语文, 数学, 英语, 物理, 化学等
 	Edition       string         `gorm:"type:varchar(50)" json:"edition"`                       // 人教版, 北师大版, 统编版等
 	Region        string         `gorm:"type:varchar(100);index" json:"region"`                // 城市/地区，如 广西-柳州
@@ -63,6 +64,7 @@ type Resource struct {
 	CategoryID    *uint          `json:"category_id"`
 	Category      *Category      `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	CoverImage    string         `gorm:"type:text" json:"cover_image"`
+	PosterImage   string         `gorm:"type:text" json:"poster_image"`
 	PreviewImages datatypes.JSON `gorm:"type:jsonb;default:'[]'" json:"preview_images"` // 试卷前1~3页高清无水印图
 	FileType      string         `gorm:"type:varchar(20);default:'PDF'" json:"file_type"`
 	FileSize      string         `gorm:"type:varchar(50)" json:"file_size"`
@@ -276,6 +278,9 @@ type SiteSetting struct {
 	AnnouncementURL    string    `gorm:"type:varchar(500)" json:"announcement_url"`
 	AnnouncementBadge  string    `gorm:"type:varchar(50);default:'HOT'" json:"announcement_badge"`
 	AnnouncementType   string    `gorm:"type:varchar(30);default:'blue'" json:"announcement_type"` // blue, amber, emerald, rose
+	MemberSystemEnabled bool     `gorm:"default:false" json:"member_system_enabled"`
+	TaobaoShopURL       string   `gorm:"type:varchar(500);default:''" json:"taobao_shop_url"`
+	QuotaNoticeText     string   `gorm:"type:varchar(500);default:'今日免费获取额度已达上限，输入 VIP 卡密或登录账号即可畅享高速无限下载！'" json:"quota_notice_text"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
 
@@ -361,6 +366,12 @@ type SeoConfig struct {
 	LastPushAt        *time.Time `json:"last_push_at"`                                // 最近一次推送时间
 	BaiduRemainQuota  int        `gorm:"default:100000" json:"baidu_remain_quota"`     // 百度接口返回的今日剩余配额
 	UpdatedAt         time.Time  `json:"updated_at"`
+
+	// Cloudflare 边缘节点缓存主动刷新配置 (CF Purge API 100% 永久免费)
+	CfZoneID          string     `gorm:"type:varchar(100)" json:"cf_zone_id"`          // Cloudflare Zone ID (区域标识)
+	CfApiToken        string     `gorm:"type:varchar(150)" json:"cf_api_token"`        // Cloudflare API Token (具有 Cache Purge 权限)
+	CfPurgeActive     bool       `gorm:"default:true" json:"cf_purge_active"`          // 发布/更新/下架资料时是否自动调用 CF API 刷新边缘缓存
+	LastCfPurgeAt     *time.Time `json:"last_cf_purge_at"`                             // 最近一次 CF 缓存刷新时间
 }
 
 // SeoPushLog 搜索引擎收录推送历史流水模型
@@ -375,4 +386,64 @@ type SeoPushLog struct {
 	ErrorMessage  string         `gorm:"type:text" json:"error_message"`
 	CreatedAt     time.Time      `json:"created_at"`
 }
+
+// MemberLevel 会员角色等级与权益配置模型 (支持后台自定义增删改、额度调整与启停)
+type MemberLevel struct {
+	ID          string    `gorm:"type:varchar(50);primaryKey" json:"id"` // 如: guest, user, vip_month, vip_year, vip_lifetime
+	Name        string    `gorm:"type:varchar(100);not null" json:"name"` // 角色名称: 游客访问, 普通会员, 学霸月卡VIP, 尊享年卡VIP, 终身至尊VIP
+	DailyQuota  int       `gorm:"default:5;not null" json:"daily_quota"` // 每日直达/获取额度 (-1 为无限制)
+	Color       string    `gorm:"type:varchar(30);default:'slate'" json:"color"` // 标识颜色: slate, blue, emerald, amber, purple, rose
+	BadgeText   string    `gorm:"type:varchar(30);default:'FREE'" json:"badge_text"` // 角标勋章: FREE, VIP, SVIP, PRO
+	PriceHint   string    `gorm:"type:varchar(50);default:''" json:"price_hint"` // 标价参考: ¥0, ¥9.9/月, ¥39.9/年, ¥69.9/永久
+	Description string    `gorm:"type:varchar(255)" json:"description"` // 权益描述
+	IsDefault   bool      `gorm:"default:false" json:"is_default"` // 是否为新注册用户默认等级
+	IsEnabled   bool      `gorm:"default:true" json:"is_enabled"` // 是否启用
+	SortOrder   int       `gorm:"default:0" json:"sort_order"` // 排序权重
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// FrontUser 前台注册用户模型
+type FrontUser struct {
+	ID           uuid.UUID    `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	Username     string       `gorm:"type:varchar(50);uniqueIndex;not null" json:"username"`
+	PasswordHash string       `gorm:"type:varchar(255);not null" json:"-"`
+	Nickname     string       `gorm:"type:varchar(50)" json:"nickname"`
+	Email        string       `gorm:"type:varchar(120);index" json:"email"`
+	LevelID      string       `gorm:"type:varchar(50);default:'user';index" json:"level_id"`
+	Level        *MemberLevel `gorm:"foreignKey:LevelID" json:"level,omitempty"`
+	VipExpireAt  *time.Time   `json:"vip_expire_at"` // VIP 到期时间 (若到期且非 lifetime，则生效为 user)
+	IsActive     bool         `gorm:"default:true" json:"is_active"`
+	LastLoginAt  *time.Time   `json:"last_login_at"`
+	LastLoginIP  string       `gorm:"type:varchar(64)" json:"last_login_ip"`
+	CreatedAt    time.Time    `json:"created_at"`
+	UpdatedAt    time.Time    `json:"updated_at"`
+}
+
+// ActivationCode 卡密/兑换码模型 (支持后台批量生成、导出文本供淘宝自动发卡与前台核销)
+type ActivationCode struct {
+	ID             uuid.UUID    `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	Code           string       `gorm:"type:varchar(80);uniqueIndex;not null" json:"code"` // 例如 XBW-A89F-7D2E-B41C
+	TargetLevelID  string       `gorm:"type:varchar(50);not null;index" json:"target_level_id"` // 对应升级角色，如 vip_month, vip_year, vip_lifetime
+	TargetLevel    *MemberLevel `gorm:"foreignKey:TargetLevelID" json:"target_level,omitempty"`
+	DurationDays   int          `gorm:"default:30;not null" json:"duration_days"` // 有效天数 (36500 为永久)
+	BatchNo        string       `gorm:"type:varchar(60);index" json:"batch_no"` // 批次号 (如 TB-202611-BATCH1)
+	Remark         string       `gorm:"type:varchar(255)" json:"remark"` // 备注
+	Status         string       `gorm:"type:varchar(20);default:'unused';index" json:"status"` // unused, used, void
+	UsedByUserID   *uuid.UUID   `gorm:"type:uuid;index" json:"used_by_user_id"`
+	UsedByUsername string       `gorm:"type:varchar(50)" json:"used_by_username"`
+	UsedAt         *time.Time   `json:"used_at"`
+	CreatedAt      time.Time    `json:"created_at"`
+}
+
+// DailyQuotaLog 每日资源直达额度统计与已解锁记录模型
+type DailyQuotaLog struct {
+	ID                  uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	Identifier          string         `gorm:"type:varchar(100);not null;index:idx_ident_date,unique" json:"identifier"` // "uid:<uuid>" 或 "ip:<client_ip>"
+	QuotaDate           string         `gorm:"type:varchar(10);not null;index:idx_ident_date,unique" json:"quota_date"` // YYYY-MM-DD
+	UsedCount           int            `gorm:"default:0;not null" json:"used_count"`
+	UnlockedResourceIDs datatypes.JSON `gorm:"type:jsonb;default:'[]'" json:"unlocked_resource_ids"` // 当天已解锁 slug 列表，防重复扣额度
+	UpdatedAt           time.Time      `json:"updated_at"`
+}
+
 

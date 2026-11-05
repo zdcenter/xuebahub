@@ -1,0 +1,443 @@
+<div class="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+  <!-- 顶部主导航 Header (极简、专业、高级感，拒绝土味折行与杂乱贴纸) -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 gap-3 lg:gap-6">
+        
+        <!-- 1. Logo 品牌区 (克制干净、专业大气) -->
+        <a routerLink="/" class="flex items-center gap-2.5 shrink-0 group">
+          <img src="/logo.svg" alt="学霸网 Logo" class="w-8 h-8 sm:w-9 sm:h-9 transition-transform group-hover:scale-105" />
+          <div class="flex items-center gap-2">
+            <span class="text-lg font-black tracking-tight text-slate-900 group-hover:text-emerald-700 transition-colors">
+              学霸网
+            </span>
+            <span class="hidden xl:inline-block h-3.5 w-px bg-slate-200"></span>
+            <span class="hidden xl:inline-block text-xs text-slate-400 font-normal tracking-normal">
+              同步教辅 · 名校真题
+            </span>
+          </div>
+        </a>
+
+        <!-- 2. 桌面端主导航 (纯净排版，强制不换行，去掉杂乱 Emoji) -->
+        <nav class="hidden md:flex items-center gap-1 lg:gap-1.5 text-[13px] font-medium text-slate-600 shrink-0 whitespace-nowrap">
+          <div *ngFor="let item of computedNavItems()" class="relative group/nav">
+            <a [routerLink]="item.path"
+               routerLinkActive="!text-slate-900 !font-bold bg-slate-100 shadow-2xs"
+               [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+               class="px-3.5 py-1.5 rounded-full hover:bg-slate-100 hover:text-slate-900 transition-colors duration-150 flex items-center gap-1 relative cursor-pointer">
+              <span>{{ item.name }}</span>
+              <!-- 仅保留极简低调的小红点或精致微标签 -->
+              <span *ngIf="item.badge" class="text-[9px] px-1.5 py-0.2 rounded-full font-bold leading-tight"
+                    [class]="item.badge.includes('HOT') || item.badge.includes('冲刺') ? 'bg-rose-50 text-rose-600 border border-rose-200/60' : 'bg-slate-100 text-slate-500'">
+                {{ item.badge }}
+              </span>
+              <span *ngIf="item.highlight && !item.badge" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <svg *ngIf="item.children?.length" class="w-3 h-3 text-slate-400 group-hover/nav:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </a>
+
+            <!-- 二级下拉菜单 -->
+            <div *ngIf="item.children?.length" class="absolute left-0 top-full pt-1.5 hidden group-hover/nav:block z-50 min-w-[170px] animate-fadeIn">
+              <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-1.5 text-xs">
+                <a *ngFor="let sub of item.children"
+                   [routerLink]="sub.path"
+                   class="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 transition font-medium">
+                  <span class="truncate">{{ sub.name }}</span>
+                  <span *ngIf="sub.badge" class="ml-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200/60">
+                    {{ sub.badge }}
+                  </span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <!-- 3. 右侧区域：搜索框 + 会员与账号 (精炼高雅) -->
+        <div class="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <!-- 胶囊搜索框 -->
+          <form (ngSubmit)="onSearchSubmit()" class="relative hidden sm:block w-36 lg:w-48 xl:w-56 transition-all focus-within:w-48 lg:focus-within:w-60">
+            <input type="text"
+                   [(ngModel)]="searchQuery"
+                   name="q"
+                   placeholder="搜索真题、试卷、课本..."
+                   class="w-full pl-8 pr-3 py-1.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white text-xs text-slate-800 rounded-full border border-slate-200/80 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition placeholder:text-slate-400" />
+            <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+          </form>
+
+          <!-- 会员额度与卡密兑换入口 (仅在后台开启会员体系时展示，关闭时全站完全纯净免费) -->
+          <ng-container *ngIf="quotaStatus()?.enabled">
+            <!-- 额度胶囊与兑换入口 -->
+            <button (click)="openRedeemModal()"
+                    type="button"
+                    title="点击输入 VIP 卡密兑换"
+                    class="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer whitespace-nowrap"
+                    [class]="quotaStatus()?.is_unlimited ? 'bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-700 border-purple-200 hover:shadow-xs' : 'bg-slate-100/80 hover:bg-slate-100 text-slate-600 border-slate-200/80'">
+              <span class="text-[11px]">{{ quotaStatus()?.is_unlimited ? '👑 VIP无限次' : '剩余 ' + (quotaStatus()?.remain_quota ?? 5) + ' 次' }}</span>
+              <span class="text-[10px] text-amber-600 font-bold ml-0.5">兑换</span>
+            </button>
+
+            <!-- 分割线 -->
+            <span class="hidden md:block h-4 w-px bg-slate-200"></span>
+
+            <!-- 用户登录状态 / 头像 -->
+            <ng-container *ngIf="currentUser(); else guestAuthBlock">
+              <div class="relative group">
+                <button type="button" class="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full hover:bg-slate-100 transition text-xs font-semibold text-slate-700 cursor-pointer border border-slate-200/60 bg-white">
+                  <span class="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center text-[11px] font-bold shadow-2xs">
+                    {{ currentUser()?.username?.substring(0,1)?.toUpperCase() }}
+                  </span>
+                  <span class="hidden lg:inline max-w-[70px] truncate text-slate-800 font-medium">{{ currentUser()?.nickname || currentUser()?.username }}</span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded-full font-bold"
+                        [class]="quotaStatus()?.is_unlimited ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'">
+                    {{ quotaStatus()?.badge_text || '会员' }}
+                  </span>
+                </button>
+
+                <!-- 下拉浮层 -->
+                <div class="hidden group-hover:block absolute right-0 top-full pt-1.5 z-50 min-w-[150px] animate-fadeIn">
+                  <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-1.5 text-xs text-slate-700 space-y-0.5">
+                    <div class="px-3 py-2 border-b border-slate-100 mb-1">
+                      <div class="font-bold text-slate-900 truncate">{{ currentUser()?.nickname || currentUser()?.username }}</div>
+                      <div class="text-[11px] text-slate-400 font-mono">{{ quotaStatus()?.level_name }}</div>
+                    </div>
+                    <button (click)="openRedeemModal()" class="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl font-medium flex items-center gap-2 cursor-pointer transition">
+                      <span>🎫</span> 兑换 VIP 卡密
+                    </button>
+                    <button (click)="logout()" class="w-full text-left px-3 py-2 hover:bg-rose-50 text-rose-600 rounded-xl font-medium flex items-center gap-2 cursor-pointer transition">
+                      <span>🚪</span> 退出登录
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <ng-template #guestAuthBlock>
+              <button (click)="openLoginModal()"
+                      type="button"
+                      class="px-3.5 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
+                <span>登录 / 注册</span>
+              </button>
+            </ng-template>
+          </ng-container>
+
+          <!-- 移动端汉堡菜单切换按钮 -->
+          <button (click)="toggleMobileMenu()"
+                  type="button"
+                  class="md:hidden p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                  aria-label="打开移动端菜单">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 移动端侧滑抽屉 -->
+    <div *ngIf="isMobileMenuOpen()" class="md:hidden border-t border-slate-200/80 bg-white/98 px-4 py-4 space-y-3 animate-fadeIn">
+      <form (ngSubmit)="onSearchSubmit()" class="relative">
+        <input type="text"
+               [(ngModel)]="searchQuery"
+               name="q"
+               placeholder="搜索试卷、真题或课本..."
+               class="w-full pl-8 pr-3 py-2 bg-slate-100 text-xs text-slate-800 rounded-xl border border-slate-200 outline-none" />
+        <span class="absolute left-2.5 top-2.5 text-slate-400 text-xs">🔍</span>
+      </form>
+      <div class="grid grid-cols-2 gap-2 text-xs font-bold pt-1">
+        <a *ngFor="let item of computedNavItems()"
+           [routerLink]="item.path"
+           (click)="closeMobileMenu()"
+           routerLinkActive="bg-blue-50 text-blue-700 border-blue-200"
+           [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+           class="p-2.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <span>{{ item.icon }}</span>
+            <span>{{ item.name }}</span>
+          </div>
+          <span *ngIf="item.badge" class="text-[9px] px-1 bg-white border border-slate-200 rounded text-slate-500">
+            {{ item.badge }}
+          </span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- 页面主体容器 RouterOutlet -->
+  <main class="flex-1">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- 全站通用 Footer 页脚 -->
+  <footer class="bg-white border-t border-slate-200/80 text-xs text-slate-500 py-10 mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-100">
+        <div class="flex items-center gap-3">
+          <img src="/logo.svg" alt="学霸网" class="w-8 h-8 opacity-80" />
+          <div>
+            <h4 class="font-extrabold text-slate-800 text-sm">学霸网 (xuebaw.com)</h4>
+            <p class="text-[11px] text-slate-400 mt-0.5">全国中小学期中期末名校真题密卷与统编正版电子教材云端智库</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-medium">
+          <a routerLink="/" class="hover:text-blue-600 transition">全站首页</a>
+          <a routerLink="/book" class="hover:text-blue-600 transition">电子课本</a>
+          <a routerLink="/cert" class="hover:text-blue-600 transition">教师资格证</a>
+          <a routerLink="/exam" class="hover:text-blue-600 transition">考公考研</a>
+          <button (click)="showRequestModal.set(true)" class="hover:text-blue-600 transition cursor-pointer">找卷求助</button>
+        </div>
+      </div>
+      <div class="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
+        <p class="flex items-center gap-1.5">
+          <span>© 2026 学霸网 xuebaw.com. 仅供个人学习研讨使用，版权归原出版社及命题机构所有。</span>
+          <!-- 极度隐蔽的管理员后台入口：微型半透明小图标，不干扰正常用户体验 -->
+          <a routerLink="/admin"
+             title="Console"
+             class="inline-flex items-center justify-center w-3 h-3 text-slate-300 opacity-20 hover:opacity-90 hover:text-blue-600 transition-all select-none ml-1 cursor-pointer"
+             tabindex="-1">
+            <svg class="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+            </svg>
+          </a>
+        </p>
+        <div class="flex items-center gap-3">
+          <span>建议使用夸克网盘客户端转存极速下载</span>
+          <span>·</span>
+          <span>A4 原版无损极清打印</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 右下角悬浮快捷中心 -->
+  <div class="fixed right-4 bottom-6 z-30 flex flex-col gap-2.5 items-end">
+    <!-- 找卷求助 -->
+    <button (click)="showRequestModal.set(true)"
+            type="button"
+            class="px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-white text-slate-700 hover:text-blue-600 text-xs font-bold shadow-lg border border-slate-200/80 backdrop-blur-md transition-all hover:scale-105 flex items-center gap-1.5 cursor-pointer">
+      <span>📝</span>
+      <span>找卷求助</span>
+    </button>
+
+    <!-- 推荐本站 / 班级群裂变 -->
+    <button (click)="showRecommendModal.set(true)"
+            type="button"
+            class="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold shadow-lg shadow-emerald-600/20 backdrop-blur-md transition-all hover:scale-105 flex items-center gap-1.5 cursor-pointer">
+      <span>🎁</span>
+      <span>推荐本站给好友</span>
+    </button>
+  </div>
+
+  <!-- 🎁 推荐本站模态弹窗 -->
+  <div *ngIf="showRecommendModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+    <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl">🎁</span>
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-sm sm:text-base">分享学霸网给好友 / 班级群</h3>
+            <p class="text-xs text-slate-500 mt-0.5">好资料一起学，一键复制文案分享到微信群或好友</p>
+          </div>
+        </div>
+        <button (click)="showRecommendModal.set(false)" class="text-slate-400 hover:text-slate-700 text-lg p-1 cursor-pointer">✕</button>
+      </div>
+
+      <div class="p-5 space-y-4">
+        <!-- 标签切换 -->
+        <div class="flex p-1 bg-slate-100 rounded-2xl gap-1 text-xs font-bold">
+          <button (click)="activeRecTab.set('parent')" [class]="activeRecTab() === 'parent' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500'" class="flex-1 py-2 rounded-xl transition cursor-pointer">
+            💬 发到班级/家长群
+          </button>
+          <button (click)="activeRecTab.set('moments')" [class]="activeRecTab() === 'moments' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500'" class="flex-1 py-2 rounded-xl transition cursor-pointer">
+            📕 发到朋友圈
+          </button>
+          <button (click)="activeRecTab.set('direct')" [class]="activeRecTab() === 'direct' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500'" class="flex-1 py-2 rounded-xl transition cursor-pointer">
+            ⚡ 一对一发给好友
+          </button>
+        </div>
+
+        <!-- 文本预览框 -->
+        <textarea rows="4" [value]="recommendText" readonly class="w-full p-3.5 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-2xl outline-none leading-relaxed resize-none font-sans"></textarea>
+
+        <div class="flex justify-end gap-2 pt-1">
+          <button (click)="showRecommendModal.set(false)" class="px-4 py-2 text-xs text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer">关闭</button>
+          <button (click)="copyRecommendText()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5">
+            <span>{{ copySuccess() ? '✅ 已复制到剪贴板！' : '📋 一键复制推荐文案' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 📝 找卷求助模态弹窗 -->
+  <div *ngIf="showRequestModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+    <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50/80 to-white">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-2xl bg-blue-100 text-blue-800 flex items-center justify-center text-xl">📝</span>
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-sm sm:text-base">找不到想要的试卷/课本？提交心愿单</h3>
+            <p class="text-xs text-slate-500 mt-0.5">告诉我们您急需的资料，站长团队将在 24 小时内全网搜寻并更新上架</p>
+          </div>
+        </div>
+        <button (click)="showRequestModal.set(false)" class="text-slate-400 hover:text-slate-700 text-lg p-1 cursor-pointer">✕</button>
+      </div>
+
+      <form (ngSubmit)="submitRequest()" class="p-5 space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">资料/试卷名称 <span class="text-rose-500">*</span></label>
+          <input type="text" [(ngModel)]="requestForm.title" name="reqTitle" required placeholder="例如：2025海淀初二上学期期末数学试卷及答案" class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 outline-none transition" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">学段</label>
+            <select [(ngModel)]="requestForm.stage" name="reqStage" class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 outline-none">
+              <option value="小学">小学 (1-6年级)</option>
+              <option value="初中">初中 (七至九年级/中考)</option>
+              <option value="高中">高中 (高一至高三/高考)</option>
+              <option value="考证">考证 (教师资格/四六级)</option>
+              <option value="公考">公考 (国省考/事业单位)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">学科</label>
+            <input type="text" [(ngModel)]="requestForm.subject" name="reqSubject" placeholder="如：数学 / 英语" class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 outline-none" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">补充说明 (版本/急需说明)</label>
+          <textarea rows="2" [(ngModel)]="requestForm.description" name="reqDesc" placeholder="例如：人教版，最好附带详细解答过程，下周模拟考急用..." class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 outline-none resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">联系方式 (选填，仅用于上架后通知)</label>
+          <input type="text" [(ngModel)]="requestForm.contact_info" name="reqContact" placeholder="微信 / QQ / 邮箱" class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 outline-none" />
+        </div>
+
+        <div *ngIf="requestSubmitSuccess()" class="p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold text-center">
+          🎉 心愿单已收到！站长将尽快安排上架。
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button (click)="showRequestModal.set(false)" type="button" class="px-4 py-2 text-xs text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer">取消</button>
+          <button type="submit" [disabled]="isSubmittingRequest()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50">
+            <span>{{ isSubmittingRequest() ? '提交中...' : '🚀 立即提交愿望' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 1. 前台轻量登录与注册弹窗 (Auth Modal) -->
+  <div *ngIf="showAuthModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fadeIn">
+    <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-200">
+      <!-- 头部切换 -->
+      <div class="flex border-b border-slate-100">
+        <button type="button" 
+                (click)="authTab.set('login')"
+                [class]="authTab() === 'login' ? 'border-b-2 border-emerald-600 text-emerald-800 font-extrabold bg-emerald-50/40' : 'text-slate-500 hover:text-slate-800 font-medium'"
+                class="flex-1 py-4 text-center text-sm transition cursor-pointer">
+          账号登录
+        </button>
+        <button type="button" 
+                (click)="authTab.set('register')"
+                [class]="authTab() === 'register' ? 'border-b-2 border-emerald-600 text-emerald-800 font-extrabold bg-emerald-50/40' : 'text-slate-500 hover:text-slate-800 font-medium'"
+                class="flex-1 py-4 text-center text-sm transition cursor-pointer">
+          免费注册 (送额度)
+        </button>
+      </div>
+
+      <div class="p-6">
+        <div class="text-xs text-slate-500 mb-4 leading-relaxed">
+          {{ authTab() === 'login' ? '登录学霸网账号，畅享多端同步、更多每日直达额度与 VIP 特权。' : '仅需用户名与密码，无需繁琐验证码，1 秒即开即用！' }}
+        </div>
+
+        <form (ngSubmit)="submitAuth()" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">账号用户名</label>
+            <input type="text" [(ngModel)]="authUsername" name="loginUser" placeholder="输入 3~30 位英文字母/数字" required class="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 outline-none transition" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">登录密码</label>
+            <input type="password" [(ngModel)]="authPassword" name="loginPwd" placeholder="不少于 6 位密码" required class="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 outline-none transition" />
+          </div>
+
+          <div *ngIf="authTab() === 'register'">
+            <label class="block text-xs font-bold text-slate-700 mb-1">昵称 (可选)</label>
+            <input type="text" [(ngModel)]="authNickname" name="regNick" placeholder="个性昵称，如 小学霸" class="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 outline-none transition" />
+          </div>
+
+          <div *ngIf="authTab() === 'register'">
+            <label class="block text-xs font-bold text-slate-700 mb-1">电子邮箱 (选填，仅用于找回密码)</label>
+            <input type="email" [(ngModel)]="authEmail" name="regEmail" placeholder="you@example.com" class="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 outline-none transition" />
+          </div>
+
+          <div *ngIf="authError()" class="p-2.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-medium">
+            ⚠️ {{ authError() }}
+          </div>
+
+          <div class="pt-2 flex items-center justify-between gap-3">
+            <button type="button" (click)="closeAuthModal()" class="px-4 py-2 text-xs text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer">取消</button>
+            <button type="submit" [disabled]="authSubmitting()" class="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50">
+              <span>{{ authSubmitting() ? '正在提交...' : (authTab() === 'login' ? '立即登录' : '立即注册并登录') }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. VIP 卡密兑换与购买弹窗 (Redeem Modal) -->
+  <div *ngIf="showRedeemModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fadeIn">
+    <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200">
+      <!-- 头部 -->
+      <div class="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 p-6 text-white relative">
+        <button type="button" (click)="closeRedeemModal()" class="absolute right-4 top-4 text-white/70 hover:text-white text-xl cursor-pointer">✕</button>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-2xl">🎫</span>
+          <h3 class="text-lg font-extrabold text-white">学霸网 VIP 卡密兑换</h3>
+        </div>
+        <p class="text-xs text-emerald-100">输入在淘宝、闲鱼或活动中获取的兑换码，一秒开通 VIP 特权</p>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <!-- 未登录拦截提示 -->
+        <div *ngIf="!currentUser()" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center justify-between">
+          <span>💡 提示：兑换卡密前需先登录账号</span>
+          <button (click)="closeRedeemModal(); openLoginModal()" type="button" class="text-xs font-bold text-amber-900 underline cursor-pointer">
+            立即登录 ➜
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">卡密兑换码 (形如 XBW-XXXX-XXXX-XXXX)</label>
+          <input type="text" [(ngModel)]="redeemCodeInput" name="codeIn" placeholder="在此粘贴您的 16 位卡密兑换码" class="w-full px-3.5 py-2.5 text-sm font-mono uppercase rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 outline-none transition tracking-wider text-slate-800" />
+        </div>
+
+        <div *ngIf="redeemError()" class="p-2.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-medium">
+          ⚠️ {{ redeemError() }}
+        </div>
+        <div *ngIf="redeemMsg()" class="p-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
+          {{ redeemMsg() }}
+        </div>
+
+        <div class="pt-1 flex gap-2">
+          <button type="button" (click)="submitRedeem()" [disabled]="redeemSubmitting()" class="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50">
+            <span>{{ redeemSubmitting() ? '正在核销...' : '🚀 立即激活 VIP' }}</span>
+          </button>
+        </div>
+
+        <!-- 淘宝购买官方通道引导 -->
+        <div *ngIf="quotaStatus()?.taobao_shop_url" class="border-t border-slate-100 pt-3 text-center">
+          <a [href]="quotaStatus()?.taobao_shop_url" target="_blank" rel="noopener noreferrer"
+             class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-full transition">
+            <span>🛒 暂无卡密？前往淘宝官方店铺购买 (全自动秒发) ➜</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

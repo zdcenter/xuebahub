@@ -1,0 +1,678 @@
+<div class="min-h-screen bg-slate-50/60 pb-20 pt-6">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+
+    <!-- 面包屑导航 -->
+    <nav class="flex items-center space-x-2 text-xs text-slate-500">
+      <a routerLink="/" class="hover:text-blue-600 transition">全站首页</a>
+      <span>/</span>
+      <a [routerLink]="stageHref" class="hover:text-blue-600 transition">{{ stageLabel }}</a>
+      <span>/</span>
+      <span class="text-slate-800 font-medium truncate max-w-sm">{{ resource()?.title }}</span>
+    </nav>
+
+    <!-- 主体内容卡片 -->
+    <div *ngIf="resource()" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+
+      <!-- 顶部标题与参考图经典布局 (标题在上，左侧封面，右上淡蓝属性卡片，右下红字标题+直出二维码+两颗绿色按钮) -->
+      <div class="p-5 sm:p-7 lg:p-8 space-y-6">
+
+        <!-- 1. 核心标题与快速推荐分享 -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100/80">
+          <h1 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900 leading-snug tracking-tight">
+            {{ resource()?.title }}
+          </h1>
+          <button
+            type="button"
+            (click)="openShareModal('parent')"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-sm shadow-emerald-600/20 hover:shadow transition-all shrink-0 cursor-pointer self-start sm:self-center"
+            title="推荐此资料给好友、家长群或考友">
+            <span>🎁</span>
+            <span>推荐此资料给好友</span>
+          </button>
+        </div>
+
+        <!-- 2. 主体左右结构 (左侧大尺寸高质封面 + 右侧元信息及扫码下载区，高度完美拉齐并消除留白) -->
+        <div class="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
+          
+          <!-- 左侧：封面展示 (3:4黄金竖版比例，尺寸与右侧元信息及网盘地址栏高度严丝合缝对齐，和谐协调) -->
+          <div class="w-56 sm:w-60 md:w-[250px] lg:w-[252px] max-w-[255px] shrink-0 aspect-[3/4] rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-slate-100 relative group mx-auto md:mx-0 select-none transition-shadow hover:shadow-lg">
+            <img *ngIf="resource()?.cover_image"
+                 [src]="resource()?.cover_image"
+                 [alt]="resource()?.title"
+                 class="w-full h-full object-cover object-top" />
+            
+            <!-- 仿真统编标准书皮 (无外置封面时 100% 仿真统编版正版教科书，色彩随学科自适应) -->
+            <div *ngIf="!resource()?.cover_image"
+                 class="w-full h-full flex flex-col justify-between p-5 bg-gradient-to-br text-white relative"
+                 [ngClass]="subjectBgColor">
+              <div class="absolute left-0 top-0 bottom-0 w-3.5 bg-gradient-to-r from-black/25 via-white/20 to-transparent pointer-events-none"></div>
+              
+              <div class="relative z-10 flex items-center justify-between">
+                <span class="text-xs font-extrabold uppercase bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-md border border-white/30 text-white shadow-xs">
+                  义务教育教科书
+                </span>
+                <span class="text-xs font-bold text-amber-200 flex items-center gap-1">
+                  <span>⭐</span> 统编正版
+                </span>
+              </div>
+
+              <div class="relative z-10 text-center my-auto py-4">
+                <div class="text-4xl sm:text-5xl font-black tracking-tight font-serif drop-shadow-md">
+                  {{ resource()?.subject || '综合' }}
+                </div>
+                <div class="mt-3 text-base sm:text-lg font-bold text-white/95 tracking-wide">
+                  {{ resource()?.grade || '' }} {{ resource()?.term || '' }}
+                </div>
+                <div class="mt-1.5 text-xs text-white/80 font-medium">
+                  {{ resource()?.edition || '统编版 (义务教育教科书)' }}
+                </div>
+              </div>
+
+              <div class="relative z-10 flex items-center justify-between text-xs text-white/85 border-t border-white/20 pt-2.5">
+                <span>教育部审定</span>
+                <span>高清双层 PDF</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧：元信息面板 + 扫码直出区 -->
+          <div class="flex-1 min-w-0 w-full space-y-5">
+            
+            <!-- 上部淡蓝背景分类与热度统计卡片 (100% 还原参考图，增加转存数量与资源格式) -->
+            <div class="bg-[#f0f7ff] border border-blue-100/90 rounded-2xl p-4 sm:p-5 shadow-2xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-3.5 gap-x-6 text-xs sm:text-sm text-slate-600">
+                <div class="flex items-center gap-2 truncate">
+                  <span class="text-slate-400 shrink-0">资源分类:</span>
+                  <span class="font-medium text-slate-800 truncate" [title]="(resource()?.edition || '统编版') + ' / ' + (resource()?.subject || '综合')">
+                    {{ resource()?.edition || '统编版' }} / {{ resource()?.subject || '综合' }} {{ resource()?.grade ? ('/ ' + resource()?.grade) : '' }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-slate-400 shrink-0">浏览热度:</span>
+                  <span class="font-medium text-slate-800 font-mono flex items-center gap-1">
+                    <span>🔥</span>
+                    <span>{{ (resource()?.view_count || 24) | number }} 次</span>
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-slate-400 shrink-0">转存数量:</span>
+                  <span class="font-bold text-emerald-700 font-mono flex items-center gap-1">
+                    <span>💾</span>
+                    <span>{{ saveCount() | number }} 次已转存</span>
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-slate-400 shrink-0">资源格式:</span>
+                  <span class="font-medium text-slate-700 flex items-center gap-1 font-mono">
+                    <span>📄</span>
+                    <span>{{ resource()?.file_type || '高清双层PDF' }}</span>
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-slate-400 shrink-0">发布时间:</span>
+                  <span class="font-medium text-slate-700 font-mono">
+                    {{ formattedDate }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-slate-400 shrink-0">最近更新:</span>
+                  <span class="font-medium text-slate-700 font-mono">
+                    {{ formattedDate }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 下部：扫描二维码获取此文件 (红字醒目标题 + 页面直出标准清晰二维码 + 绿色下载按钮 + 推荐分享按钮) -->
+            <div *ngIf="primaryLink as link" class="space-y-3">
+              <h3 class="text-red-600 font-extrabold text-base sm:text-lg flex items-center gap-1.5">
+                <span>扫描二维码获取此文件</span>
+              </h3>
+
+              <div class="flex flex-wrap items-center gap-5 sm:gap-6">
+                <!-- 二维码直接以大图渲染在页面上 (128x128px，标准4格白边静区，手机打开微信/夸克直接对准屏幕秒扫) -->
+                <div class="w-32 h-32 sm:w-36 sm:h-36 p-1.5 bg-white border border-slate-200 rounded-xl shadow-xs shrink-0 flex items-center justify-center cursor-pointer hover:border-emerald-500 transition"
+                     (click)="openQrModal(link.share_url, link.drive_type, link.extract_code || '')"
+                     title="点击可放大至全屏扫码">
+                  <div class="w-full h-full flex items-center justify-center" [innerHTML]="getQrSvg(link.share_url, 132)"></div>
+                </div>
+
+                <!-- 右侧绿色操作按钮堆叠 + 提取码信息 (完全对齐参考图样式) -->
+                <div class="flex flex-col gap-2.5 justify-center" style="min-width: 140px;">
+                  <a [href]="link.share_url"
+                     (click)="onDownloadClick(link, $event)"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="btn-emerald-download">
+                    <svg viewBox="0 0 20 20">
+                      <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
+                      <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+                    </svg>
+                    <span>免费下载</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    (click)="openTutorialModal()"
+                    class="btn-emerald-download">
+                    <svg viewBox="0 0 20 20">
+                      <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                    </svg>
+                    <span>下载教程</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    (click)="openShareModal('parent')"
+                    class="btn-share-recommend"
+                    title="推荐分享此资料给好友或班级群">
+                    <svg viewBox="0 0 20 20">
+                      <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                    </svg>
+                    <span>推荐给好友</span>
+                  </button>
+
+                  <!-- 提取码与备用网盘 -->
+                  <div *ngIf="link.extract_code" class="text-xs font-mono font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded border border-amber-200 text-center">
+                    🔑 提取码: {{ link.extract_code }}
+                  </div>
+                </div>
+
+                <!-- 百度网盘等备用通道 -->
+                <div *ngIf="baiduLink as bLink" class="sm:ml-auto flex sm:flex-col gap-2">
+                  <a [href]="bLink.share_url"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="px-4 py-2 border border-slate-200 hover:border-blue-300 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-2xs">
+                    <span>☁️</span>
+                    <span>百度网盘备用</span>
+                  </a>
+                </div>
+              </div>
+
+              <!-- 透明公开真实网盘地址栏 (方便用户查看、一键复制与快捷分享) -->
+              <div class="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 text-xs">
+                <span class="text-slate-400 font-medium shrink-0 flex items-center gap-1">
+                  <span>🔗</span>
+                  <span class="hidden sm:inline">网盘地址:</span>
+                </span>
+                <a [href]="link.share_url"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="text-blue-600 hover:text-blue-800 font-mono text-xs truncate flex-1 hover:underline select-all"
+                   title="直接打开网盘链接">
+                  {{ link.share_url }}
+                </a>
+                <button
+                  type="button"
+                  (click)="copyShareUrl(link.share_url, link.extract_code)"
+                  class="px-2.5 py-1 text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1 text-[11px] font-medium shadow-2xs">
+                  <span>{{ copiedLink() === link.share_url ? '✓ 已复制！' : '复制' }}</span>
+                </button>
+                <button
+                  type="button"
+                  (click)="openShareModal('direct')"
+                  class="px-2.5 py-1 text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1 text-[11px] font-bold shadow-2xs"
+                  title="分享给微信好友">
+                  <span>📤 分享</span>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- 3. 学霸备考小窍门：转存指引横幅 (CRO 无损 A4 打印与 4K 原画) -->
+        <div class="p-4 sm:p-5 bg-gradient-to-r from-amber-50/90 via-orange-50/50 to-blue-50/30 rounded-2xl border border-amber-200/70">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 text-base">
+              💡
+            </div>
+            <div class="space-y-1.5 flex-1">
+              <h4 class="text-xs sm:text-sm font-extrabold text-amber-950 flex items-center gap-2 flex-wrap">
+                <span>备考转存建议：</span>
+                <span class="text-amber-800 underline decoration-amber-400 underline-offset-2">请先点击【保存到网盘 / 转存】再下载！</span>
+              </h4>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                网页直接预览可能会压缩字体与公式，先转存到您自己的网盘即可获取 <strong>100% 矢量无损高清真题</strong>（A4纸打印绝不发虚），微课视频还能解锁 <strong>1080P/4K 原画原声</strong>！
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 📁 核心亮点：网盘内含文件清单与目录结构 (SEO 搜索引擎高权重大杀器) -->
+      <div *ngIf="displayTree().length > 0" class="p-5 sm:p-6 lg:p-8 border-t border-slate-100 space-y-4">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="p-2 bg-amber-50 rounded-xl border border-amber-200 text-amber-700 text-lg shadow-2xs">
+              📁
+            </span>
+            <div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <span>网盘内含文件清单与目录结构</span>
+                <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  真实层级 · 所见即所得
+                </span>
+              </h3>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2 text-xs font-semibold text-slate-600 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200/80 shadow-2xs shrink-0">
+            <span>共 <strong class="text-blue-600 font-mono">{{ totalFileCount() }}</strong> 个文件</span>
+            <span class="text-slate-300">•</span>
+            <span>总计 <strong class="text-slate-800 font-mono">{{ resource()?.file_size || '完整视频合集包' }}</strong></span>
+          </div>
+        </div>
+
+        <!-- 仿真实网盘 / 资源管理器 视窗面板 -->
+        <div class="rounded-2xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden">
+          
+          <!-- 资源管理器工具栏 -->
+          <div class="bg-slate-50/90 border-b border-slate-200/80 px-4 py-2.5 flex items-center justify-between text-xs select-none">
+            <div class="flex items-center space-x-1.5 font-medium text-slate-600 truncate">
+              <span class="text-amber-600">📁</span>
+              <span class="text-slate-800 font-bold">根目录 / 全部文件</span>
+              <span class="text-slate-400 font-mono">({{ displayTree().length }} 项)</span>
+            </div>
+
+            <!-- 全部展开 / 折叠操作按钮 -->
+            <button
+              type="button"
+              (click)="toggleAll()"
+              class="text-[11px] font-medium text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 px-2.5 py-1 rounded-lg transition flex items-center space-x-1.5 cursor-pointer shadow-2xs">
+              <span>📁</span>
+              <span>{{ allExpanded() ? '全部折叠' : '全部展开' }}</span>
+            </button>
+          </div>
+
+          <!-- 资源管理器列名条 -->
+          <div class="bg-slate-100/70 border-b border-slate-200/60 px-4 py-1.5 flex items-center justify-between text-[11px] font-medium text-slate-400 select-none">
+            <span class="flex-1 min-w-0 pl-1">文件名</span>
+            <span class="w-36 sm:w-44 text-right pr-2 shrink-0 whitespace-nowrap">大小</span>
+          </div>
+
+          <!-- 树形文件列表体 -->
+          <div class="divide-y divide-slate-100 text-xs">
+            <ng-container *ngFor="let node of displayTree(); let idx = index">
+              
+              <!-- 文件夹项 (带展开/折叠功能与下级缩进) -->
+              <div *ngIf="node.is_dir" class="group">
+                <!-- 文件夹头部 -->
+                <div (click)="toggleDir(idx)"
+                     class="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/40 hover:bg-blue-50/40 cursor-pointer transition select-none">
+                  <div class="flex items-center space-x-2 min-w-0 flex-1">
+                    <span class="w-4 text-[10px] text-slate-400 group-hover:text-blue-600 transition-transform duration-200 inline-block text-center font-mono select-none">
+                      {{ isDirExpanded(idx) ? '▼' : '▶' }}
+                    </span>
+                    <span class="text-base text-amber-500">📁</span>
+                    <span class="font-bold text-slate-800 group-hover:text-blue-700 truncate text-xs sm:text-sm">
+                      {{ node.name }}
+                    </span>
+                  </div>
+
+                  <div class="flex items-center space-x-2 shrink-0 pl-2">
+                    <span class="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200/80 shadow-2xs whitespace-nowrap">
+                      {{ node.size || (node.children?.length ? (node.children.length + ' 项') : '文件夹') }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- 文件夹展开内容 (带树状层级连线) -->
+                <div *ngIf="isDirExpanded(idx) && node.children?.length" class="bg-white py-1">
+                  <div class="ml-5 sm:ml-7 pl-3 sm:pl-4 border-l-2 border-slate-200/90 space-y-0.5 my-1">
+                    <div *ngFor="let child of node.children" class="relative flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition group/file">
+                      <!-- 树状拐角连线 -->
+                      <span class="absolute -left-3 sm:-left-4 top-1/2 -mt-px w-2.5 sm:w-3.5 h-px bg-slate-200/90 pointer-events-none"></span>
+
+                      <div class="flex items-center space-x-2 min-w-0 flex-1">
+                        <span class="text-sm shrink-0">{{ getFileIcon(child.ext || '', child.is_dir) }}</span>
+                        <span class="font-medium text-slate-700 group-hover/file:text-blue-600 truncate text-xs" [title]="child.name">
+                          {{ child.name }}
+                        </span>
+                        <span *ngIf="child.ext" class="text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 font-mono"
+                              [ngClass]="getFileBadgeClass(child.ext)">
+                          {{ child.ext }}
+                        </span>
+                      </div>
+
+                      <div class="w-36 sm:w-44 text-right pr-2 shrink-0">
+                        <span *ngIf="child.size" class="text-[11px] font-mono text-slate-400 group-hover/file:text-slate-600 whitespace-nowrap">
+                          {{ child.size }}
+                        </span>
+                        <span *ngIf="!child.size" class="text-[10px] text-slate-300">-</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 顶层文件项 (无文件夹包裹的直属文件) -->
+              <div *ngIf="!node.is_dir" class="flex items-center justify-between px-3.5 py-2.5 hover:bg-blue-50/30 transition group/rootfile">
+                <div class="flex items-center space-x-2 min-w-0 flex-1">
+                  <span class="w-4 inline-block text-center text-slate-300 select-none text-[10px]">·</span>
+                  <span class="text-sm shrink-0">{{ getFileIcon(node.ext || '', false) }}</span>
+                  <span class="font-medium text-slate-800 group-hover/rootfile:text-blue-600 truncate text-xs sm:text-sm" [title]="node.name">
+                    {{ node.name }}
+                  </span>
+                  <span *ngIf="node.ext" class="text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 font-mono"
+                        [ngClass]="getFileBadgeClass(node.ext)">
+                    {{ node.ext }}
+                  </span>
+                </div>
+
+                <div class="w-36 sm:w-44 text-right pr-2 shrink-0">
+                  <span *ngIf="node.size" class="text-[11px] font-mono text-slate-400 group-hover/rootfile:text-slate-600 whitespace-nowrap">
+                    {{ node.size }}
+                  </span>
+                  <span *ngIf="!node.size" class="text-[10px] text-slate-300">-</span>
+                </div>
+              </div>
+
+            </ng-container>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 资源详情与大纲说明（仅在填写真实有效说明且不与标题重复时展示） -->
+      <div *ngIf="resource()?.description && resource()?.description !== resource()?.title"
+           class="p-5 sm:p-6 lg:p-8 border-t border-slate-100 space-y-3 bg-slate-50/30">
+        <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+          <span>📖</span> 资料简介与复习大纲说明
+        </h3>
+        <div class="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+          {{ resource()?.description }}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 📱 手机扫码转存高精全屏弹窗 (100% 毫秒级秒扫、提取码展示与一键直达) -->
+    <div *ngIf="activeQrModal() as modal"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+         (click)="closeQrModal()">
+      <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-100 text-center relative animate-in fade-in zoom-in-95"
+           (click)="$event.stopPropagation()">
+        
+        <button
+          type="button"
+          (click)="closeQrModal()"
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold transition cursor-pointer">
+          ✕
+        </button>
+
+        <div class="inline-flex p-3 rounded-2xl bg-blue-50 text-blue-600 mb-3 text-xl">
+          📱
+        </div>
+
+        <h3 class="text-lg font-black text-slate-900">
+          手机扫码一键转存
+        </h3>
+        <p class="text-xs text-slate-500 mt-1">
+          使用微信、夸克APP或手机自带相机扫码直达
+        </p>
+
+        <!-- 官方标准高精度二维码 (200px + 4格静区，手机秒级识别) -->
+        <div class="my-5 p-3 bg-white rounded-2xl border-2 border-slate-100 shadow-inner flex items-center justify-center w-56 h-56 mx-auto">
+          <div class="w-full h-full" [innerHTML]="getQrSvg(modal.url, 208)"></div>
+        </div>
+
+        <div *ngIf="modal.extractCode" class="mb-4 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-lg text-xs font-mono font-bold text-amber-800">
+          <span>🔑 提取码: {{ modal.extractCode }}</span>
+        </div>
+
+        <div class="space-y-2">
+          <a [href]="modal.url"
+             target="_blank"
+             rel="noopener noreferrer"
+             class="block w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-500/20">
+            在浏览器中直接打开 ↗
+          </a>
+          <button
+            type="button"
+            (click)="copyShareUrl(modal.url, modal.extractCode)"
+            class="block w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition cursor-pointer">
+            {{ copiedLink() === modal.url ? '✓ 已复制网盘链接' : '复制网盘链接' }}
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 📖 下载与转存快速教程弹窗 -->
+    <div *ngIf="showTutorialModal()"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+         (click)="closeTutorialModal()">
+      <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in-95"
+           (click)="$event.stopPropagation()">
+        
+        <button
+          type="button"
+          (click)="closeTutorialModal()"
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold transition cursor-pointer">
+          ✕
+        </button>
+
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-[#00965e] flex items-center justify-center text-xl font-bold">
+            📖
+          </div>
+          <div>
+            <h3 class="text-lg font-black text-slate-900">
+              下载与转存极速教程
+            </h3>
+            <p class="text-xs text-slate-400">
+              3 步获取 100% 无损高清资源
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-3 my-5 text-xs sm:text-sm text-slate-700">
+          <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+            <span class="w-6 h-6 rounded-full bg-[#00965e] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">1</span>
+            <div>
+              <strong class="text-slate-900">扫码或点击免费下载：</strong>
+              <p class="text-slate-500 text-xs mt-0.5">手机使用微信、夸克APP直接扫描左侧二维码，或电脑端点击【免费下载】绿色按钮。</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-amber-50/80 border border-amber-200/60 rounded-xl">
+            <span class="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">2</span>
+            <div>
+              <strong class="text-amber-950">务必先点击【保存到网盘 / 转存】：</strong>
+              <p class="text-amber-800 text-xs mt-0.5">转存后文件永久归属于您的个人网盘，防失效、防丢失，同时享有极速下载特权。</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+            <span class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">3</span>
+            <div>
+              <strong class="text-slate-900">在网盘中直接下载或打印：</strong>
+              <p class="text-slate-500 text-xs mt-0.5">在网盘中可免解压直接查看，支持 A4 纸高清矢量打印、微课 1080P/4K 原画原声播放。</p>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          (click)="closeTutorialModal()"
+          class="w-full py-2.5 bg-[#00965e] hover:bg-[#008252] text-white rounded-xl text-xs sm:text-sm font-bold transition shadow cursor-pointer">
+          我知道了，立即获取文件
+        </button>
+      </div>
+    </div>
+
+    <!-- 🎁 推荐/分享此资料给好友与班级群模态弹窗 -->
+    <div *ngIf="showShareModal()"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in"
+         (click)="closeShareModal()">
+      <div class="bg-white rounded-3xl p-5 sm:p-7 max-w-lg w-full shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in-95"
+           (click)="$event.stopPropagation()">
+        
+        <button
+          type="button"
+          (click)="closeShareModal()"
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold transition cursor-pointer">
+          ✕
+        </button>
+
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center text-xl font-bold shadow-md shadow-emerald-500/20">
+            🎁
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-black text-slate-900">
+              推荐此资料给好友 / 班级群
+            </h3>
+            <p class="text-xs text-slate-400">
+              好资料一起学 · 一键复制文案或微信扫码直达
+            </p>
+          </div>
+        </div>
+
+        <!-- 资料微名片 -->
+        <div class="flex items-center gap-3.5 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 mb-4">
+          <div class="w-12 h-16 rounded overflow-hidden shrink-0 bg-slate-200 border border-slate-200/80 shadow-2xs">
+            <img *ngIf="resource()?.cover_image" [src]="resource()?.cover_image" class="w-full h-full object-cover" />
+            <div *ngIf="!resource()?.cover_image" class="w-full h-full flex items-center justify-center text-xs font-bold text-white bg-blue-600">
+              课本
+            </div>
+          </div>
+          <div class="min-w-0 flex-1 space-y-1">
+            <h4 class="text-xs sm:text-sm font-bold text-slate-900 truncate">
+              {{ resource()?.title }}
+            </h4>
+            <div class="flex items-center gap-2 text-[11px] text-slate-500">
+              <span class="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium border border-emerald-200/60">✓ 高清矢量无损</span>
+              <span>•</span>
+              <span class="font-mono text-slate-600">已转存 {{ saveCount() }} 次</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分享场景切换标签 -->
+        <div class="flex p-1 bg-slate-100 rounded-2xl gap-1 text-xs font-bold mb-3">
+          <button
+            type="button"
+            (click)="setShareTab('parent')"
+            [class]="activeShareTab() === 'parent' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500 hover:text-slate-700'"
+            class="flex-1 py-2 rounded-xl transition cursor-pointer text-center">
+            💬 班级/家长群
+          </button>
+          <button
+            type="button"
+            (click)="setShareTab('moments')"
+            [class]="activeShareTab() === 'moments' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500 hover:text-slate-700'"
+            class="flex-1 py-2 rounded-xl transition cursor-pointer text-center">
+            📕 发到朋友圈
+          </button>
+          <button
+            type="button"
+            (click)="setShareTab('direct')"
+            [class]="activeShareTab() === 'direct' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500 hover:text-slate-700'"
+            class="flex-1 py-2 rounded-xl transition cursor-pointer text-center">
+            ⚡ 一对一发好友
+          </button>
+        </div>
+
+        <!-- 文案预览框 -->
+        <div class="relative mb-4">
+          <textarea
+            rows="4"
+            [value]="shareText()"
+            readonly
+            class="w-full p-3.5 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-2xl outline-none leading-relaxed resize-none font-sans select-all focus:border-emerald-400">
+          </textarea>
+        </div>
+
+        <!-- 底部操作按钮 -->
+        <div class="flex items-center justify-between gap-3 pt-1">
+          <button
+            type="button"
+            (click)="closeShareModal()"
+            class="px-4 py-2.5 text-xs text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer">
+            关闭
+          </button>
+          <button
+            type="button"
+            (click)="copyShareText()"
+            class="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 transition cursor-pointer flex items-center gap-1.5">
+            <span>{{ shareCopySuccess() ? '✅ 已复制到剪贴板！可以直接发送' : '📋 一键复制推荐文案' }}</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 额度耗尽提示与卡密快捷兑换弹窗 (Quota Limit Modal) -->
+  <div *ngIf="showQuotaLimitModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fadeIn">
+    <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200">
+      <!-- 头部 -->
+      <div class="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 p-6 text-white relative">
+        <button type="button" (click)="showQuotaLimitModal.set(false)" class="absolute right-4 top-4 text-white/70 hover:text-white text-xl cursor-pointer">✕</button>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-2xl">⏳</span>
+          <h3 class="text-lg font-extrabold text-white">今日获取额度已达上限</h3>
+        </div>
+        <p class="text-xs text-amber-100">
+          {{ quotaLimitInfo()?.quota_notice_text || '今日免费直达额度已用尽，开通 VIP 畅享无限次高速下载！' }}
+        </p>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
+          <div class="text-xs text-slate-500 mb-1">今日已消耗额度</div>
+          <div class="text-2xl font-black text-slate-800">
+            {{ quotaLimitInfo()?.used_count ?? 5 }} / {{ quotaLimitInfo()?.daily_quota ?? 5 }} 次
+          </div>
+          <div class="text-[11px] text-slate-400 mt-1">额度将在每天 00:00 自动刷新重置</div>
+        </div>
+
+        <!-- 解决方案 1: 登录获得更多额度 (若当前未登录) -->
+        <div *ngIf="!currentUser()" class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between">
+          <div>
+            <div class="font-bold">注册新账号送额度</div>
+            <div class="text-[11px] text-emerald-700">普通会员每天立享 15 次直达额度</div>
+          </div>
+          <a routerLink="/" class="px-3 py-1.5 bg-emerald-700 text-white rounded-lg font-bold text-xs hover:bg-emerald-800 transition">
+            去登录/注册
+          </a>
+        </div>
+
+        <!-- 解决方案 2: 输入卡密直接升级 VIP -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-slate-700">输入 VIP 激活卡密 (直接解除限制)</label>
+          <div class="flex gap-2">
+            <input type="text" [(ngModel)]="quickRedeemCode" placeholder="粘贴 XBW-XXXX 卡密" class="flex-1 px-3 py-2 text-xs font-mono uppercase rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 outline-none" />
+            <button type="button" (click)="submitQuickRedeem()" [disabled]="quickRedeemSubmitting()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50">
+              {{ quickRedeemSubmitting() ? '...' : '立即激活' }}
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="quickRedeemError()" class="p-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs">
+          ⚠️ {{ quickRedeemError() }}
+        </div>
+        <div *ngIf="quickRedeemMsg()" class="p-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold">
+          {{ quickRedeemMsg() }}
+        </div>
+
+        <!-- 解决方案 3: 淘宝购买官方通道 -->
+        <div *ngIf="quotaLimitInfo()?.taobao_shop_url" class="border-t border-slate-100 pt-3 text-center">
+          <a [href]="quotaLimitInfo()?.taobao_shop_url" target="_blank" rel="noopener noreferrer"
+             class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-4 py-2 rounded-xl transition w-full justify-center border border-amber-200">
+            <span>🛒 前往淘宝购买 VIP 卡密 (全自动秒发) ➜</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

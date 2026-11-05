@@ -46,6 +46,10 @@ func Init(dsn string) (*gorm.DB, error) {
 		&model.EmailCampaignLog{},
 		&model.SeoConfig{},
 		&model.SeoPushLog{},
+		&model.MemberLevel{},
+		&model.FrontUser{},
+		&model.ActivationCode{},
+		&model.DailyQuotaLog{},
 	}
 	for _, m := range models {
 		if err := db.AutoMigrate(m); err != nil {
@@ -78,23 +82,47 @@ func seedInitialData(db *gorm.DB) {
 		}
 	}
 
-	// 1. 初始化核心频道 (教辅备考)
+	// 1. 初始化核心频道 (教辅备考 & 电子教材专区)
 	channels := []model.Channel{
 		{
 			Slug:        "edu",
-			Name:        "📚 刚需教辅与学习资料",
+			Name:        "刚需教辅与学习资料",
 			Icon:        "📚",
 			Description: "中小学同步教辅（人教版/期末冲刺/名校密卷）、奥数思维拓展、教师资格证、考公考研等刚需备考资源",
 			SortOrder:   1,
+			IsActive:    true,
+		},
+		{
+			Slug:        "book",
+			Name:        "统编电子教材专区",
+			Icon:        "📖",
+			Description: "全国小学、初中、高中全学科正版高清电子课本PDF，涵盖人教版、北师大版、苏教版等全版本教材",
+			SortOrder:   2,
 			IsActive:    true,
 		},
 	}
 	for _, ch := range channels {
 		db.Where("slug = ?", ch.Slug).FirstOrCreate(&ch)
 	}
-	// 彻底清理非教材类频道 (如 tools, games)
+
+	// 自动纯化老频道名称，杜绝前端双重展示图标
+	db.Exec(`UPDATE channels SET name = '刚需教辅与学习资料' WHERE slug = 'edu'`)
+	db.Exec(`UPDATE channels SET name = '统编电子教材专区' WHERE slug = 'book'`)
+
+	// 若旧 textbook 频道在库资料为 0，自动清理多余冗余频道
+	var oldTextbookCount int64
+	db.Model(&model.Resource{}).Where("channel_slug = ?", "textbook").Count(&oldTextbookCount)
+	if oldTextbookCount == 0 {
+		db.Where("slug = ?", "textbook").Delete(&model.Channel{})
+	} else {
+		// 若已有数据，平滑迁移关联资料到 book
+		db.Model(&model.Resource{}).Where("channel_slug = ?", "textbook").Update("channel_slug", "book")
+		db.Where("slug = ?", "textbook").Delete(&model.Channel{})
+	}
+
+	// 清理非学习业务频道 (如 tools, games)
 	db.Where("slug IN (?)", []string{"tools", "games"}).Delete(&model.Channel{})
-	log.Println("Seeded and normalized initial channel: edu")
+	log.Println("Seeded and normalized initial channels: edu, book")
 
 	// 补齐存量资源的 channel_slug (默认为 edu)
 	db.Model(&model.Resource{}).Where("channel_slug IS NULL OR channel_slug = ''").Update("channel_slug", "edu")
@@ -272,8 +300,8 @@ func seedInitialData(db *gorm.DB) {
 				},
 			},
 			{
-				Title:     "考证专区",
-				Icon:      "📋",
+				Title:     "教师资格证",
+				Icon:      "📜",
 				LinkURL:   "/cert",
 				SortOrder: 4,
 				Subs: []NavSeedSub{
@@ -284,7 +312,7 @@ func seedInitialData(db *gorm.DB) {
 				},
 			},
 			{
-				Title:     "公考升学",
+				Title:     "考公考研",
 				Icon:      "🏛️",
 				LinkURL:   "/exam",
 				SortOrder: 5,
@@ -323,6 +351,10 @@ func seedInitialData(db *gorm.DB) {
 			}
 		}
 		log.Println("Seeded initial nav menus and sub-menus successfully!")
+	} else {
+		// 全系统专区命名同步纠偏：将历史老旧专区名称无缝拉齐统一
+		db.Model(&model.NavMenu{}).Where("title = ? OR link_url = ?", "考证专区", "/cert").Update("title", "教师资格证")
+		db.Model(&model.NavMenu{}).Where("title = ? OR link_url = ?", "公考升学", "/exam").Update("title", "考公考研")
 	}
 
 	// 5. 初始化全局系统配置 (SiteSetting)
@@ -353,6 +385,8 @@ func seedInitialData(db *gorm.DB) {
 			log.Println("Seeded initial site settings successfully!")
 		}
 	}
+	// 默认关闭会员与每日额度流控功能 (前台纯净放量，等流量做起来后随时可在管理后台一键开启)
+	db.Model(&model.SiteSetting{}).Where("id = ?", "global").Update("member_system_enabled", false)
 
 	// 6. 初始化求资料需求池示例数据 (ResourceRequest)
 	var requestCount int64
@@ -529,6 +563,216 @@ func seedInitialData(db *gorm.DB) {
 		db.Create(&defaultSeoConfig)
 		log.Println("Seeded default SeoConfig successfully!")
 	}
+
+	// 12. 自动检查并同步标准化全国 K12 电子教材全套分类体系
+	if err := SeedStandardCategories(db); err != nil {
+		log.Printf("SeedStandardCategories error: %v", err)
+	}
+}
+
+// SeedStandardCategories 初始化并标准化全套 K12 电子教材核心分类字典（学段、年级、学期、学科、教材版本）
+func SeedStandardCategories(db *gorm.DB) error {
+	// 1. 学段 (stage) - 统一定义标准学段专区
+	stages := []model.Category{
+		{Name: "小学阶段", Slug: "primary", Type: "stage", SortOrder: 1, Icon: "🎒", IsHot: true},
+		{Name: "初中阶段", Slug: "junior", Type: "stage", SortOrder: 2, Icon: "📘", IsHot: true},
+		{Name: "高中阶段", Slug: "senior", Type: "stage", SortOrder: 3, Icon: "🎓", IsHot: true},
+		{Name: "幼小衔接", Slug: "kindergarten", Type: "stage", SortOrder: 4, Icon: "🧸", IsHot: false},
+		{Name: "教师资格证", Slug: "cert", Type: "stage", SortOrder: 5, Icon: "📜", IsHot: true},
+		{Name: "考公考研", Slug: "exam", Type: "stage", SortOrder: 6, Icon: "🏛️", IsHot: true},
+	}
+
+	stageIdMap := make(map[string]uint)
+	for _, item := range stages {
+		var existing model.Category
+		err := db.Where("slug = ?", item.Slug).First(&existing).Error
+		if err != nil {
+			if createErr := db.Create(&item).Error; createErr == nil {
+				stageIdMap[item.Slug] = item.ID
+			}
+		} else {
+			existing.Name = item.Name
+			existing.Type = item.Type
+			existing.SortOrder = item.SortOrder
+			existing.Icon = item.Icon
+			existing.IsHot = item.IsHot
+			db.Save(&existing)
+			stageIdMap[item.Slug] = existing.ID
+		}
+	}
+
+	primaryID := stageIdMap["primary"]
+	juniorID := stageIdMap["junior"]
+	seniorID := stageIdMap["senior"]
+
+	// 2. 年级与其余分类
+	type CategorySeedWithParent struct {
+		model.Category
+		ParentStageSlug string
+	}
+
+	otherCategories := []CategorySeedWithParent{
+		// 2. 年级 (grade) - 精准归属各学段
+		{Category: model.Category{Name: "一年级", Slug: "grade-1", Type: "grade", SortOrder: 1, Icon: "🎒", IsHot: true}, ParentStageSlug: "primary"},
+		{Category: model.Category{Name: "二年级", Slug: "grade-2", Type: "grade", SortOrder: 2, Icon: "🎒", IsHot: true}, ParentStageSlug: "primary"},
+		{Category: model.Category{Name: "三年级", Slug: "grade-3", Type: "grade", SortOrder: 3, Icon: "🎒", IsHot: true}, ParentStageSlug: "primary"},
+		{Category: model.Category{Name: "四年级", Slug: "grade-4", Type: "grade", SortOrder: 4, Icon: "🎒", IsHot: true}, ParentStageSlug: "primary"},
+		{Category: model.Category{Name: "五年级", Slug: "grade-5", Type: "grade", SortOrder: 5, Icon: "🎒", IsHot: true}, ParentStageSlug: "primary"},
+		{Category: model.Category{Name: "六年级", Slug: "grade-6", Type: "grade", SortOrder: 6, Icon: "🎒", IsHot: true}, ParentStageSlug: "primary"},
+		{Category: model.Category{Name: "七年级", Slug: "grade-7", Type: "grade", SortOrder: 7, Icon: "📘", IsHot: true}, ParentStageSlug: "junior"},
+		{Category: model.Category{Name: "八年级", Slug: "grade-8", Type: "grade", SortOrder: 8, Icon: "📘", IsHot: true}, ParentStageSlug: "junior"},
+		{Category: model.Category{Name: "九年级", Slug: "grade-9", Type: "grade", SortOrder: 9, Icon: "📘", IsHot: true}, ParentStageSlug: "junior"},
+		{Category: model.Category{Name: "高一", Slug: "grade-10", Type: "grade", SortOrder: 10, Icon: "🎓", IsHot: true}, ParentStageSlug: "senior"},
+		{Category: model.Category{Name: "高二", Slug: "grade-11", Type: "grade", SortOrder: 11, Icon: "🎓", IsHot: true}, ParentStageSlug: "senior"},
+		{Category: model.Category{Name: "高三", Slug: "grade-12", Type: "grade", SortOrder: 12, Icon: "🎓", IsHot: true}, ParentStageSlug: "senior"},
+
+		// 3. 学期 / 分册 (term)
+		{Category: model.Category{Name: "上册", Slug: "term-up", Type: "term", SortOrder: 1, Icon: "🍂", IsHot: true}},
+		{Category: model.Category{Name: "下册", Slug: "term-down", Type: "term", SortOrder: 2, Icon: "🌸", IsHot: true}},
+		{Category: model.Category{Name: "全一册", Slug: "term-full", Type: "term", SortOrder: 3, Icon: "📘", IsHot: false}},
+		{Category: model.Category{Name: "必修·第一册", Slug: "term-bx-1", Type: "term", SortOrder: 4, Icon: "📕", IsHot: true}},
+		{Category: model.Category{Name: "必修·第二册", Slug: "term-bx-2", Type: "term", SortOrder: 5, Icon: "📕", IsHot: true}},
+		{Category: model.Category{Name: "必修·第三册", Slug: "term-bx-3", Type: "term", SortOrder: 6, Icon: "📕", IsHot: false}},
+		{Category: model.Category{Name: "选择性必修·第一册", Slug: "term-xx-1", Type: "term", SortOrder: 7, Icon: "📗", IsHot: true}},
+		{Category: model.Category{Name: "选择性必修·第二册", Slug: "term-xx-2", Type: "term", SortOrder: 8, Icon: "📗", IsHot: false}},
+		{Category: model.Category{Name: "选择性必修·第三册", Slug: "term-xx-3", Type: "term", SortOrder: 9, Icon: "📗", IsHot: false}},
+
+		// 4. 学科 (subject)
+		{Category: model.Category{Name: "语文", Slug: "subject-chinese", Type: "subject", SortOrder: 1, Icon: "📖", IsHot: true}},
+		{Category: model.Category{Name: "数学", Slug: "subject-math", Type: "subject", SortOrder: 2, Icon: "📐", IsHot: true}},
+		{Category: model.Category{Name: "英语", Slug: "subject-english", Type: "subject", SortOrder: 3, Icon: "🔤", IsHot: true}},
+		{Category: model.Category{Name: "科学", Slug: "subject-science", Type: "subject", SortOrder: 4, Icon: "🔬", IsHot: true}},
+		{Category: model.Category{Name: "道德与法治", Slug: "subject-morality", Type: "subject", SortOrder: 5, Icon: "⚖️", IsHot: true}},
+		{Category: model.Category{Name: "物理", Slug: "subject-physics", Type: "subject", SortOrder: 6, Icon: "⚡", IsHot: true}},
+		{Category: model.Category{Name: "化学", Slug: "subject-chemistry", Type: "subject", SortOrder: 7, Icon: "🧪", IsHot: true}},
+		{Category: model.Category{Name: "生物", Slug: "subject-biology", Type: "subject", SortOrder: 8, Icon: "🧬", IsHot: true}},
+		{Category: model.Category{Name: "历史", Slug: "subject-history", Type: "subject", SortOrder: 9, Icon: "📜", IsHot: false}},
+		{Category: model.Category{Name: "地理", Slug: "subject-geography", Type: "subject", SortOrder: 10, Icon: "🌍", IsHot: false}},
+		{Category: model.Category{Name: "思想政治", Slug: "subject-politics", Type: "subject", SortOrder: 11, Icon: "🏛️", IsHot: false}},
+		{Category: model.Category{Name: "信息技术/编程", Slug: "subject-it", Type: "subject", SortOrder: 12, Icon: "💻", IsHot: false}},
+		{Category: model.Category{Name: "奥数与思维培优", Slug: "subject-olympiad", Type: "subject", SortOrder: 13, Icon: "🧠", IsHot: true}},
+
+		// 5. 教材版本 (edition)
+		{Category: model.Category{Name: "人教版 (教育部统编)", Slug: "edition-renjiao", Type: "edition", SortOrder: 1, Icon: "📚", IsHot: true}},
+		{Category: model.Category{Name: "北师大版 (BNU)", Slug: "edition-beishida", Type: "edition", SortOrder: 2, Icon: "📚", IsHot: true}},
+		{Category: model.Category{Name: "苏教版 (江苏凤凰)", Slug: "edition-sujiao", Type: "edition", SortOrder: 3, Icon: "📚", IsHot: true}},
+		{Category: model.Category{Name: "外研版 (英语)", Slug: "edition-waiyan", Type: "edition", SortOrder: 4, Icon: "🔤", IsHot: true}},
+		{Category: model.Category{Name: "译林版 (英语)", Slug: "edition-yilin", Type: "edition", SortOrder: 5, Icon: "🔤", IsHot: true}},
+		{Category: model.Category{Name: "沪教版 (上海教育)", Slug: "edition-hujiao", Type: "edition", SortOrder: 6, Icon: "📚", IsHot: false}},
+		{Category: model.Category{Name: "鲁教版 (山东教育)", Slug: "edition-lujiao", Type: "edition", SortOrder: 7, Icon: "📚", IsHot: false}},
+		{Category: model.Category{Name: "冀教版 (河北教育)", Slug: "edition-jijiao", Type: "edition", SortOrder: 8, Icon: "📚", IsHot: false}},
+		{Category: model.Category{Name: "湘教版 (湖南教育)", Slug: "edition-xiangjiao", Type: "edition", SortOrder: 9, Icon: "📚", IsHot: false}},
+		{Category: model.Category{Name: "粤教版 (广东教育)", Slug: "edition-yuejiao", Type: "edition", SortOrder: 10, Icon: "📚", IsHot: false}},
+		{Category: model.Category{Name: "仁爱版 (英语)", Slug: "edition-renai", Type: "edition", SortOrder: 11, Icon: "🔤", IsHot: false}},
+		{Category: model.Category{Name: "教科版 (科学为主)", Slug: "edition-jiaoke", Type: "edition", SortOrder: 12, Icon: "🔬", IsHot: false}},
+		{Category: model.Category{Name: "浙教版 (浙江教育)", Slug: "edition-zhejiao", Type: "edition", SortOrder: 13, Icon: "📚", IsHot: false}},
+	}
+
+	for _, item := range otherCategories {
+		cat := item.Category
+		if item.ParentStageSlug == "primary" && primaryID > 0 {
+			cat.ParentID = &primaryID
+		} else if item.ParentStageSlug == "junior" && juniorID > 0 {
+			cat.ParentID = &juniorID
+		} else if item.ParentStageSlug == "senior" && seniorID > 0 {
+			cat.ParentID = &seniorID
+		}
+
+		var existing model.Category
+		err := db.Where("slug = ?", cat.Slug).First(&existing).Error
+		if err != nil {
+			if createErr := db.Create(&cat).Error; createErr != nil {
+				log.Printf("Create category %s error: %v", cat.Slug, createErr)
+			}
+		} else {
+			existing.Name = cat.Name
+			existing.Type = cat.Type
+			existing.SortOrder = cat.SortOrder
+			existing.Icon = cat.Icon
+			existing.IsHot = cat.IsHot
+			if cat.ParentID != nil {
+				existing.ParentID = cat.ParentID
+			}
+			db.Save(&existing)
+		}
+	}
+
+	log.Printf("Standardized K12 categories seeded/updated successfully (%d stages, %d items)", len(stages), len(otherCategories))
+
+	// 12. 初始化默认会员角色与额度体系 (member_levels)
+	defaultLevels := []model.MemberLevel{
+		{
+			ID:          "guest",
+			Name:        "游客访问",
+			DailyQuota:  5,
+			Color:       "slate",
+			BadgeText:   "游客",
+			PriceHint:   "免费",
+			Description: "免登录体验，每日可直达获取 5 次网盘学习资源",
+			IsDefault:   false,
+			IsEnabled:   true,
+			SortOrder:   1,
+		},
+		{
+			ID:          "user",
+			Name:        "普通会员",
+			DailyQuota:  15,
+			Color:       "blue",
+			BadgeText:   "注册会员",
+			PriceHint:   "免费注册",
+			Description: "登录即送，每日可直达获取 15 次网盘学习资源",
+			IsDefault:   true,
+			IsEnabled:   true,
+			SortOrder:   2,
+		},
+		{
+			ID:          "vip_month",
+			Name:        "学霸月卡 VIP",
+			DailyQuota:  60,
+			Color:       "emerald",
+			BadgeText:   "月卡VIP",
+			PriceHint:   "¥9.9/月",
+			Description: "考前冲刺突击神器，每日享 60 次高速直达额度",
+			IsDefault:   false,
+			IsEnabled:   true,
+			SortOrder:   3,
+		},
+		{
+			ID:          "vip_year",
+			Name:        "尊享年卡 VIP",
+			DailyQuota:  200,
+			Color:       "amber",
+			BadgeText:   "年卡VIP",
+			PriceHint:   "¥39.9/年",
+			Description: "教辅老师与重度备考首选，每日享 200 次高速直达额度",
+			IsDefault:   false,
+			IsEnabled:   true,
+			SortOrder:   4,
+		},
+		{
+			ID:          "vip_lifetime",
+			Name:        "终身至尊 VIP",
+			DailyQuota:  -1,
+			Color:       "purple",
+			BadgeText:   "终身SVIP",
+			PriceHint:   "¥69.9/终身",
+			Description: "一次开通终身受用，每日无限次免限制高速直达",
+			IsDefault:   false,
+			IsEnabled:   true,
+			SortOrder:   5,
+		},
+	}
+	for _, lvl := range defaultLevels {
+		var existing model.MemberLevel
+		if err := db.Where("id = ?", lvl.ID).First(&existing).Error; err != nil {
+			if createErr := db.Create(&lvl).Error; createErr != nil {
+				log.Printf("Create default MemberLevel %s error: %v", lvl.ID, createErr)
+			}
+		}
+	}
+	log.Printf("Member levels checked and initialized successfully (%d levels)", len(defaultLevels))
+
+	return nil
 }
 
 

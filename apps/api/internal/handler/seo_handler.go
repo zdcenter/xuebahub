@@ -181,4 +181,31 @@ func (h *SeoHandler) ServeIndexNowKeyFile(c fiber.Ctx) error {
 	return c.SendString(cfg.BingApiKey)
 }
 
+type CfPurgeRequest struct {
+	PurgeAll bool     `json:"purge_all"`
+	URLs     []string `json:"urls"`
+}
+
+// PurgeCloudflare 手动触发 Cloudflare 边缘节点缓存刷新 (Purge Cache)
+func (h *SeoHandler) PurgeCloudflare(c fiber.Ctx) error {
+	var req CfPurgeRequest
+	_ = c.Bind().Body(&req)
+
+	cfg, err := h.seoService.GetConfig()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	msg, err := h.seoService.PurgeCloudflareCache(cfg.CfZoneID, cfg.CfApiToken, req.URLs, req.PurgeAll)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": msg,
+		"success": true,
+	})
+}
+
+
 
