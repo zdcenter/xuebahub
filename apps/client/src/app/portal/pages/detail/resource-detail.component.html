@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-slate-50/60 pb-20 pt-6">
+<div class="min-h-screen bg-slate-50/60 pb-28 sm:pb-20 pt-6">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
     <!-- 面包屑导航 -->
@@ -144,69 +144,101 @@
               </div>
             </div>
 
-            <!-- 下部：扫描二维码获取此文件 (红字醒目标题 + 页面直出标准清晰二维码 + 绿色下载按钮 + 推荐分享按钮) -->
-            <div *ngIf="primaryLink as link" class="space-y-3">
-              <h3 class="text-red-600 font-extrabold text-base sm:text-lg flex items-center gap-1.5">
-                <span>扫描二维码获取此文件</span>
-              </h3>
+            <!-- 下部：高转化网盘转存中心 (主推高佣金夸克，醒目标签+强点击诱因，备用网盘次级折叠) -->
+            <div *ngIf="primaryLink as link" class="space-y-4">
+              
+              <!-- 夸克网盘主推专区卡片 (高质感微渐变边框，凸显官方极速信赖感) -->
+              <div class="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-50/50 via-white to-teal-50/30 p-4 sm:p-5 shadow-xs relative overflow-hidden">
+                <!-- 顶部专属特权高光徽章 -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-emerald-100">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-600 text-white shadow-2xs">
+                      <span>⚡</span>
+                      <span>官方推荐极速通道</span>
+                    </span>
+                    <span class="text-xs font-bold text-slate-800">
+                      {{ getDriveLabel(link.drive_type).name }}
+                    </span>
+                  </div>
 
-              <div class="flex flex-wrap items-center gap-5 sm:gap-6">
-                <!-- 二维码直接以大图渲染在页面上 (128x128px，标准4格白边静区，手机打开微信/夸克直接对准屏幕秒扫) -->
-                <div class="w-32 h-32 sm:w-36 sm:h-36 p-1.5 bg-white border border-slate-200 rounded-xl shadow-xs shrink-0 flex items-center justify-center cursor-pointer hover:border-emerald-500 transition"
-                     (click)="openQrModal(link.share_url, link.drive_type, link.extract_code || '')"
-                     title="点击可放大至全屏扫码">
-                  <div class="w-full h-full flex items-center justify-center" [innerHTML]="getQrSvg(link.share_url, 132)"></div>
-                </div>
-
-                <!-- 右侧绿色操作按钮堆叠 + 提取码信息 (完全对齐参考图样式) -->
-                <div class="flex flex-col gap-2.5 justify-center" style="min-width: 140px;">
-                  <a [href]="link.share_url"
-                     (click)="onDownloadClick(link, $event)"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="btn-emerald-download">
-                    <svg viewBox="0 0 20 20">
-                      <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
-                      <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
-                    </svg>
-                    <span>免费下载</span>
-                  </a>
-
-                  <button
-                    type="button"
-                    (click)="openTutorialModal()"
-                    class="btn-emerald-download">
-                    <svg viewBox="0 0 20 20">
-                      <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
-                    </svg>
-                    <span>下载教程</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    (click)="openShareModal('parent')"
-                    class="btn-share-recommend"
-                    title="推荐分享此资料给好友或班级群">
-                    <svg viewBox="0 0 20 20">
-                      <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                    </svg>
-                    <span>推荐给好友</span>
-                  </button>
-
-                  <!-- 提取码与备用网盘 -->
-                  <div *ngIf="link.extract_code" class="text-xs font-mono font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded border border-amber-200 text-center">
-                    🔑 提取码: {{ link.extract_code }}
+                  <!-- 转化心理标签：免提取码 + 空间福利 -->
+                  <div class="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800">
+                    <span class="bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200">免提取码直存</span>
+                    <span class="bg-teal-100/80 px-2 py-0.5 rounded-md border border-teal-200">转存领 1TB 空间</span>
                   </div>
                 </div>
 
-                <!-- 百度网盘等备用通道 -->
-                <div *ngIf="baiduLink as bLink" class="sm:ml-auto flex sm:flex-col gap-2">
-                  <a [href]="bLink.share_url"
+                <!-- 核心行动区域：直出大二维码 + 超强点击欲的大号主转存按钮 -->
+                <div class="pt-3.5 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                  <!-- 左侧：扫码转存区 (提示手机对准秒扫) -->
+                  <div class="flex flex-col items-center gap-1.5 shrink-0">
+                    <div class="w-32 h-32 p-1.5 bg-white border-2 border-emerald-400/40 rounded-xl shadow-xs flex items-center justify-center cursor-pointer hover:border-emerald-500 transition group"
+                         (click)="openQrModal(link.share_url, link.drive_type, link.extract_code || '')"
+                         title="点击放大全屏扫码">
+                      <div class="w-full h-full flex items-center justify-center transition-transform group-hover:scale-102" [innerHTML]="getQrSvg(link.share_url, 120)"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                      <span>📱</span>
+                      <span>手机夸克/微信对准扫码</span>
+                    </span>
+                  </div>
+
+                  <!-- 右侧：强视觉 CTA 转存按钮与操作按钮群 -->
+                  <div class="flex-1 w-full space-y-2.5">
+                    <!-- 超大醒目转存主按钮 -->
+                    <a [href]="link.share_url"
+                       (click)="onDownloadClick(link, $event)"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="btn-primary-transfer group">
+                      <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 fill-white transition-transform group-hover:scale-115 shrink-0" viewBox="0 0 20 20">
+                          <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
+                          <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+                        </svg>
+                        <span class="text-base font-extrabold tracking-wide">🚀 一键转存到网盘 (防链接失效)</span>
+                      </div>
+                      <span class="text-[11px] text-emerald-100 font-normal mt-0.5 opacity-90">建议转存至个人网盘，支持在手机/电脑随时无水印在线打印</span>
+                    </a>
+
+                    <!-- 次级操作按钮群：教程、推荐、提取码 -->
+                    <div class="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        (click)="openTutorialModal()"
+                        class="btn-secondary-action flex-1">
+                        <span>📖</span>
+                        <span>转存/打印教程</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        (click)="openShareModal('parent')"
+                        class="btn-secondary-action flex-1"
+                        title="推荐分享此资料给好友或班级群">
+                        <span>🎁</span>
+                        <span>推荐给考友</span>
+                      </button>
+
+                      <div *ngIf="link.extract_code" class="text-xs font-mono font-bold text-amber-900 bg-amber-100 px-3 py-1.5 rounded-lg border border-amber-300 text-center shrink-0">
+                        🔑 提取码: {{ link.extract_code }} (转存已自动复制)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 备用网盘渠道 (低侵略性次要展示，确保主流量沉淀在夸克) -->
+                <div *ngIf="otherLinks.length > 0" class="mt-4 pt-3 border-t border-emerald-100/80 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span class="shrink-0 text-slate-400 font-medium">若无夸克网盘，可使用备用通道:</span>
+                  <a *ngFor="let other of otherLinks"
+                     [href]="other.share_url"
+                     (click)="onDownloadClick(other, $event)"
                      target="_blank"
                      rel="noopener noreferrer"
-                     class="px-4 py-2 border border-slate-200 hover:border-blue-300 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-2xs">
-                    <span>☁️</span>
-                    <span>百度网盘备用</span>
+                     class="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-300 rounded-lg transition font-medium shadow-2xs">
+                    <span>{{ getDriveLabel(other.drive_type).icon }}</span>
+                    <span>{{ getDriveLabel(other.drive_type).name }}</span>
+                    <span *ngIf="other.extract_code" class="text-[10px] text-amber-700 font-mono">({{ other.extract_code }})</span>
                   </a>
                 </div>
               </div>
@@ -776,4 +808,28 @@
     </div>
 
   </div>
+</div>
+
+<!-- 移动端专属吸底常驻转存操作栏 (提升手机端浏览深度后的转存转化率) -->
+<div *ngIf="primaryLink as link" class="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] px-3.5 py-2.5 flex items-center justify-between gap-3 safe-bottom">
+  <div class="flex-1 min-w-0">
+    <div class="text-xs font-bold text-slate-900 truncate">
+      {{ resource()?.title }}
+    </div>
+    <div class="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+      <span class="text-emerald-700 font-semibold">● 夸克官方通道</span>
+      <span>·</span>
+      <span>{{ saveCount() }} 次转存</span>
+    </div>
+  </div>
+  <a [href]="link.share_url"
+     (click)="onDownloadClick(link, $event)"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-600/30 transition-all cursor-pointer">
+    <span>🚀 立即转存</span>
+    <svg class="w-3.5 h-3.5 fill-white" viewBox="0 0 20 20">
+      <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+    </svg>
+  </a>
 </div>

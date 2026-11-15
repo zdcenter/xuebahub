@@ -16,6 +16,55 @@ import { WechatGuideModalComponent } from '../../components/wechat-guide-modal/w
   imports: [CommonModule, RouterLink, FormsModule, WechatGuideModalComponent],
   templateUrl: './resource-detail.component.html',
   styles: [`
+    .btn-primary-transfer {
+      background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%) !important;
+      color: #ffffff !important;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 14px -2px rgba(5, 150, 105, 0.35);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      width: 100%;
+      min-height: 48px;
+    }
+    .btn-primary-transfer:hover {
+      background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%) !important;
+      box-shadow: 0 6px 20px -2px rgba(5, 150, 105, 0.45);
+      transform: translateY(-1px);
+    }
+    .btn-primary-transfer:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: 0 2px 8px -2px rgba(5, 150, 105, 0.3);
+    }
+    .btn-secondary-action {
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid #e2e8f0;
+      transition: all 0.15s ease-in-out;
+      user-select: none;
+    }
+    .btn-secondary-action:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+      border-color: #cbd5e1;
+    }
     .btn-emerald-download {
       background-color: #00965e !important;
       color: #ffffff !important;
@@ -165,9 +214,27 @@ export class ResourceDetailComponent implements OnInit {
     return list.find(l => l.drive_type === 'quark') || list[0] || null;
   }
 
-  // 备用网盘
+  // 备用网盘 (百度)
   get baiduLink(): ResourceLinkDto | null {
     return this.links().find(l => l.drive_type === 'baidu') || null;
+  }
+
+  // 备用网盘列表 (除主推网盘外的所有可用网盘)
+  get otherLinks(): ResourceLinkDto[] {
+    const primary = this.primaryLink;
+    if (!primary) return [];
+    return this.links().filter(l => l !== primary && l.status !== 'invalid' && !!l.share_url);
+  }
+
+  getDriveLabel(type: string): { name: string; icon: string } {
+    switch (type) {
+      case 'quark': return { name: '夸克网盘', icon: '⚡' };
+      case 'baidu': return { name: '百度网盘', icon: '☁️' };
+      case 'xunlei': return { name: '迅雷云盘', icon: '⚡' };
+      case 'aliyun': return { name: '阿里云盘', icon: '📦' };
+      case 'uc': return { name: 'UC网盘', icon: '🐿️' };
+      default: return { name: '备用通道', icon: '🔗' };
+    }
   }
 
   get subjectBgColor(): string {
