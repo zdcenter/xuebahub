@@ -605,8 +605,9 @@
                   </div>
                 </div>
 
-                <!-- 文件夹展开内容：递归调用自身模板 -->
-                <div *ngIf="isPathExpanded(parentPath ? (parentPath + '/' + node.name) : node.name) && node.children?.length"
+                <!-- 文件夹展开内容：递归调用自身模板 (采用 class.hidden 控制视觉折叠，确保 DOM 节点常驻，利于 SEO 爬虫全量索引) -->
+                <div [class.hidden]="!isPathExpanded(parentPath ? (parentPath + '/' + node.name) : node.name)"
+                     *ngIf="node.children?.length"
                      class="border-l-2 border-blue-200/70 ml-5 sm:ml-7">
                   <ng-container *ngTemplateOutlet="fileTreeTpl; context: { 
                     nodes: node.children, 

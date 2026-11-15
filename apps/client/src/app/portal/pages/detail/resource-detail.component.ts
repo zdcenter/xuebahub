@@ -373,11 +373,21 @@ export class ResourceDetailComponent implements OnInit {
             description: resourceItem.description || `${resourceItem.title}，正版高清PDF/视频课件，支持A4无损打印与极速转存。`
           });
 
-          // 默认展开所有文件夹路径
+          // 默认展示策略：大文件集默认仅展开第1级主文件夹（保持页面清爽优雅，避免撑爆高度）
+          // 同时底层 DOM 全量渲染并由 CSS 进行折叠控制，确保百度/Google 爬虫可以 100% 收录全部长尾文件名！
           const tree = Array.isArray(resourceItem.file_tree) ? resourceItem.file_tree : [];
-          const allPaths = this.collectAllDirPaths(tree);
-          this.expandedPaths.set(new Set(allPaths));
-          this.allExpanded.set(true);
+          const totalFiles = this.countTotalFiles(tree);
+          if (totalFiles <= 10) {
+            // 文件总数 <= 10 时，直接全部展开
+            const allPaths = this.collectAllDirPaths(tree);
+            this.expandedPaths.set(new Set(allPaths));
+            this.allExpanded.set(true);
+          } else {
+            // 文件总数较多时，默认仅展开第 0 级（顶层根目录），让直接子分类（如语文、数学）可见，孙级内容默认收起
+            const firstLevelPaths = this.collectFirstLevelDirPaths(tree);
+            this.expandedPaths.set(new Set(firstLevelPaths));
+            this.allExpanded.set(false);
+          }
         }
         this.isLoading.set(false);
       },
@@ -403,6 +413,17 @@ export class ResourceDetailComponent implements OnInit {
 
   isPathExpanded(path: string): boolean {
     return this.expandedPaths().has(path);
+  }
+
+  // 收集仅第一级（根级）文件夹路径
+  private collectFirstLevelDirPaths(nodes: any[]): string[] {
+    const paths: string[] = [];
+    for (const node of nodes) {
+      if (node.is_dir) {
+        paths.push(node.name);
+      }
+    }
+    return paths;
   }
 
   // 递归收集目录树中所有文件夹的唯一路径标识
