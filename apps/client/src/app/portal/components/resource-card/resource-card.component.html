@@ -1,51 +1,60 @@
-<article class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-blue-400 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between group">
-  <!-- 左侧：类型图标徽标 + 中间信息密集流 -->
+<article class="bg-white rounded-3xl border border-slate-200/90 shadow-academic hover:shadow-academic-hover hover:border-emerald-400 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between group">
+  <!-- 左侧：精美封面/拟物书卷 + 核心信息流 -->
   <div class="p-4 sm:p-5 flex items-start space-x-3.5 sm:space-x-4 flex-1 min-w-0">
-    <div class="flex-shrink-0 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl border text-center shadow-2xs group-hover:scale-105 transition-all"
-         [ngClass]="isVideo ? 'bg-gradient-to-br from-blue-50 to-indigo-100/70 border-blue-200' : (isPdf ? 'bg-gradient-to-br from-rose-50 to-red-100/70 border-rose-200' : 'bg-gradient-to-br from-slate-50 to-blue-50/70 border-slate-200')">
-      <div *ngIf="isVideo" class="flex flex-col items-center">
-        <span class="text-xl leading-none">🎬</span>
-        <span class="text-[9px] font-mono font-bold mt-1 text-blue-700">微课视频</span>
+    
+    <!-- 封面或仿真微图标 (若有实物封面优先渲染 3:4 黄金微缩图，极大增强专业信赖度) -->
+    <div class="flex-shrink-0 relative">
+      <div *ngIf="resource.cover_image" class="w-14 sm:w-16 aspect-[3/4] rounded-xl overflow-hidden shadow-sm border border-slate-200/80 bg-slate-100 group-hover:scale-103 transition-transform">
+        <img [src]="resource.cover_image" [alt]="resource.title" class="w-full h-full object-cover object-top" />
       </div>
-      <div *ngIf="!isVideo && isPdf" class="flex flex-col items-center">
-        <span class="text-xl leading-none">📄</span>
-        <span class="text-[9px] font-mono font-bold mt-1 text-rose-600">PDF真题</span>
-      </div>
-      <div *ngIf="!isVideo && !isPdf" class="flex flex-col items-center">
-        <span class="text-xl leading-none">📚</span>
-        <span class="text-[9px] font-mono font-bold mt-1 text-slate-700">{{ resource.file_type || '资料' }}</span>
+
+      <div *ngIf="!resource.cover_image"
+           class="flex-shrink-0 flex items-center justify-center w-13 h-13 sm:w-15 sm:h-15 rounded-2xl border text-center shadow-2xs group-hover:scale-105 transition-all"
+           [ngClass]="isVideo ? 'bg-gradient-to-br from-blue-50 to-indigo-100/70 border-blue-200' : (isPdf ? 'bg-gradient-to-br from-emerald-50 to-teal-100/70 border-emerald-200' : 'bg-gradient-to-br from-slate-50 to-blue-50/70 border-slate-200')">
+        <div *ngIf="isVideo" class="flex flex-col items-center">
+          <span class="text-xl leading-none">🎬</span>
+          <span class="text-[9px] font-mono font-bold mt-1 text-blue-700">微课视频</span>
+        </div>
+        <div *ngIf="!isVideo && isPdf" class="flex flex-col items-center">
+          <span class="text-xl leading-none">📄</span>
+          <span class="text-[9px] font-mono font-bold mt-1 text-emerald-800">高清真题</span>
+        </div>
+        <div *ngIf="!isVideo && !isPdf" class="flex flex-col items-center">
+          <span class="text-xl leading-none">📚</span>
+          <span class="text-[9px] font-mono font-bold mt-1 text-slate-700">{{ resource.file_type || '教辅' }}</span>
+        </div>
       </div>
     </div>
 
     <!-- 资料详情本体 -->
     <div class="flex-1 min-w-0 space-y-1.5">
-      <!-- 标签与状态流 -->
+      <!-- 标签与状态流 (低饱和高雅微胶囊) -->
       <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
-        <span *ngIf="resource.stage" class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-md border border-blue-200/60">
+        <span *ngIf="resource.stage" class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-200/60">
           {{ resource.stage }}
         </span>
-        <span *ngIf="resource.grade" class="px-2 py-0.5 bg-slate-100 text-slate-700 font-medium rounded-md">
+        <span *ngIf="resource.grade" class="px-2 py-0.5 bg-slate-100 text-slate-700 font-medium rounded-lg">
           {{ resource.grade }}
         </span>
-        <span *ngIf="resource.subject" class="px-2 py-0.5 bg-emerald-50 text-emerald-800 font-medium rounded-md border border-emerald-200/60">
+        <span *ngIf="resource.subject" class="px-2 py-0.5 bg-emerald-50 text-emerald-800 font-bold rounded-lg border border-emerald-200/60">
           {{ resource.subject }}
         </span>
-        <span *ngIf="resource.edition" class="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-md border border-slate-200">
+        <span *ngIf="resource.edition" class="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-lg border border-slate-200">
           {{ resource.edition }}
         </span>
-        <span *ngIf="resource.region" class="px-2 py-0.5 bg-sky-50 text-sky-700 font-medium rounded-md border border-sky-200/60">
+        <span *ngIf="resource.region" class="px-2 py-0.5 bg-sky-50 text-sky-700 font-medium rounded-lg border border-sky-200/60">
           📍 {{ resource.region }}
         </span>
-        <span *ngIf="resource.is_recommended" class="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 font-bold rounded-md">
-          🔥 热门精选
+        <span *ngIf="resource.is_recommended" class="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 font-bold rounded-lg">
+          🔥 热门真题
         </span>
-        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium rounded-md">
-          🟢 存活可用
+        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/70 font-medium rounded-lg text-[10px]">
+          ● 存活秒存
         </span>
       </div>
 
       <!-- 核心标题 -->
-      <h3 class="text-base sm:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+      <h3 class="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors leading-snug">
         <a [routerLink]="['/resource', resource.slug || resource.id]" class="hover:underline">
           {{ resource.title }}
         </a>
@@ -67,39 +76,39 @@
         <span class="hidden sm:inline-flex items-center gap-1">
           <span>👁️</span> {{ resource.view_count || 1280 }} 次查阅
         </span>
-        <span class="text-blue-600 font-semibold flex items-center gap-1">
-          <span>⚡</span> {{ resource.save_count || 390 }} 人已极速转存
+        <span class="text-emerald-700 font-bold flex items-center gap-1">
+          <span>⚡</span> {{ resource.save_count || 390 }} 人已转存
         </span>
         <span *ngIf="hasBaidu" class="hidden md:inline-flex px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded text-[11px]">
-          📦 包含百度网盘备用
+          📦 包含百度备用
         </span>
       </div>
     </div>
   </div>
 
-  <!-- 右侧：直达转化行动区 -->
-  <div class="px-4 py-3 sm:px-5 sm:py-5 bg-slate-50/80 sm:bg-transparent border-t border-slate-100 sm:border-0 flex sm:flex-row lg:flex-col items-stretch lg:items-end justify-end gap-2 flex-shrink-0">
+  <!-- 右侧：高转化行动区 (升级为高点击欲望的翡翠绿胶囊) -->
+  <div class="px-4 py-3 sm:px-5 sm:py-5 bg-slate-50/60 lg:bg-transparent border-t border-slate-100 lg:border-0 flex sm:flex-row lg:flex-col items-stretch lg:items-end justify-end gap-2 flex-shrink-0">
     <div class="flex flex-col items-stretch lg:items-end gap-1 flex-1 lg:flex-initial">
       <a *ngIf="primaryLink"
          [href]="primaryLink.share_url"
          target="_blank"
          rel="noopener noreferrer"
-         class="py-2 px-3.5 sm:px-4 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1.5 whitespace-nowrap bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/90 shadow-2xs hover:shadow-xs transition"
-         title="建议先保存到自己网盘：下载无损高清真题原件，可享 A4 极清打印与 4K 微课原画">
-        <span class="text-amber-500 text-xs leading-none">⚡</span>
-        <span>转存到夸克网盘</span>
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+         class="py-2.5 px-4 text-xs font-extrabold rounded-xl flex items-center justify-center space-x-1.5 whitespace-nowrap bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm shadow-emerald-600/25 transition active:scale-95 cursor-pointer"
+         title="免提取码一键转存：下载无损高清真题原件，支持 A4 极清打印">
+        <span>🚀</span>
+        <span>一键转存 (免密)</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 fill-white" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
         </svg>
       </a>
-      <span class="text-[10px] text-amber-700 font-medium text-center lg:text-right hidden sm:block select-none">
-        💡 转存享无损A4打印&4K
+      <span class="text-[10px] text-emerald-800 font-semibold text-center lg:text-right hidden sm:block select-none">
+        ⚡ 夸克极速通道 · 转存防失效
       </span>
     </div>
 
     <div class="flex items-center gap-1.5 flex-1 lg:flex-initial">
       <a [routerLink]="['/resource', resource.slug || resource.id]"
-         class="flex-1 py-2 px-3 sm:px-3.5 text-xs font-medium text-slate-600 bg-slate-100/90 hover:bg-slate-200/90 hover:text-slate-900 border border-slate-200/60 rounded-xl transition text-center whitespace-nowrap shadow-2xs sm:shadow-none">
+         class="flex-1 py-2 px-3.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 hover:text-slate-900 border border-slate-200 rounded-xl transition text-center whitespace-nowrap shadow-2xs">
         试看详情 ➔
       </a>
     </div>
