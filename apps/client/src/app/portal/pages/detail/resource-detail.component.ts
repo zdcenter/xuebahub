@@ -201,6 +201,26 @@ export class ResourceDetailComponent implements OnInit {
 
   private qrCache = new Map<string, SafeHtml>();
 
+  getQrSvg(url: string, size = 160): SafeHtml {
+    if (!url) return '';
+    const cacheKey = `${url}_${size}`;
+    if (this.qrCache.has(cacheKey)) {
+      return this.qrCache.get(cacheKey)!;
+    }
+    const svgStr = generateQRCodeSvg(url, size, 4);
+    const safe = this.sanitizer.bypassSecurityTrustHtml(svgStr);
+    this.qrCache.set(cacheKey, safe);
+    return safe;
+  }
+
+  openQrModal(url: string, driveType: string, extractCode = '') {
+    this.activeQrModal.set({ url, driveType, extractCode });
+  }
+
+  closeQrModal() {
+    this.activeQrModal.set(null);
+  }
+
   constructor(
     private portalService: PortalService,
     private seoService: SeoService,
@@ -353,9 +373,10 @@ export class ResourceDetailComponent implements OnInit {
             description: resourceItem.description || `${resourceItem.title}，正版高清PDF/视频课件，支持A4无损打印与极速转存。`
           });
 
-          // 默认展开所有顶层文件夹
+          // 默认展开所有文件夹路径
           const tree = Array.isArray(resourceItem.file_tree) ? resourceItem.file_tree : [];
-          this.expandedDirs.set(new Set(tree.map((_: any, idx: number) => idx)));
+          const allPaths = this.collectAllDirPaths(tree);
+          this.expandedPaths.set(new Set(allPaths));
           this.allExpanded.set(true);
         }
         this.isLoading.set(false);
@@ -366,51 +387,48 @@ export class ResourceDetailComponent implements OnInit {
     });
   }
 
-  // 二维码安全渲染 (标准 >=4 模块安全静区，确保手机 100% 毫秒级识别)
-  getQrSvg(url: string, size = 160): SafeHtml {
-    if (!url) return '';
-    const cacheKey = `${url}_${size}`;
-    if (this.qrCache.has(cacheKey)) {
-      return this.qrCache.get(cacheKey)!;
-    }
-    const svgStr = generateQRCodeSvg(url, size, 4);
-    const safe = this.sanitizer.bypassSecurityTrustHtml(svgStr);
-    this.qrCache.set(cacheKey, safe);
-    return safe;
-  }
+  // 记录所有展开文件夹的唯一路径标识 (支持无限级目录独立折叠展开)
+  expandedPaths = signal<Set<string>>(new Set());
 
-  openQrModal(url: string, driveType: string, extractCode = '') {
-    this.activeQrModal.set({ url, driveType, extractCode });
-  }
-
-  closeQrModal() {
-    this.activeQrModal.set(null);
-  }
-
-  // 切换单个文件夹折叠/展开
-  toggleDir(index: number) {
-    const current = new Set(this.expandedDirs());
-    if (current.has(index)) {
-      current.delete(index);
+  // 切换单个文件夹路径展开/折叠
+  toggleDirPath(path: string) {
+    const current = new Set(this.expandedPaths());
+    if (current.has(path)) {
+      current.delete(path);
     } else {
-      current.add(index);
+      current.add(path);
     }
-    this.expandedDirs.set(current);
+    this.expandedPaths.set(current);
   }
 
-  isDirExpanded(index: number): boolean {
-    return this.expandedDirs().has(index);
+  isPathExpanded(path: string): boolean {
+    return this.expandedPaths().has(path);
+  }
+
+  // 递归收集目录树中所有文件夹的唯一路径标识
+  private collectAllDirPaths(nodes: any[], parent = ''): string[] {
+    let paths: string[] = [];
+    for (const node of nodes) {
+      if (node.is_dir) {
+        const curr = parent ? `${parent}/${node.name}` : node.name;
+        paths.push(curr);
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          paths = paths.concat(this.collectAllDirPaths(node.children, curr));
+        }
+      }
+    }
+    return paths;
   }
 
   // 切换所有文件夹展开/折叠
   toggleAll() {
     const tree = this.displayTree();
     if (this.allExpanded()) {
-      this.expandedDirs.set(new Set());
+      this.expandedPaths.set(new Set());
       this.allExpanded.set(false);
     } else {
-      const allIndices = new Set(tree.map((_, idx) => idx));
-      this.expandedDirs.set(allIndices);
+      const allPaths = this.collectAllDirPaths(tree);
+      this.expandedPaths.set(new Set(allPaths));
       this.allExpanded.set(true);
     }
   }

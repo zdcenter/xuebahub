@@ -566,22 +566,35 @@
             <span class="w-36 sm:w-44 text-right pr-2 shrink-0 whitespace-nowrap">大小</span>
           </div>
 
-          <!-- 树形文件列表体 -->
+          <!-- 树形文件列表体 (支持无限级深层子文件夹穿透展开，宛如系统级资源管理器) -->
           <div class="divide-y divide-slate-100 text-xs">
-            <ng-container *ngFor="let node of displayTree(); let idx = index">
+            <ng-container *ngTemplateOutlet="fileTreeTpl; context: { nodes: displayTree(), parentPath: '', level: 0 }"></ng-container>
+          </div>
+
+          <!-- 无限递归树节点模板 -->
+          <ng-template #fileTreeTpl let-nodes="nodes" let-parentPath="parentPath" let-level="level">
+            <ng-container *ngFor="let node of nodes">
               
-              <!-- 文件夹项 (带展开/折叠功能与下级缩进) -->
+              <!-- 文件夹项 (支持无限级下钻、展开/折叠与子项数展示) -->
               <div *ngIf="node.is_dir" class="group">
-                <!-- 文件夹头部 -->
-                <div (click)="toggleDir(idx)"
-                     class="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/40 hover:bg-blue-50/40 cursor-pointer transition select-none">
+                <!-- 文件夹头部行 -->
+                <div (click)="toggleDirPath(parentPath ? (parentPath + '/' + node.name) : node.name)"
+                     class="flex items-center justify-between py-2.5 pr-3.5 hover:bg-blue-50/50 cursor-pointer transition select-none"
+                     [style.paddingLeft.px]="14 + level * 18"
+                     [class.bg-slate-50]="level === 0"
+                     [class.bg-white]="level > 0">
                   <div class="flex items-center space-x-2 min-w-0 flex-1">
-                    <span class="w-4 text-[10px] text-slate-400 group-hover:text-blue-600 transition-transform duration-200 inline-block text-center font-mono select-none">
-                      {{ isDirExpanded(idx) ? '▼' : '▶' }}
+                    <span class="w-4 text-[10px] text-slate-400 group-hover:text-blue-600 transition-transform duration-150 inline-block text-center font-mono">
+                      {{ isPathExpanded(parentPath ? (parentPath + '/' + node.name) : node.name) ? '▼' : '▶' }}
                     </span>
-                    <span class="text-base text-amber-500">📁</span>
+                    <span class="text-base text-amber-500">
+                      {{ isPathExpanded(parentPath ? (parentPath + '/' + node.name) : node.name) ? '📂' : '📁' }}
+                    </span>
                     <span class="font-bold text-slate-800 group-hover:text-blue-700 truncate text-xs sm:text-sm">
                       {{ node.name }}
+                    </span>
+                    <span *ngIf="node.children?.length" class="text-[10px] text-slate-400 font-mono hidden sm:inline">
+                      ({{ node.children.length }} 项)
                     </span>
                   </div>
 
@@ -592,41 +605,24 @@
                   </div>
                 </div>
 
-                <!-- 文件夹展开内容 (带树状层级连线) -->
-                <div *ngIf="isDirExpanded(idx) && node.children?.length" class="bg-white py-1">
-                  <div class="ml-5 sm:ml-7 pl-3 sm:pl-4 border-l-2 border-slate-200/90 space-y-0.5 my-1">
-                    <div *ngFor="let child of node.children" class="relative flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition group/file">
-                      <!-- 树状拐角连线 -->
-                      <span class="absolute -left-3 sm:-left-4 top-1/2 -mt-px w-2.5 sm:w-3.5 h-px bg-slate-200/90 pointer-events-none"></span>
-
-                      <div class="flex items-center space-x-2 min-w-0 flex-1">
-                        <span class="text-sm shrink-0">{{ getFileIcon(child.ext || '', child.is_dir) }}</span>
-                        <span class="font-medium text-slate-700 group-hover/file:text-blue-600 truncate text-xs" [title]="child.name">
-                          {{ child.name }}
-                        </span>
-                        <span *ngIf="child.ext" class="text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 font-mono"
-                              [ngClass]="getFileBadgeClass(child.ext)">
-                          {{ child.ext }}
-                        </span>
-                      </div>
-
-                      <div class="w-36 sm:w-44 text-right pr-2 shrink-0">
-                        <span *ngIf="child.size" class="text-[11px] font-mono text-slate-400 group-hover/file:text-slate-600 whitespace-nowrap">
-                          {{ child.size }}
-                        </span>
-                        <span *ngIf="!child.size" class="text-[10px] text-slate-300">-</span>
-                      </div>
-                    </div>
-                  </div>
+                <!-- 文件夹展开内容：递归调用自身模板 -->
+                <div *ngIf="isPathExpanded(parentPath ? (parentPath + '/' + node.name) : node.name) && node.children?.length"
+                     class="border-l-2 border-blue-200/70 ml-5 sm:ml-7">
+                  <ng-container *ngTemplateOutlet="fileTreeTpl; context: { 
+                    nodes: node.children, 
+                    parentPath: parentPath ? (parentPath + '/' + node.name) : node.name, 
+                    level: level + 1 
+                  }"></ng-container>
                 </div>
               </div>
 
-              <!-- 顶层文件项 (无文件夹包裹的直属文件) -->
-              <div *ngIf="!node.is_dir" class="flex items-center justify-between px-3.5 py-2.5 hover:bg-blue-50/30 transition group/rootfile">
+              <!-- 文件项 (叶子节点) -->
+              <div *ngIf="!node.is_dir"
+                   class="flex items-center justify-between py-2 pr-3.5 hover:bg-slate-50/90 transition group/file"
+                   [style.paddingLeft.px]="28 + level * 18">
                 <div class="flex items-center space-x-2 min-w-0 flex-1">
-                  <span class="w-4 inline-block text-center text-slate-300 select-none text-[10px]">·</span>
                   <span class="text-sm shrink-0">{{ getFileIcon(node.ext || '', false) }}</span>
-                  <span class="font-medium text-slate-800 group-hover/rootfile:text-blue-600 truncate text-xs sm:text-sm" [title]="node.name">
+                  <span class="font-medium text-slate-700 group-hover/file:text-blue-600 truncate text-xs" [title]="node.name">
                     {{ node.name }}
                   </span>
                   <span *ngIf="node.ext" class="text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 font-mono"
@@ -636,7 +632,7 @@
                 </div>
 
                 <div class="w-36 sm:w-44 text-right pr-2 shrink-0">
-                  <span *ngIf="node.size" class="text-[11px] font-mono text-slate-400 group-hover/rootfile:text-slate-600 whitespace-nowrap">
+                  <span *ngIf="node.size" class="text-[11px] font-mono text-slate-400 group-hover/file:text-slate-600 whitespace-nowrap">
                     {{ node.size }}
                   </span>
                   <span *ngIf="!node.size" class="text-[10px] text-slate-300">-</span>
@@ -644,7 +640,7 @@
               </div>
 
             </ng-container>
-          </div>
+          </ng-template>
 
         </div>
 
