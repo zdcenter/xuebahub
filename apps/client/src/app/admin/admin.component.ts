@@ -1316,6 +1316,46 @@ export class AdminComponent implements OnInit {
     this.showCrawlerRawModal.set(false);
   }
 
+  transferringDraftId = signal<string | null>(null);
+
+  // 草稿箱极速一键转存换链
+  quickTransferDraft(draft: ResourceDraftDto) {
+    if (!draft?.share_url) {
+      this.showToast('该草稿无有效分享链接', 'error');
+      return;
+    }
+    this.transferringDraftId.set(draft.id);
+    this.showToast('🔄 正在将该资源转存到您的夸克网盘并生成专属推广链接...');
+
+    this.resService.autoTransferAndShare({
+      share_url: draft.share_url,
+      passcode: draft.extract_code || ''
+    }).subscribe({
+      next: (result) => {
+        this.transferringDraftId.set(null);
+        if (result && result.new_share_url) {
+          draft.share_url = result.new_share_url;
+          if (result.file_size) draft.file_size = result.file_size;
+          if (result.extract_code) draft.extract_code = result.extract_code;
+          this.showToast(`🎉 转存成功！已自动替换为您专属的夸克推广链：${result.new_share_url}`);
+        }
+      },
+      error: (err) => {
+        this.transferringDraftId.set(null);
+        this.showToast(err?.error?.message || '转存失败，请检查网盘账号管理中夸克 Cookie 是否有效', 'error');
+      }
+    });
+  }
+
+  // 搜索需求词雷达一键补录创建
+  quickCreateFromSearch(keyword: string) {
+    if (!keyword) return;
+    this.switchTab('add');
+    this.newResource.title = keyword.trim();
+    this.runLocalInference('new');
+    this.showToast(`🎯 已自动填充需求词【${keyword}】并推导学科，填入网盘即可发布！`);
+  }
+
   importDraftToResource(draft: ResourceDraftDto) {
     this.currentImportingDraftId = draft.id;
     this.switchTab('add');
