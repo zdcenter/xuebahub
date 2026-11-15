@@ -1,71 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <!-- 1. 品牌超椭圆底座渐变：深邃星空极光蓝 -->
-    <linearGradient id="fav-base-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1E3A8A" />
+    <!-- 背景超椭圆渐变 -->
+    <linearGradient id="fav-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
       <stop offset="50%" stop-color="#1D4ED8" />
-      <stop offset="100%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E3A8A" />
     </linearGradient>
 
-    <!-- 2. 主体微晶云朵渐变 (纯净洁白到冰晶蓝) -->
-    <linearGradient id="fav-cloud-main" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" />
-      <stop offset="65%" stop-color="#F0F9FF" />
-      <stop offset="100%" stop-color="#BAE6FD" />
-    </linearGradient>
-
-    <!-- 3. 【学霸黄金冠顶】醒目金黄渐变 -->
-    <linearGradient id="fav-hat-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- 学士帽双色渐变 -->
+    <linearGradient id="fav-gold-light" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FEF08A" />
-      <stop offset="40%" stop-color="#FBBF24" />
+      <stop offset="60%" stop-color="#FBBF24" />
       <stop offset="100%" stop-color="#F59E0B" />
     </linearGradient>
 
-    <!-- 帽子立体圆弧底座：深金琥珀，与白云形成强烈反差界线 -->
-    <linearGradient id="fav-hat-base" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#D97706" />
-      <stop offset="100%" stop-color="#78350F" />
-    </linearGradient>
-
-    <!-- 4. 云核资源极速光箭渐变 -->
-    <linearGradient id="fav-arrow-grad" x1="0%" y1="100%" x2="0%" y2="0%">
-      <stop offset="0%" stop-color="#2563EB" />
-      <stop offset="50%" stop-color="#0EA5E9" />
-      <stop offset="100%" stop-color="#38BDF8" />
+    <linearGradient id="fav-gold-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
     </linearGradient>
   </defs>
 
-  <!-- 1. 超椭圆应用级徽章底座 -->
-  <rect x="32" y="32" width="448" height="448" rx="108" fill="url(#fav-base-grad)" />
-  <rect x="34" y="34" width="444" height="444" rx="106" stroke="rgba(255, 255, 255, 0.28)" stroke-width="6" />
+  <!-- 1. 超级椭圆底座 (Squircle) -->
+  <rect x="24" y="24" width="464" height="464" rx="120" fill="url(#fav-bg)" />
+  <rect x="28" y="28" width="456" height="456" rx="116" stroke="rgba(255, 255, 255, 0.25)" stroke-width="6" fill="none" />
 
-  <!-- 2. 【核心云朵】海量云端网盘与知识库 -->
-  <path d="M168 376 C126 376 94 344 94 304 C94 267 120 236 156 232 C167 180 212 142 266 142 C323 142 370 184 378 240 C409 246 432 272 432 304 C432 344 400 376 360 376 Z"
-        fill="url(#fav-cloud-main)" />
+  <!-- 2. 【智慧之书】粗线条高对比展翅书页 (Favicon 极小尺寸下绝对清晰) -->
+  <path d="M 256 376 C 206 338 146 332 108 338 C 100 339 96 333 96 325 L 96 268 C 96 260 102 255 108 254 C 150 248 210 254 256 290 Z" 
+        fill="#FFFFFF" />
+  <path d="M 256 376 C 306 338 366 332 404 338 C 412 339 416 333 416 325 L 416 268 C 416 260 410 255 404 254 C 362 248 302 254 256 290 Z" 
+        fill="#FFFFFF" />
 
-  <!-- 3. 【学霸象征】纯正金黄色学霸帽 (在白云顶峰形成极高对比度，Favicon 极小尺寸下第一眼即可看清) -->
-  <!-- 帽子圆弧底座 (深金琥珀，清晰托起帽子并与白云割裂) -->
-  <path d="M198 164 L198 202 C198 224 228 240 266 240 C304 240 334 224 334 202 L334 164 C314 178 290 186 266 186 C242 186 218 178 198 164 Z"
-        fill="url(#fav-hat-base)" />
+  <!-- 3. 【学霸黄金帽】高反差菱形切面 -->
+  <path d="M 194 180 L 194 212 C 194 234 222 250 256 250 C 290 250 318 234 318 212 L 318 180 C 296 194 276 200 256 200 C 236 200 216 194 194 180 Z" 
+        fill="#92400E" />
 
-  <!-- 金黄色菱形帽顶 -->
-  <polygon points="266,92 384,138 266,184 148,138" fill="url(#fav-hat-gold)" stroke="#B45309" stroke-width="5" />
-  <polygon points="266,92 384,138 266,144 148,138" fill="rgba(255, 255, 255, 0.4)" />
+  <polygon points="256,116 136,164 256,212 256,116" fill="url(#fav-gold-light)" />
+  <polygon points="256,116 376,164 256,212 256,116" fill="url(#fav-gold-dark)" />
+  <polygon points="256,118 140,164 256,210 372,164" fill="none" stroke="rgba(255, 255, 255, 0.5)" stroke-width="3" />
 
-  <!-- 金流苏与帽纽 -->
-  <circle cx="266" cy="138" r="8" fill="#FEF08A" stroke="#B45309" stroke-width="2" />
-  <path d="M266 138 Q 346 148 358 182" stroke="#FEF08A" stroke-width="8" stroke-linecap="round" fill="none" />
-  <path d="M358 182 L352 216 C352 220 364 220 364 216 L358 182 Z" fill="#F59E0B" stroke="#B45309" stroke-width="2" />
+  <!-- 中心纽扣与流苏 -->
+  <circle cx="256" cy="164" r="10" fill="#FEF08A" stroke="#B45309" stroke-width="2" />
+  <path d="M 256 164 Q 346 174 362 210" stroke="#FEF08A" stroke-width="8" stroke-linecap="round" fill="none" />
+  <circle cx="362" cy="212" r="6" fill="#FEF08A" />
 
-  <!-- 4. 【资源极速转存】冲天光箭 -->
-  <g transform="translate(0, 16)">
-    <path d="M266 220 L310 270 L282 270 L282 340 L250 340 L250 270 L222 270 Z"
-          fill="url(#fav-arrow-grad)" />
-    <path d="M266 226 L294 264 L276 264 L276 332 L256 332 L256 264 L238 264 Z"
-          fill="#FFFFFF" opacity="0.7" />
-  </g>
-
-  <!-- 5. 【学霸星芒】 -->
-  <path d="M392 98 L398 114 L416 118 L400 129 L404 146 L392 134 L380 146 L384 129 L368 118 L386 114 Z"
-        fill="url(#fav-hat-gold)" stroke="#B45309" stroke-width="2" />
+  <!-- 4. 启明星 -->
+  <path d="M 256 56 Q 256 76 276 76 Q 256 76 256 96 Q 256 76 236 76 Q 256 76 256 56 Z" 
+        fill="#FFFFFF" />
 </svg>

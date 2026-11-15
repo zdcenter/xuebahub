@@ -100,7 +100,7 @@
           (click)="switchTab('list')">
           <span class="icon">📋</span>
           <span class="nav-label">{{ i18n.t('nav.list') }}</span>
-          <span class="nav-pill-badge">{{ resources().length }}</span>
+          <span class="nav-pill-badge">{{ totalCount() }}</span>
         </button>
         <button 
           type="button"
@@ -336,14 +336,14 @@
         <div class="card table-card">
           <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-              <h3 style="margin: 0;">{{ i18n.t('system.resListTitle') }} (共 {{ resources().length }} 套)</h3>
+              <h3 style="margin: 0;">{{ i18n.t('system.resListTitle') }} (共 {{ totalCount() }} 套)</h3>
               <div class="filter-tab-pills">
                 <button 
                   type="button"
                   class="filter-tab-pill" 
                   [class.active]="listFilter() === 'all'" 
                   (click)="listFilter.set('all')">
-                  全部 ({{ resources().length }})
+                  全部 ({{ totalCount() }})
                 </button>
                 <button 
                   type="button"
@@ -4954,7 +4954,7 @@
 
       <!-- 4.3 👑 会员等级、每日额度与卡密核销中台 (PostgreSQL member_levels & activation_codes) -->
       @if (currentTab() === 'members') {
-        <div class="content-body" style="padding: 24px; max-width: 1400px; margin: 0 auto;">
+        <div style="display: flex; flex-direction: column; gap: 20px;">
           
           <!-- 全局主控开关横幅：控制是否启用会员功能 (初期关闭纯免费放量，后期流量起来一键开启) -->
           <div style="background: #ffffff; border-radius: 16px; border: 2px solid #e2e8f0; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03); flex-wrap: wrap; gap: 16px;">
@@ -5607,7 +5607,7 @@
 
       <!-- 10. 系统全局配置管理中台 (Site Settings) -->
       @if (currentTab() === 'settings') {
-        <div class="content-body" style="padding: 24px; max-width: 1200px; margin: 0 auto;">
+        <div style="display: flex; flex-direction: column; gap: 20px;">
           <div class="settings-container" style="background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05); overflow: hidden;">
             <!-- 头部导航与保存操作栏 -->
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #f1f5f9; background: #fafafa; flex-wrap: wrap; gap: 16px;">
@@ -6032,7 +6032,7 @@
 
       <!-- 11. 求资料与找卷需求池 (Demand Pool) -->
       @if (currentTab() === 'requests') {
-        <div class="content-body" style="padding: 24px;">
+        <div style="display: flex; flex-direction: column; gap: 20px;">
           <!-- 顶部核心 KPI 指标卡片 -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
             <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
@@ -6200,9 +6200,30 @@
                           }
                         </td>
                         <td style="padding: 14px 16px;">
-                          <span style="font-family: monospace; font-size: 12px; color: #475569; background: #f8fafc; padding: 3px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">
-                            {{ item.contact || '匿名访客' }}
-                          </span>
+                          <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-family: monospace; font-size: 12px; color: #475569; background: #f8fafc; padding: 3px 8px; border-radius: 4px; border: 1px solid #e2e8f0; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+                              @if (item.contact) {
+                                @if (item.contact.includes('@')) {
+                                  <span>✉️</span> {{ item.contact }}
+                                } @else if (isPureDigits(item.contact)) {
+                                  <span>🐧</span> {{ item.contact }}&#64;qq.com
+                                } @else {
+                                  <span>💬</span> {{ item.contact }}
+                                }
+                              } @else {
+                                <span style="color: #94a3b8;">匿名访客</span>
+                              }
+                            </span>
+                            @if (item.email_notified) {
+                              <span style="font-size: 11px; color: #16a34a; font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">
+                                <span>✅</span> 已邮件通知
+                              </span>
+                            } @else if (item.status === 'fulfilled' && resolveContactEmail(item.contact)) {
+                              <span style="font-size: 11px; color: #d97706; display: inline-flex; align-items: center; gap: 2px;">
+                                <span>⚠️</span> 待发通知
+                              </span>
+                            }
+                          </div>
                         </td>
                         <td style="padding: 14px 16px; text-align: center;">
                           <span style="display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; background: #ffedd5; color: #c2410c;">
@@ -6246,6 +6267,23 @@
                               {{ i18n.t('requests.fulfillBtn') }}
                             </button>
 
+                            <!-- 补发/重发邮件通知 -->
+                            @if (item.status === 'fulfilled' && resolveContactEmail(item.contact)) {
+                              <button 
+                                type="button" 
+                                class="btn btn-sm"
+                                [disabled]="sendingNotifyId() === item.id"
+                                style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 600; padding: 5px 8px; border-radius: 6px; cursor: pointer;"
+                                (click)="manualNotifyRequest(item, $event)"
+                                [title]="item.email_notified ? '重新发送上架通知邮件给求助人' : '立即发送上架通知邮件给求助人'">
+                                @if (sendingNotifyId() === item.id) {
+                                  <span>⏳ 发送中...</span>
+                                } @else {
+                                  <span>📧 {{ item.email_notified ? '重发通知' : '发通知' }}</span>
+                                }
+                              </button>
+                            }
+
                             <!-- 忽略 -->
                             @if (item.status !== 'rejected') {
                               <button 
@@ -6284,20 +6322,83 @@
   <!-- 12. 标记满足求资料模态弹窗 (Fulfill Modal) -->
   @if (isFulfillModalOpen()) {
     <div class="modal-backdrop" (click)="closeFulfillModal()">
-      <div class="modal-dialog" style="max-width: 520px;" (click)="$event.stopPropagation()">
+      <div class="modal-dialog" style="max-width: 580px;" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h3>✅ {{ i18n.t('requests.fulfillModalTitle') }}</h3>
           <button class="modal-close-btn" (click)="closeFulfillModal()">✕</button>
         </div>
 
         <div class="modal-body" style="padding: 20px;">
+          <!-- 需求详情与联系人解析 -->
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 14px; border-radius: 8px; margin-bottom: 16px;">
-            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">求助资料：</div>
-            <div style="font-weight: 700; color: #0f172a; font-size: 14px;">{{ fulfillTargetRequest()?.title }}</div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">求助资料与求助人：</div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 14px; margin-bottom: 4px;">{{ fulfillTargetRequest()?.title }}</div>
+            <div style="font-size: 12px; color: #475569; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span>预留联系方式: <b>{{ fulfillTargetRequest()?.contact || '未留下联系方式' }}</b></span>
+              @if (fulfillTargetEmail) {
+                <span style="color: #0284c7; background: #e0f2fe; padding: 1px 8px; border-radius: 4px; font-weight: 600; font-size: 11px;">
+                  📨 识别为有效邮箱: {{ fulfillTargetEmail }}
+                </span>
+              }
+            </div>
           </div>
 
+          <!-- 关联已上架的资源 (自动嵌入邮件直达链接) -->
           <div class="form-group" style="margin-bottom: 16px;">
-            <label style="font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="font-weight: 600; color: #1e293b; margin: 0; font-size: 13px;">
+                🔗 关联已上架资源 (可选，点击快速绑定)
+              </label>
+              @if (selectedFulfillResource()) {
+                <button type="button" (click)="clearFulfillResource()" style="border: none; background: none; color: #ef4444; font-size: 12px; cursor: pointer; padding: 0;">
+                  ✕ 解除绑定
+                </button>
+              }
+            </div>
+
+            @if (selectedFulfillResource()) {
+              <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <div style="font-weight: 600; color: #166534; font-size: 13px;">已关联: {{ selectedFulfillResource()?.title }}</div>
+                  <div style="font-size: 11px; color: #15803d; margin-top: 2px;">包含详情直达卡片及网盘极速转存按钮</div>
+                </div>
+                <span style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">已绑定</span>
+              </div>
+            } @else {
+              <div style="position: relative;">
+                <input 
+                  type="text" 
+                  [ngModel]="fulfillResourceSearchKeyword()" 
+                  (ngModelChange)="onFulfillResourceKeywordChange($event)"
+                  placeholder="输入资料关键词快速检索关联资源..."
+                  style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;"
+                />
+                @if (fulfillSearchingResources()) {
+                  <span style="position: absolute; right: 10px; top: 9px; font-size: 12px; color: #94a3b8;">检索中...</span>
+                }
+              </div>
+              @if (fulfillResourceSearchResults().length > 0) {
+                <div style="margin-top: 6px; border: 1px solid #e2e8f0; border-radius: 8px; max-height: 160px; overflow-y: auto; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+                  @for (res of fulfillResourceSearchResults(); track res.id) {
+                    <div 
+                      (click)="selectFulfillResource(res)" 
+                      style="padding: 8px 12px; font-size: 12.5px; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; align-items: center; justify-content: space-between;"
+                      onmouseover="this.style.background='#f8fafc'" 
+                      onmouseout="this.style.background='#ffffff'">
+                      <span style="color: #1e293b; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 400px;">
+                        📄 {{ res.title }}
+                      </span>
+                      <span style="color: #0284c7; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-left: 8px;">点击绑定</span>
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+
+          <!-- 站长留言回复 -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label style="font-weight: 600; color: #1e293b; margin-bottom: 6px; display: block; font-size: 13px;">
               {{ i18n.t('requests.fulfillNoteLabel') }}
             </label>
             <textarea 
@@ -6310,6 +6411,24 @@
               {{ i18n.t('requests.fulfillModalDesc') }}
             </small>
           </div>
+
+          <!-- 邮件通知开关选项 -->
+          @if (fulfillTargetEmail) {
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input 
+                  type="checkbox" 
+                  id="fulfillSendEmailCheckbox"
+                  [(ngModel)]="fulfillSendEmail" 
+                  style="width: 16px; height: 16px; cursor: pointer;"
+                />
+                <label for="fulfillSendEmailCheckbox" style="font-size: 13px; font-weight: 600; color: #166534; cursor: pointer;">
+                  📧 自动向 {{ fulfillTargetEmail }} 发送上架通知邮件
+                </label>
+              </div>
+              <span style="font-size: 11px; color: #15803d; background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-weight: 600;">闭环触达</span>
+            </div>
+          }
 
           <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
             <button 
@@ -7375,7 +7494,7 @@
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px;">
             <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px 14px; border-radius: 12px;">
               <div style="font-size: 11px; color: #166534; font-weight: 600;">{{ i18n.t('sitePromo.statTotal') }}</div>
-              <div style="font-size: 18px; font-weight: 800; color: #15803d; margin-top: 2px;">{{ resources().length }} 套+</div>
+              <div style="font-size: 18px; font-weight: 800; color: #15803d; margin-top: 2px;">{{ totalCount() }} 套+</div>
             </div>
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 14px; border-radius: 12px;">
               <div style="font-size: 11px; color: #1e40af; font-weight: 600;">{{ i18n.t('sitePromo.statChannels') }}</div>

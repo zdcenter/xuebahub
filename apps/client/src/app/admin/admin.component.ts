@@ -4682,6 +4682,91 @@ export class AdminComponent implements OnInit {
   fulfillTargetRequest = signal<ResourceRequestDto | null>(null);
   fulfillNoteInput = signal<string>('');
   submittingFulfill = signal<boolean>(false);
+  fulfillSendEmail = signal<boolean>(true);
+  fulfillBoundResourceId = signal<string>('');
+  fulfillResourceSearchKeyword = signal<string>('');
+  fulfillResourceSearchResults = signal<any[]>([]);
+  fulfillSearchingResources = signal<boolean>(false);
+  selectedFulfillResource = signal<any>(null);
+  sendingNotifyId = signal<string | null>(null);
+
+  resolveContactEmail(contact?: string): string {
+    if (!contact) return '';
+    const c = contact.trim();
+    const emailMatch = c.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    if (emailMatch) return emailMatch[0].toLowerCase();
+    const qqMatch = c.match(/^[1-9][0-9]{4,10}$/);
+    if (qqMatch) return `${c}@qq.com`;
+    const subQQ = c.match(/(?:qq|qq号|qq群)?[:：\s]*([1-9][0-9]{4,10})/i);
+    if (subQQ && subQQ[1]) return `${subQQ[1]}@qq.com`;
+    return '';
+  }
+
+  isPureDigits(val?: string): boolean {
+    if (!val) return false;
+    return /^[1-9][0-9]{4,10}$/.test(val.trim());
+  }
+
+  get fulfillTargetEmail(): string {
+    return this.resolveContactEmail(this.fulfillTargetRequest()?.contact);
+  }
+
+  onFulfillResourceKeywordChange(val: string) {
+    this.fulfillResourceSearchKeyword.set(val);
+    const q = val.trim();
+    if (!q) {
+      this.fulfillResourceSearchResults.set([]);
+      return;
+    }
+    this.fulfillSearchingResources.set(true);
+    this.resService.list({ search: q, page: 1, pageSize: 6 } as any).subscribe({
+      next: (res: any) => {
+        this.fulfillResourceSearchResults.set(res?.items || []);
+        this.fulfillSearchingResources.set(false);
+      },
+      error: () => this.fulfillSearchingResources.set(false)
+    });
+  }
+
+  selectFulfillResource(res: any) {
+    this.selectedFulfillResource.set(res);
+    this.fulfillBoundResourceId.set(res.id);
+    this.fulfillResourceSearchResults.set([]);
+    this.fulfillResourceSearchKeyword.set('');
+    if (!this.fulfillNoteInput() || this.fulfillNoteInput().includes('已在相关学段专区上架')) {
+      this.fulfillNoteInput.set(`已为您核对并上线《${res.title}》，内附完整高清试卷与网盘转存链接，欢迎下载学习！`);
+    }
+  }
+
+  clearFulfillResource() {
+    this.selectedFulfillResource.set(null);
+    this.fulfillBoundResourceId.set('');
+  }
+
+  manualNotifyRequest(req: ResourceRequestDto, event?: any) {
+    if (event?.stopPropagation) event.stopPropagation();
+    if (this.sendingNotifyId()) return;
+
+    const email = this.resolveContactEmail(req.contact);
+    if (!email) {
+      this.showToast('该求助记录未留下有效的邮箱或QQ号，无法发信', 'error');
+      return;
+    }
+
+    this.sendingNotifyId.set(req.id);
+    this.resService.notifyAdminRequest(req.id).subscribe({
+      next: (res) => {
+        this.sendingNotifyId.set(null);
+        this.showToast(res.message || `已向 ${res.email_to || email} 发送上架通知邮件！`, 'success');
+        req.email_notified = true;
+        req.email_notified_at = new Date().toISOString();
+      },
+      error: (err) => {
+        this.sendingNotifyId.set(null);
+        this.showToast('发信失败: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
 
   loadRequests() {
     this.requestsLoading.set(true);
@@ -4726,12 +4811,29 @@ export class AdminComponent implements OnInit {
   openFulfillModal(req: ResourceRequestDto) {
     this.fulfillTargetRequest.set(req);
     this.fulfillNoteInput.set(req.fulfilled_note || `已在相关学段专区上架《${req.title}》，欢迎转存学习！`);
+    this.fulfillSendEmail.set(!!this.resolveContactEmail(req.contact));
+    this.fulfillBoundResourceId.set(req.fulfilled_resource_id || '');
+    this.selectedFulfillResource.set(null);
+    this.fulfillResourceSearchKeyword.set('');
+    this.fulfillResourceSearchResults.set([]);
     this.isFulfillModalOpen.set(true);
+
+    if (req.fulfilled_resource_id) {
+      this.resService.get(req.fulfilled_resource_id).subscribe({
+        next: (r: any) => this.selectedFulfillResource.set(r),
+        error: () => {}
+      });
+    } else {
+      const kw = req.title.slice(0, 10);
+      this.onFulfillResourceKeywordChange(kw);
+    }
   }
 
   closeFulfillModal() {
     this.isFulfillModalOpen.set(false);
     this.fulfillTargetRequest.set(null);
+    this.selectedFulfillResource.set(null);
+    this.fulfillResourceSearchResults.set([]);
   }
 
   submitFulfill() {
@@ -4741,12 +4843,15 @@ export class AdminComponent implements OnInit {
     this.submittingFulfill.set(true);
     this.resService.updateAdminRequest(target.id, {
       status: 'fulfilled',
-      fulfilled_note: this.fulfillNoteInput()
+      fulfilled_note: this.fulfillNoteInput(),
+      fulfilled_resource_id: this.fulfillBoundResourceId() || null,
+      send_email_notification: this.fulfillSendEmail()
     }).subscribe({
-      next: (updated) => {
+      next: (res: any) => {
         this.submittingFulfill.set(false);
         this.closeFulfillModal();
-        this.showToast(this.i18n.t('requests.fulfillSuccess'));
+        const msg = res?.message || this.i18n.t('requests.fulfillSuccess');
+        this.showToast(msg, res?.email_sent ? 'success' : undefined);
         this.loadRequests();
       },
       error: (err) => {
@@ -5031,7 +5136,7 @@ export class AdminComponent implements OnInit {
 
   generateSitePromoText() {
     const tab = this.sitePromoActiveTab();
-    const count = this.resources().length || 3000;
+    const count = this.totalCount() || this.resources().length || 3000;
     const countStr = count.toLocaleString();
     const siteUrl = this.currentSiteDomain;
 

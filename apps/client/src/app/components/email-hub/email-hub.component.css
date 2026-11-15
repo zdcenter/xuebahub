@@ -1,9 +1,339 @@
-/* 邮件营销推广中枢专属微调样式 (与 Telegram 运营中枢完全对齐) */
+/* 📧 邮件精准营销推广中枢专属样式系统 */
 :host {
+  display: block;
+  width: 100%;
+}
+
+/* 1. 顶部 Hero Banner 横幅 */
+.account-hero-banner {
+  background: linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%);
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.15);
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
+.hero-left {
+  flex: 1;
+  min-width: 300px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ecfdf5;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(4px);
+}
+
+.hero-left h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  color: #ffffff !important;
+  letter-spacing: -0.01em;
+}
+
+.hero-left p {
+  font-size: 13px;
+  color: #cbd5e1 !important;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 14px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.hero-stat-item {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 12px 18px;
+  border-radius: 12px;
+  text-align: center;
+  min-width: 95px;
+  backdrop-filter: blur(4px);
+  transition: transform 0.2s ease;
+}
+
+.hero-stat-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.stat-num {
+  font-size: 22px;
+  font-weight: 800;
+  display: block;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
   display: block;
 }
 
-/* 呼吸灯动画效果 (状态雷达卡片) */
+/* 2. 平铺 Sub-Tabs 导航栏 */
+.crawler-subnav-bar {
+  display: flex;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow-x: auto;
+}
+
+.crawler-subtab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.crawler-subtab-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.crawler-subtab-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+}
+
+.crawler-subtab-btn .subtab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(2, 132, 199, 0.15);
+  color: #0284c7;
+}
+
+.crawler-subtab-btn.active .subtab-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* 3. 卡片与布局容器 */
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
+}
+
+.card-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 4. 按钮系统 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.btn-primary {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0369a1;
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25);
+}
+
+.btn-secondary {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.btn-danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
+/* 5. 表单控件与输入框 */
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 9px 13px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: #0f172a;
+  background: #ffffff;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+  line-height: 1.5;
+}
+
+.form-control:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
+textarea.form-control {
+  resize: vertical;
+}
+
+/* 6. 徽章药丸 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* 7. 表格与行动效 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+thead th {
+  background: #f8fafc;
+  padding: 11px 16px;
+  font-weight: 700;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+tr {
+  transition: background-color 0.15s ease;
+}
+
+tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* 8. 分页条 */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 0 0 14px 14px;
+}
+
+.page-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 9. 呼吸灯与动态雷达 */
 @keyframes radar-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
@@ -25,16 +355,7 @@
   animation: radar-pulse 2s infinite;
 }
 
-/* 表格行动效 */
-tr {
-  transition: background-color 0.15s ease;
-}
-
-tr:hover td {
-  background-color: #f8fafc;
-}
-
-/* 邮件富文本模拟卡片滚动条优雅化 */
+/* 10. 滚动条美化 */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

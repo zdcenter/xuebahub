@@ -297,6 +297,8 @@ type ResourceRequest struct {
 	FulfilledNote       string     `gorm:"type:varchar(255)" json:"fulfilled_note"`                    // 站长回复/说明
 	VoteCount           int        `gorm:"default:1" json:"vote_count"`                                // 同求人数
 	ClientIP            string     `gorm:"type:varchar(64)" json:"client_ip"`
+	EmailNotified       bool       `gorm:"default:false" json:"email_notified"`                         // 是否已发送邮件通知
+	EmailNotifiedAt     *time.Time `json:"email_notified_at"`                                          // 发送邮件通知时间
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
 }

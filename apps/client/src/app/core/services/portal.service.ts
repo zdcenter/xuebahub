@@ -131,6 +131,20 @@ export class PortalService {
     );
   }
 
+  // 5.1 搜索输入框实时联想推荐 (Debounced Suggestions)
+  searchSuggestions(q: string): Observable<ResourceItemDto[]> {
+    if (!q || !q.trim()) return of([]);
+    let params = new HttpParams().set('q', q.trim()).set('limit', '6');
+    return this.http.get<{ code: number; data: any }>(`${this.baseUrl}/api/v1/public/resources`, { params }).pipe(
+      map(res => {
+        if (!res || !res.data) return [];
+        if (Array.isArray(res.data)) return res.data.slice(0, 6);
+        return (res.data.items || res.data.list || []).slice(0, 6);
+      }),
+      catchError(() => of([]))
+    );
+  }
+
   // 6. 站点全局设置 (QQ 群、转存指引)
   getSiteSettings(): Observable<SiteSettings> {
     return this.http.get<{ code: number; data: SiteSettings }>(`${this.baseUrl}/api/v1/public/settings`).pipe(

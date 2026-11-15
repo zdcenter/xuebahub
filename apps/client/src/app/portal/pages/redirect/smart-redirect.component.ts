@@ -4,33 +4,20 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { PortalService } from '../../../core/services/portal.service';
 import { ResourceLinkDto } from '../../../services/resource.service';
 import { MemberService } from '../../../services/member.service';
+import { WechatGuideModalComponent } from '../../components/wechat-guide-modal/wechat-guide-modal.component';
 
 @Component({
   selector: 'app-smart-redirect',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, WechatGuideModalComponent],
   template: `
-    <!-- 1. 微信 / QQ 环境拦截提示：仅在微信内置浏览器且有网盘地址时才展示指引 -->
-    @if (isWechat() && targetLink()) {
-      <div class="redirect-overlay">
-        <div class="redirect-box">
-          <div class="status-icon">⚠️</div>
-          <h2 class="status-title">微信限制直接跳转网盘</h2>
-          <p class="status-desc">
-            请点击右上角 <strong class="highlight">【···】</strong>，选择 <strong class="highlight">【在浏览器打开】</strong> 即可直接转存！
-          </p>
-          @if (targetLink()?.extract_code) {
-            <div class="code-badge">
-              <span class="code-label">提取码：</span>
-              <span class="code-val">{{ targetLink()?.extract_code }}</span>
-            </div>
-          }
-          <a [href]="targetLink()?.share_url" class="btn-action">
-            若已在浏览器打开，点击直达网盘
-          </a>
-        </div>
-      </div>
-    }
+    <!-- 1. 微信 / QQ 环境拦截指引：带右上角发光弯箭头 + 沉浸式毛玻璃步骤指引 -->
+    <app-wechat-guide-modal 
+      [isOpen]="isWechat() && !!targetLink()" 
+      [targetUrl]="targetLink()?.share_url" 
+      [extractCode]="targetLink()?.extract_code" 
+      (close)="goToDetail()">
+    </app-wechat-guide-modal>
 
     <!-- 2. 今日额度耗尽提示 -->
     @if (showQuotaLimit()) {

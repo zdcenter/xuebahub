@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -9,12 +10,15 @@ import (
 
 	"netdisk/api/internal/database"
 	"netdisk/api/internal/model"
+	"netdisk/api/internal/service"
 )
 
-type ResourceRequestHandler struct{}
+type ResourceRequestHandler struct {
+	emailService *service.EmailService
+}
 
-func NewResourceRequestHandler() *ResourceRequestHandler {
-	return &ResourceRequestHandler{}
+func NewResourceRequestHandler(emailService *service.EmailService) *ResourceRequestHandler {
+	return &ResourceRequestHandler{emailService: emailService}
 }
 
 // CreatePublicRequest C端用户前台提交找试卷/求资料需求
@@ -213,9 +217,10 @@ func (h *ResourceRequestHandler) UpdateAdminRequest(c fiber.Ctx) error {
 	}
 
 	type UpdateInput struct {
-		Status              string     `json:"status"`
-		FulfilledNote       string     `json:"fulfilled_note"`
-		FulfilledResourceID *uuid.UUID `json:"fulfilled_resource_id"`
+		Status                string     `json:"status"`
+		FulfilledNote         string     `json:"fulfilled_note"`
+		FulfilledResourceID   *uuid.UUID `json:"fulfilled_resource_id"`
+		SendEmailNotification *bool      `json:"send_email_notification"`
 	}
 
 	var input UpdateInput
@@ -234,6 +239,7 @@ func (h *ResourceRequestHandler) UpdateAdminRequest(c fiber.Ctx) error {
 		})
 	}
 
+	oldStatus := req.Status
 	if input.Status != "" {
 		req.Status = input.Status
 	}
@@ -248,10 +254,90 @@ func (h *ResourceRequestHandler) UpdateAdminRequest(c fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(fiber.Map{
+	resp := fiber.Map{
 		"code":    200,
 		"message": "需求处置状态已保存",
 		"data":    req,
+	}
+
+	// 当状态变为已满足 (fulfilled) 时，判断是否需要发送闭环邮件通知
+	shouldSendEmail := false
+	if req.Status == "fulfilled" && req.Contact != "" {
+		if input.SendEmailNotification != nil {
+			shouldSendEmail = *input.SendEmailNotification
+		} else if oldStatus != "fulfilled" || !req.EmailNotified {
+			// 默认在首次满足或尚未发送通知时自动触发
+			shouldSendEmail = true
+		}
+	}
+
+	if shouldSendEmail && h.emailService != nil {
+		sent, emailInfo, _ := h.emailService.SendResourceFulfilledNotification(&req, nil, req.FulfilledNote)
+		if sent {
+			resp["email_sent"] = true
+			resp["email_to"] = emailInfo
+			resp["message"] = fmt.Sprintf("需求已标记为已满足，并已成功向用户 (%s) 发送上架通知邮件！", emailInfo)
+		} else if emailInfo != "" {
+			resp["email_sent"] = false
+			resp["email_msg"] = emailInfo
+		}
+	}
+
+	return c.JSON(resp)
+}
+
+// NotifyAdminRequest 管理员手动/补发上架邮件通知
+func (h *ResourceRequestHandler) NotifyAdminRequest(c fiber.Ctx) error {
+	idParam := c.Params("id")
+	reqUUID, err := uuid.Parse(idParam)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "无效的需求 ID",
+		})
+	}
+
+	var req model.ResourceRequest
+	if err := database.DB.Where("id = ?", reqUUID).First(&req).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"code":    404,
+			"message": "需求记录未找到",
+		})
+	}
+
+	if req.Contact == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "该需求记录未留下联系邮箱或QQ号，无法发送邮件",
+		})
+	}
+
+	if h.emailService == nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code":    500,
+			"message": "邮件服务未初始化",
+		})
+	}
+
+	sent, info, err := h.emailService.SendResourceFulfilledNotification(&req, nil, req.FulfilledNote)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "发送上架通知失败: " + err.Error(),
+		})
+	}
+	if !sent {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "未发送: " + info,
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":     200,
+		"message":  fmt.Sprintf("上架通知邮件已成功发送至 %s！", info),
+		"email_to": info,
+		"data":     req,
 	})
 }
 

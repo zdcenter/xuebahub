@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -8,11 +8,12 @@ import { SeoService } from '../../../core/services/seo.service';
 import { ResourceItemDto, ResourceLinkDto } from '../../../services/resource.service';
 import { MemberService } from '../../../services/member.service';
 import { generateQRCodeSvg } from '../../../utils/qrcode.util';
+import { WechatGuideModalComponent } from '../../components/wechat-guide-modal/wechat-guide-modal.component';
 
 @Component({
   selector: 'app-resource-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, WechatGuideModalComponent],
   templateUrl: './resource-detail.component.html',
   styles: [`
     .btn-emerald-download {
@@ -352,6 +353,90 @@ export class ResourceDetailComponent implements OnInit {
   quickRedeemMsg = signal<string>('');
   quickRedeemError = signal<string>('');
 
+  // 微信与 QQ 客户端打开指引
+  showWechatGuide = signal<boolean>(false);
+  wechatGuideTargetLink = signal<ResourceLinkDto | null>(null);
+
+  // 试卷与封面高清全屏画廊 (Lightbox)
+  isLightboxOpen = signal<boolean>(false);
+  lightboxIndex = signal<number>(0);
+  lightboxZoom = signal<number>(1);
+
+  allPreviewImages = computed<string[]>(() => {
+    const res = this.resource();
+    if (!res) return [];
+    const list: string[] = [];
+    if (res.cover_image) list.push(res.cover_image);
+    if (res.poster_image && !list.includes(res.poster_image)) list.push(res.poster_image);
+    if (Array.isArray(res.preview_images)) {
+      for (const img of res.preview_images) {
+        if (img && !list.includes(img)) list.push(img);
+      }
+    }
+    return list;
+  });
+
+  openLightbox(index: number = 0) {
+    if (this.allPreviewImages().length === 0) return;
+    this.lightboxIndex.set(Math.max(0, Math.min(index, this.allPreviewImages().length - 1)));
+    this.lightboxZoom.set(1);
+    this.isLightboxOpen.set(true);
+  }
+
+  closeLightbox() {
+    this.isLightboxOpen.set(false);
+    this.lightboxZoom.set(1);
+  }
+
+  zoomIn(e?: Event) {
+    if (e) e.stopPropagation();
+    this.lightboxZoom.update(z => Math.min(3, +(z + 0.3).toFixed(1)));
+  }
+
+  zoomOut(e?: Event) {
+    if (e) e.stopPropagation();
+    this.lightboxZoom.update(z => Math.max(0.6, +(z - 0.3).toFixed(1)));
+  }
+
+  resetZoom(e?: Event) {
+    if (e) e.stopPropagation();
+    this.lightboxZoom.set(1);
+  }
+
+  nextImage(e?: Event) {
+    if (e) e.stopPropagation();
+    const total = this.allPreviewImages().length;
+    if (total <= 1) return;
+    this.lightboxIndex.update(i => (i + 1) % total);
+    this.lightboxZoom.set(1);
+  }
+
+  prevImage(e?: Event) {
+    if (e) e.stopPropagation();
+    const total = this.allPreviewImages().length;
+    if (total <= 1) return;
+    this.lightboxIndex.update(i => (i - 1 + total) % total);
+    this.lightboxZoom.set(1);
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent) {
+    if (!this.isLightboxOpen()) return;
+    if (event.key === 'Escape') {
+      this.closeLightbox();
+    } else if (event.key === 'ArrowRight') {
+      this.nextImage();
+    } else if (event.key === 'ArrowLeft') {
+      this.prevImage();
+    }
+  }
+
+  isWeChatOrQQ(): boolean {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent.toLowerCase();
+    return /micromessenger/i.test(ua) || /qq\//i.test(ua) || /mqqbrowser/i.test(ua);
+  }
+
   // 点击直达/下载时校验额度
   onDownloadClick(link: ResourceLinkDto, event: MouseEvent) {
     event.preventDefault();
@@ -365,6 +450,15 @@ export class ResourceDetailComponent implements OnInit {
           if (link.extract_code && typeof navigator !== 'undefined' && navigator.clipboard) {
             navigator.clipboard.writeText(link.extract_code).catch(() => {});
           }
+
+          // 若在微信或 QQ 内置浏览器中，拦截并调起右上角蒙层指引 (防链接屏蔽与白屏)
+          if (this.isWeChatOrQQ()) {
+            this.wechatGuideTargetLink.set(link);
+            this.showWechatGuide.set(true);
+            this.memberService.fetchQuotaStatus(slug).subscribe();
+            return;
+          }
+
           // 在新标签页中打开网盘直达地址
           if (typeof window !== 'undefined') {
             window.open(link.share_url, '_blank');
@@ -380,7 +474,12 @@ export class ResourceDetailComponent implements OnInit {
         }
       },
       error: () => {
-        // 网络兜底直接打开
+        // 网络兜底
+        if (this.isWeChatOrQQ()) {
+          this.wechatGuideTargetLink.set(link);
+          this.showWechatGuide.set(true);
+          return;
+        }
         if (typeof window !== 'undefined') {
           window.open(link.share_url, '_blank');
         }

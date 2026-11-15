@@ -2,8 +2,8 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { PortalService, type NavMenuDto } from '../../core/services/portal.service';
-import { ChannelDto } from '../../services/resource.service';
+import { PortalService, type NavMenuDto, type HotSearchItem } from '../../core/services/portal.service';
+import { ChannelDto, ResourceItemDto } from '../../services/resource.service';
 import { MemberService } from '../../services/member.service';
 
 export interface LayoutNavItem {
@@ -28,6 +28,11 @@ export class PortalLayoutComponent implements OnInit {
   navMenus = signal<NavMenuDto[]>([]);
   isMobileMenuOpen = signal<boolean>(false);
   searchQuery = signal<string>('');
+  isSearchFocused = signal<boolean>(false);
+  searchSuggestions = signal<ResourceItemDto[]>([]);
+  isSearchingSuggestions = signal<boolean>(false);
+  hotSearches = signal<HotSearchItem[]>([]);
+  private searchDebounceTimer: any;
 
   // 会员体系与卡密状态
   memberService = inject(MemberService);
@@ -260,9 +265,63 @@ export class PortalLayoutComponent implements OnInit {
   onSearchSubmit() {
     const q = this.searchQuery().trim();
     if (q) {
+      this.isSearchFocused.set(false);
       this.router.navigate(['/'], { queryParams: { q } });
       this.closeMobileMenu();
     }
+  }
+
+  onSearchFocus() {
+    this.isSearchFocused.set(true);
+    if (this.hotSearches().length === 0) {
+      this.portalService.getHotSearches().subscribe(h => {
+        this.hotSearches.set(h || []);
+      });
+    }
+    if (this.searchQuery().trim()) {
+      this.onSearchInput();
+    }
+  }
+
+  onSearchBlur() {
+    // 延迟 220ms 以免点击联想项时失焦导致点击失效
+    setTimeout(() => {
+      this.isSearchFocused.set(false);
+    }, 220);
+  }
+
+  onSearchInput() {
+    clearTimeout(this.searchDebounceTimer);
+    const q = this.searchQuery().trim();
+    if (!q) {
+      this.searchSuggestions.set([]);
+      this.isSearchingSuggestions.set(false);
+      return;
+    }
+    this.isSearchingSuggestions.set(true);
+    this.searchDebounceTimer = setTimeout(() => {
+      this.portalService.searchSuggestions(q).subscribe({
+        next: (items) => {
+          this.searchSuggestions.set(items || []);
+          this.isSearchingSuggestions.set(false);
+        },
+        error: () => {
+          this.isSearchingSuggestions.set(false);
+        }
+      });
+    }, 200);
+  }
+
+  selectSuggestion(item: ResourceItemDto) {
+    this.isSearchFocused.set(false);
+    this.searchQuery.set(item.title);
+    this.router.navigate(['/resource', item.slug || item.id]);
+    this.closeMobileMenu();
+  }
+
+  selectHotSearch(kw: string) {
+    this.searchQuery.set(kw);
+    this.onSearchSubmit();
   }
 
   get recommendText(): string {

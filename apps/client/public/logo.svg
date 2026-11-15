@@ -1,166 +1,104 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <!-- 1. 品牌超椭圆底座渐变：深邃星空极光蓝 -->
-    <linearGradient id="xb-base-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1E3A8A" />
+    <!-- 1. 背景超椭圆渐变：清澈深邃的科技皇家蓝 -->
+    <linearGradient id="xb-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
       <stop offset="50%" stop-color="#1D4ED8" />
-      <stop offset="100%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E3A8A" />
     </linearGradient>
 
-    <!-- 2. 科技云朵外轮廓光晕渐变 (天青到蔚蓝) -->
-    <linearGradient id="xb-cloud-glow" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.8" />
-      <stop offset="100%" stop-color="#2563EB" stop-opacity="0.2" />
+    <!-- 2. 书本副页与高光渐变 -->
+    <linearGradient id="xb-page-under" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#93C5FD" />
+      <stop offset="100%" stop-color="#60A5FA" />
     </linearGradient>
 
-    <!-- 3. 主体微晶云朵渐变 (纯净洁白到冰晶蓝) -->
-    <linearGradient id="xb-cloud-main" x1="0%" y1="0%" x2="0%" y2="100%">
+    <linearGradient id="xb-page-main" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#FFFFFF" />
-      <stop offset="65%" stop-color="#F0F9FF" />
-      <stop offset="100%" stop-color="#BAE6FD" />
+      <stop offset="100%" stop-color="#F1F5F9" />
     </linearGradient>
 
-    <!-- 4. 云朵立体投影渐变 -->
-    <linearGradient id="xb-cloud-shadow" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0" />
-      <stop offset="100%" stop-color="#0284C7" stop-opacity="0.35" />
-    </linearGradient>
-
-    <!-- 5. 【学霸黄金冠顶】醒目璀璨金黄色学霸帽渐变 (高对比度·彻底解决与白云融为一体的问题) -->
-    <!-- 帽顶菱形主表面：亮金到暖金 -->
-    <linearGradient id="xb-hat-top" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- 3. 学士帽金色高光与暗面双色渐变 -->
+    <linearGradient id="xb-gold-light" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FEF08A" />
-      <stop offset="40%" stop-color="#FBBF24" />
+      <stop offset="60%" stop-color="#FBBF24" />
       <stop offset="100%" stop-color="#F59E0B" />
     </linearGradient>
 
-    <!-- 帽顶立体阴影切面：深金到琥珀金 -->
-    <linearGradient id="xb-hat-facet" x1="0%" y1="0%" x2="0%" y2="100%">
+    <linearGradient id="xb-gold-dark" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#F59E0B" />
       <stop offset="100%" stop-color="#D97706" />
     </linearGradient>
 
-    <!-- 帽子圆柱底座：立体深金与琥珀铜，与白云产生绝对清晰界线 -->
-    <linearGradient id="xb-hat-base" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#D97706" />
-      <stop offset="50%" stop-color="#B45309" />
-      <stop offset="100%" stop-color="#78350F" />
-    </linearGradient>
-
-    <!-- 帽纽与流苏亮金渐变 -->
-    <linearGradient id="xb-tassel-gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" />
-      <stop offset="30%" stop-color="#FEF08A" />
+    <linearGradient id="xb-tassel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FEF08A" />
       <stop offset="100%" stop-color="#F59E0B" />
     </linearGradient>
 
-    <!-- 6. 云核资源极速光箭与转存流光渐变 -->
-    <linearGradient id="xb-arrow-grad" x1="0%" y1="100%" x2="0%" y2="0%">
-      <stop offset="0%" stop-color="#2563EB" />
-      <stop offset="50%" stop-color="#0EA5E9" />
-      <stop offset="100%" stop-color="#38BDF8" />
-    </linearGradient>
+    <!-- 柔和微投影：增强图标在任何背景下的立体质感 -->
+    <filter id="xb-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0F172A" flood-opacity="0.25" />
+    </filter>
 
-    <!-- 投影与光晕滤镜 -->
-    <filter id="xb-shadow-base" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.35" />
-    </filter>
-    <filter id="xb-cloud-drop" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0C4A6E" flood-opacity="0.25" />
-    </filter>
-    <!-- 金色学士帽立体投影，强化在白云上的立体浮起感 -->
-    <filter id="xb-hat-shadow" x="-25%" y="-25%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#78350F" flood-opacity="0.4" />
-      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#F59E0B" flood-opacity="0.3" />
-    </filter>
     <filter id="xb-star-glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#F59E0B" flood-opacity="0.7" />
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#FDE047" flood-opacity="0.8" />
     </filter>
   </defs>
 
-  <!-- 1. 超椭圆应用级徽章底座 (Squircle App Base) -->
-  <rect x="32" y="32" width="448" height="448" rx="108" fill="url(#xb-base-grad)" filter="url(#xb-shadow-base)" />
-  <!-- 底座微晶内发光描边 -->
-  <rect x="34" y="34" width="444" height="444" rx="106" stroke="rgba(255, 255, 255, 0.22)" stroke-width="4" />
+  <!-- 1. 超级椭圆底座 (Squircle) · 现代移动端应用与顶级 SaaS 规范 -->
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#xb-bg)" />
+  <!-- 底座内侧微光边缘 -->
+  <rect x="34" y="34" width="444" height="444" rx="110" stroke="rgba(255, 255, 255, 0.22)" stroke-width="3" fill="none" />
 
-  <!-- 底座背景微弱科技网络光圈 -->
-  <circle cx="256" cy="285" r="185" stroke="rgba(255, 255, 255, 0.06)" stroke-width="2" stroke-dasharray="6 8" />
-  <circle cx="256" cy="285" r="145" stroke="rgba(56, 189, 248, 0.12)" stroke-width="2" />
+  <!-- 主体图形容器 (带轻盈自然投影) -->
+  <g filter="url(#xb-glow)">
 
-  <!-- 2. 【核心云朵】海量云端网盘与知识库 (Cloud of Drive & Knowledge) -->
-  <!-- 云朵后方科技青光晕层 -->
-  <path d="M165 382 C120 382 86 348 86 305 C86 266 114 233 152 229 C164 175 211 135 268 135 C328 135 377 179 385 238 C418 244 442 272 442 306 C442 348 408 382 365 382 Z"
-        fill="url(#xb-cloud-glow)" />
+    <!-- 2. 【智慧之书 / 展翅书卷】象征海量真题与同步教辅 -->
+    <!-- 下层衬页 (透出轻盈科技青蓝，丰富层次) -->
+    <path d="M 256 388 C 206 352 148 346 112 352 C 105 353 100 348 100 341 L 100 292 C 100 285 106 280 112 279 C 152 273 208 279 256 312 Z" 
+          fill="url(#xb-page-under)" opacity="0.6" />
+    <path d="M 256 388 C 306 352 364 346 400 352 C 407 353 412 348 412 341 L 412 292 C 412 285 406 280 400 279 C 360 273 304 279 256 312 Z" 
+          fill="url(#xb-page-under)" opacity="0.6" />
 
-  <!-- 前层立体丰润白晶云朵 -->
-  <g filter="url(#xb-cloud-drop)">
-    <path d="M168 378 C126 378 94 346 94 306 C94 269 120 238 156 234 C167 182 212 144 266 144 C323 144 370 186 378 242 C409 248 432 274 432 306 C432 346 400 378 360 378 Z"
-          fill="url(#xb-cloud-main)" />
-    <!-- 云朵下半部立体环境反射投影 -->
-    <path d="M94 306 C94 346 126 378 168 378 L360 378 C400 378 432 346 432 306 C432 288 425 271 414 259 C394 332 328 368 250 368 C176 368 120 336 102 270 C97 281 94 293 94 306 Z"
-          fill="url(#xb-cloud-shadow)" />
-  </g>
-
-  <!-- 3. 【学霸象征】云巅之上的黄色学霸帽 (Vibrant Gold Scholar Cap) 极度醒目·蓝白黄完美层次 -->
-  <g filter="url(#xb-hat-shadow)">
-    <!-- 帽子立体圆弧基座 (深琥珀金柱体，扎实压在白云顶峰，分界绝对清晰) -->
-    <path d="M198 164 L198 200 C198 222 228 238 266 238 C304 238 334 222 334 200 L334 164 C314 178 290 186 266 186 C242 186 218 178 198 164 Z"
-          fill="url(#xb-hat-base)" />
-    <!-- 基座底部深金阴影切线 -->
-    <path d="M206 198 C206 214 232 228 266 228 C300 228 326 214 326 198 C326 186 300 178 266 178 C232 178 206 186 206 198 Z"
-          fill="#78350F" opacity="0.45" />
-
-    <!-- 菱形帽顶 (上表面·耀眼纯正金黄流光，醒目拔尖) -->
-    <!-- 后半部阴影面 -->
-    <polygon points="266,92 384,138 266,184 148,138" fill="url(#xb-hat-facet)" stroke="#B45309" stroke-width="2" />
-    <!-- 前半部高光主受光面 -->
-    <polygon points="266,92 384,138 266,142 148,138" fill="url(#xb-hat-top)" />
-    <!-- 帽顶高光金亮金边修饰 -->
-    <polygon points="266,94 380,138 266,180 152,138" fill="none" stroke="rgba(255, 255, 255, 0.65)" stroke-width="2.5" />
-
-    <!-- 学士帽帽纽与金色飘逸流苏 (Tassel) -->
-    <!-- 中心金纽 -->
-    <circle cx="266" cy="138" r="7" fill="url(#xb-tassel-gold)" stroke="#B45309" stroke-width="1.5" />
-    <!-- 飘落流苏绳带 -->
-    <path d="M266 138 Q 344 148 358 180" stroke="url(#xb-tassel-gold)" stroke-width="6.5" stroke-linecap="round" fill="none" />
-    <path d="M266 138 Q 344 148 358 180" stroke="#B45309" stroke-width="1" stroke-linecap="round" fill="none" opacity="0.3" />
-    <!-- 流苏垂穗吊坠包 (精致双色流苏坠) -->
-    <path d="M358 180 L352 216 C352 220 364 220 364 216 L358 180 Z" fill="url(#xb-tassel-gold)" stroke="#B45309" stroke-width="1.5" />
-    <circle cx="358" cy="182" r="4" fill="#FEF08A" />
-  </g>
-
-  <!-- 4. 【资源与极速转存】云心极速冲天资源光箭与展翅书页 (Resource Sync Vault & Book) -->
-  <!-- 展翅教辅书页 (托起知识与真题) -->
-  <g transform="translate(0, 20)">
+    <!-- 主书页 (纯净洁白翻开的弧度，充满力量感与智慧) -->
     <!-- 左书页 -->
-    <path d="M266 312 C236 292 196 290 168 296 C162 297 158 303 158 310 L158 334 C190 326 230 328 266 348 Z"
-          fill="#38BDF8" opacity="0.85" />
+    <path d="M 256 372 C 208 335 152 329 116 335 C 109 336 104 331 104 324 L 104 271 C 104 264 110 259 116 258 C 156 252 212 258 256 292 Z" 
+          fill="url(#xb-page-main)" />
     <!-- 右书页 -->
-    <path d="M266 312 C296 292 336 290 364 296 C370 297 374 303 374 310 L374 334 C342 326 302 328 266 348 Z"
-          fill="#38BDF8" opacity="0.85" />
+    <path d="M 256 372 C 304 335 360 329 396 335 C 403 336 408 331 408 324 L 408 271 C 408 264 402 259 396 258 C 356 252 300 258 256 292 Z" 
+          fill="url(#xb-page-main)" />
+    <!-- 书脊中心微立体光影 -->
+    <path d="M 254 292 L 258 292 L 258 372 L 254 372 Z" fill="#CBD5E1" opacity="0.6" />
 
-    <!-- 云核中央：疾速转存冲天光箭 (Resource Upload / Fast Save Arrow) -->
-    <path d="M266 216 L306 264 L280 264 L280 330 L252 330 L252 264 L226 264 Z"
-          fill="url(#xb-arrow-grad)" />
-    <!-- 光箭中心高光反白 -->
-    <path d="M266 222 L294 258 L274 258 L274 324 L258 324 L258 258 L238 258 Z"
-          fill="rgba(255, 255, 255, 0.6)" />
-  </g>
+    <!-- 3. 【学霸黄金冠顶】利落现代学士帽 · 象征名校升学与拔尖高分 -->
+    <!-- 帽子圆弧基座 (贴合书卷上方，形成高低韵律) -->
+    <path d="M 198 184 L 198 214 C 198 234 224 248 256 248 C 288 248 314 234 314 214 L 314 184 C 294 196 276 202 256 202 C 236 202 218 196 198 184 Z" 
+          fill="#B45309" />
 
-  <!-- 5. 【学霸荣耀星芒】象征状元高分与拔尖 (Scholar Sparkle Stars) -->
-  <g filter="url(#xb-star-glow)">
-    <!-- 右上主星芒 (耀眼黄金星) -->
-    <path d="M392 100 L398 116 L416 120 L400 131 L404 148 L392 136 L380 148 L384 131 L368 120 L386 116 Z"
-          fill="url(#xb-hat-top)" stroke="#B45309" stroke-width="1.5" />
-    <!-- 左上辅星芒 (精致四角星) -->
-    <path d="M138 162 Q 138 174 126 174 Q 138 174 138 186 Q 138 174 150 174 Q 138 174 138 162 Z"
-          fill="url(#xb-hat-top)" opacity="0.9" />
-  </g>
+    <!-- 扁平几何菱形帽顶：左右双切面高光，利落立体 -->
+    <!-- 左半部明亮受光面 -->
+    <polygon points="256,124 148,168 256,212 256,124" fill="url(#xb-gold-light)" />
+    <!-- 右半部暖金反光面 -->
+    <polygon points="256,124 364,168 256,212 256,124" fill="url(#xb-gold-dark)" />
+    <!-- 帽顶轮廓极细高光金线 -->
+    <polygon points="256,125 151,168 256,210 361,168" fill="none" stroke="rgba(255, 255, 255, 0.45)" stroke-width="2" />
 
-  <!-- 底部微字标点缀：直观印证 xuebaw.com 资源站定位 -->
-  <g opacity="0.75">
-    <circle cx="218" cy="428" r="3" fill="#60A5FA" />
-    <text x="230" y="432" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#93C5FD" letter-spacing="3">XUEBAW.COM</text>
-    <circle cx="376" cy="428" r="3" fill="#60A5FA" />
+    <!-- 学士帽中心金色纽扣 -->
+    <circle cx="256" cy="168" r="8" fill="#FEF08A" stroke="#B45309" stroke-width="1.5" />
+
+    <!-- 飘逸流苏 (简约有型) -->
+    <path d="M 256 168 Q 336 178 350 208" stroke="url(#xb-tassel)" stroke-width="6" stroke-linecap="round" fill="none" />
+    <!-- 流苏挂穗 -->
+    <path d="M 350 208 L 344 238 C 344 241 356 241 356 238 L 350 208 Z" fill="url(#xb-tassel)" />
+    <circle cx="350" cy="209" r="4" fill="#FEF08A" />
+
+    <!-- 4. 【卓越启明星】跃然帽顶之上的四芒星芒 · 象征领航与金榜题名 -->
+    <g filter="url(#xb-star-glow)">
+      <!-- 极简四芒星 -->
+      <path d="M 256 68 Q 256 86 274 86 Q 256 86 256 104 Q 256 86 238 86 Q 256 86 256 68 Z" 
+            fill="#FFFFFF" />
+      <circle cx="256" cy="86" r="3" fill="#FEF08A" />
+    </g>
+
   </g>
 </svg>

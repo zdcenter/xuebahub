@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"netdisk/api/internal/model"
 )
 
@@ -641,4 +643,198 @@ func (s *EmailService) GetEmailStats() (*EmailStatsResult, error) {
 	s.db.Model(&model.EmailCampaignLog{}).Select("COALESCE(SUM(success_count), 0)").Scan(&res.TotalSentSuccess)
 	s.db.Model(&model.EmailCampaignLog{}).Count(&res.TotalCampaigns)
 	return &res, nil
+}
+
+// ResolveContactEmail 智能解析求助联系人中的有效邮箱或 QQ 号
+func ResolveContactEmail(contact string) string {
+	c := strings.TrimSpace(contact)
+	if c == "" {
+		return ""
+	}
+	// 1. 如果已是完整邮箱 (包含 @ 和 .)
+	emailRegex := regexp.MustCompile(`(?i)[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}`)
+	if m := emailRegex.FindString(c); m != "" {
+		return strings.ToLower(m)
+	}
+	// 2. 如果纯数字且 5~11 位，智能判定为 QQ 号，自动补全 @qq.com
+	qqRegex := regexp.MustCompile(`^[1-9][0-9]{4,10}$`)
+	if qqRegex.MatchString(c) {
+		return c + "@qq.com"
+	}
+	// 3. 尝试匹配文本中的 QQ 号 (如 QQ: 12345678 或 qq12345678)
+	subQQRegex := regexp.MustCompile(`(?i)(?:qq|qq号|qq群)?[:：\s]*([1-9][0-9]{4,10})`)
+	if subMatch := subQQRegex.FindStringSubmatch(c); len(subMatch) > 1 {
+		return subMatch[1] + "@qq.com"
+	}
+	return ""
+}
+
+// SendResourceFulfilledNotification 求资料上架邮件闭环通知
+func (s *EmailService) SendResourceFulfilledNotification(req *model.ResourceRequest, resource *model.Resource, adminNote string) (bool, string, error) {
+	if req == nil {
+		return false, "需求记录为空", fmt.Errorf("request is nil")
+	}
+
+	targetEmail := ResolveContactEmail(req.Contact)
+	if targetEmail == "" {
+		return false, fmt.Sprintf("联系方式 '%s' 无法解析为有效邮箱或QQ号", req.Contact), nil
+	}
+
+	cfg, err := s.GetEmailConfig()
+	if err != nil {
+		return false, "获取发信配置失败: " + err.Error(), err
+	}
+	if !cfg.IsEnabled {
+		return false, "发信功能当前处于关闭状态", nil
+	}
+	if cfg.SMTPUser == "" || cfg.SMTPPass == "" {
+		return false, "未配置 SMTP 发信账号或授权码", nil
+	}
+
+	// 如果关联了资源ID但没有传入具体资源对象，尝试查库
+	if resource == nil && req.FulfilledResourceID != nil {
+		var res model.Resource
+		if err := s.db.Preload("Links").First(&res, "id = ?", *req.FulfilledResourceID).Error; err == nil {
+			resource = &res
+		}
+	}
+
+	resTitle := req.Title
+	if resource != nil && resource.Title != "" {
+		resTitle = resource.Title
+	}
+
+	subject := fmt.Sprintf("【学霸网】您求助的《%s》已整理上架，可立即下载！", resTitle)
+
+	// 拼接直达链接与转存卡片
+	var actionBtnURL string
+	var linksHTML string
+
+	if resource != nil {
+		actionBtnURL = fmt.Sprintf("https://xuebaw.com/resource/%s", resource.Slug)
+		for _, l := range resource.Links {
+			driveName := "夸克网盘"
+			driveBadgeColor := "#0284c7"
+			if l.DriveType == "baidu" {
+				driveName = "百度网盘"
+				driveBadgeColor = "#2563eb"
+			} else if l.DriveType == "alipan" {
+				driveName = "阿里云盘"
+				driveBadgeColor = "#f59e0b"
+			}
+			codeText := ""
+			if l.ExtractCode != "" {
+				codeText = fmt.Sprintf(" (提取码: <b style='color:#0f172a;'>%s</b>)", l.ExtractCode)
+			}
+			linksHTML += fmt.Sprintf(`
+        <div style="margin-top: 10px;">
+          <a href="%s" target="_blank" style="display: inline-block; background: %s; color: #ffffff; text-decoration: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 13.5px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);">
+            ⚡ 保存至 %s 极速转存%s
+          </a>
+        </div>`, l.ShareURL, driveBadgeColor, driveName, codeText)
+		}
+	} else {
+		actionBtnURL = fmt.Sprintf("https://xuebaw.com/search?q=%s", url.QueryEscape(req.Title))
+	}
+
+	noteText := adminNote
+	if strings.TrimSpace(noteText) == "" {
+		noteText = req.FulfilledNote
+	}
+	if strings.TrimSpace(noteText) == "" {
+		noteText = "您求助的试卷/资料已整理就绪，包含高清单文件试卷及参考答案，欢迎点击保存至网盘学习！"
+	}
+
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 20px 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f1f5f9; color: #334155;">
+  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+    
+    <!-- 顶栏：学霸网品牌 -->
+    <div style="background: linear-gradient(135deg, #091e3a 0%%, #0369a1 60%%, #0284c7 100%%); padding: 28px 32px; color: #ffffff;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 13px; font-weight: 700; background: rgba(255,255,255,0.22); padding: 4px 12px; border-radius: 12px; letter-spacing: 0.5px;">🎓 学霸网 · 求助资料上架通知</span>
+        <span style="font-size: 12px; opacity: 0.85;">xuebaw.com</span>
+      </div>
+      <h1 style="margin: 14px 0 0 0; font-size: 19px; font-weight: 700; line-height: 1.45; color: #ffffff;">您求助的资料已整理上架！</h1>
+    </div>
+
+    <!-- 正文内容区 -->
+    <div style="padding: 28px 32px; font-size: 14px; line-height: 1.75; color: #334155;">
+      <p style="margin: 0 0 16px 0; font-size: 15px; font-weight: 600; color: #0f172a;">
+        亲爱的同学 / 家长：
+      </p>
+      <p style="margin: 0 0 16px 0; color: #475569;">
+        您此前在 <b>学霸网 (xuebaw.com)</b> 提交的资料求助需求已有最新进展！站长已加急搜集、核对并正式发布上线，现将直达下载方式同步通知给您：
+      </p>
+
+      <!-- 资料卡片 -->
+      <div style="background: #f8fafc; border: 1.5px solid #e0e7ff; border-radius: 12px; padding: 20px; margin: 20px 0;">
+        <div style="font-size: 11.5px; color: #4f46e5; font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">
+          📚 您所求助的需求
+        </div>
+        <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px; line-height: 1.5;">
+          %s
+        </div>
+
+        <!-- 站长留言回复 -->
+        <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 10px 14px; border-radius: 6px; font-size: 13px; color: #1e40af; line-height: 1.6; margin-bottom: 16px;">
+          <strong>站长留言：</strong>%s
+        </div>
+
+        <!-- 直达按钮与网盘链接 -->
+        <div style="margin-top: 16px;">
+          <a href="%s" target="_blank" style="display: inline-block; background: #0284c7; color: #ffffff; text-decoration: none; padding: 12px 26px; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 3px 10px rgba(2,132,199,0.35);">
+            ⚡ 立即前往学霸网下载 / 查看详情 &rarr;
+          </a>
+        </div>
+        %s
+      </div>
+
+      <!-- 打印与使用技巧 -->
+      <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: 8px; padding: 12px 16px; font-size: 12.5px; color: #854d0e; line-height: 1.6; margin-top: 20px;">
+        💡 <b>学习使用小贴士：</b><br>
+        1. 建议先将资料保存到您个人的网盘中，防链接失效；<br>
+        2. 本站真题试卷均支持 <b>A4 纸高清双面打印</b>，排版工整无水印；<br>
+        3. 如还需其它省市一模卷、期末冲刺卷或课本教辅，欢迎随时在学霸网再次提交求助！
+      </div>
+    </div>
+
+    <!-- 底部版权与免责声明 -->
+    <div style="padding: 18px 32px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8; line-height: 1.6; text-align: center;">
+      <div>学霸网 (xuebaw.com) · 中小学名校教辅与网盘真题分享平台</div>
+      <div style="margin-top: 4px;">本邮件为系统对您此前提交求资料需求的自动闭环通知。如非本人操作请忽略。</div>
+    </div>
+  </div>
+</body>
+</html>`, req.Title, noteText, actionBtnURL, linksHTML)
+
+	// 发送邮件
+	if err := s.sendRawEmail(cfg, targetEmail, subject, htmlBody); err != nil {
+		log.Printf("[EmailService] Failed to send fulfill notification to %s: %v", targetEmail, err)
+		return false, fmt.Sprintf("向 %s 发信失败: %v", targetEmail, err), err
+	}
+
+	// 记录成功状态
+	now := time.Now()
+	s.db.Model(&model.ResourceRequest{}).Where("id = ?", req.ID).Updates(map[string]interface{}{
+		"email_notified":    true,
+		"email_notified_at": &now,
+	})
+	req.EmailNotified = true
+	req.EmailNotifiedAt = &now
+
+	// 自动将有效联系人收录到 EmailContact 库，方便后续推送相关年级学科资源 (忽略重复)
+	contactRecord := model.EmailContact{
+		Email:    targetEmail,
+		GroupTag: "request_fulfilled",
+		Source:   "resource_request",
+		Status:   "active",
+		Remark:   fmt.Sprintf("求资料需求《%s》已满足用户", req.Title),
+	}
+	s.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&contactRecord)
+
+	log.Printf("[EmailService] Successfully sent fulfill notification to %s for request %s", targetEmail, req.ID)
+	return true, targetEmail, nil
 }

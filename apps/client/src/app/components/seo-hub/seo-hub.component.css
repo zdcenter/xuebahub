@@ -1,9 +1,313 @@
-/* 搜索引擎批量收录中枢专属微调样式 (与 Telegram / Email 运营中枢完全对齐) */
+/* 🔍 搜索引擎批量收录中枢专属样式系统 (对齐高质感翠绿与 Telegram 运营中枢设计语言) */
 :host {
+  display: block;
+  width: 100%;
+}
+
+/* 1. 顶部 Hero Banner 横幅 */
+.account-hero-banner {
+  background: linear-gradient(135deg, #064e3b 0%, #047857 55%, #059669 100%);
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  box-shadow: 0 4px 15px rgba(5, 150, 105, 0.15);
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
+.hero-left {
+  flex: 1;
+  min-width: 300px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #a7f3d0;
+  background: rgba(167, 243, 208, 0.2);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(167, 243, 208, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.hero-left h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  color: #ffffff !important;
+  letter-spacing: -0.01em;
+}
+
+.hero-left p {
+  font-size: 13px;
+  color: #d1fae5 !important;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 14px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.hero-stat-item {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 12px 18px;
+  border-radius: 12px;
+  text-align: center;
+  min-width: 95px;
+  backdrop-filter: blur(4px);
+  transition: transform 0.2s ease;
+}
+
+.hero-stat-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.stat-num {
+  font-size: 22px;
+  font-weight: 800;
+  display: block;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #a7f3d0;
+  margin-top: 4px;
   display: block;
 }
 
-/* 自动推送监听呼吸灯动画 */
+/* 2. 平铺 Sub-Tabs 导航栏 */
+.crawler-subnav-bar {
+  display: flex;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow-x: auto;
+}
+
+.crawler-subtab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.crawler-subtab-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.crawler-subtab-btn.active {
+  background: #047857;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25);
+}
+
+.crawler-subtab-btn .subtab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(4, 120, 87, 0.15);
+  color: #047857;
+}
+
+.crawler-subtab-btn.active .subtab-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* 3. 卡片与布局容器 */
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
+}
+
+.card-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-body {
+  padding: 22px;
+}
+
+/* 4. 按钮系统 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.btn-primary {
+  background: #047857;
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #065f46;
+  box-shadow: 0 4px 10px rgba(4, 120, 87, 0.25);
+}
+
+.btn-secondary {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
+/* 5. 表单控件与输入框 */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.form-hint {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 9px 13px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: #0f172a;
+  background: #ffffff;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+  line-height: 1.5;
+}
+
+.form-control:focus {
+  border-color: #047857;
+  box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.12);
+}
+
+textarea.form-control {
+  resize: vertical;
+}
+
+/* 6. 徽章药丸 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* 7. 表格与行动效 */
+table, .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+thead th {
+  background: #f8fafc;
+  padding: 11px 16px;
+  font-weight: 700;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+tr {
+  transition: background-color 0.15s ease;
+}
+
+tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* 8. 自动推送监听呼吸灯动画 */
 @keyframes live-dot-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5);
@@ -20,7 +324,7 @@
   animation: live-dot-pulse 2s infinite;
 }
 
-/* 两栏网格布局 */
+/* 9. 两栏网格布局 */
 .seo-grid-2cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -33,7 +337,7 @@
   }
 }
 
-/* 引擎单选药丸网格 */
+/* 10. 引擎单选药丸网格 */
 .engine-selector-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -42,16 +346,16 @@
 
 .engine-card-pill {
   padding: 12px 14px;
-  background: var(--bg-secondary, #f8fafc);
-  border: 1.5px solid var(--border-color, #e2e8f0);
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .engine-card-pill:hover {
-  background: var(--bg-hover, #f1f5f9);
-  border-color: var(--border-active, #cbd5e1);
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .engine-card-pill.selected {
@@ -72,7 +376,8 @@
 
 .engine-name {
   font-size: 13.5px;
-  color: var(--text-main, #0f172a);
+  color: #0f172a;
+  font-weight: 600;
 }
 
 .engine-card-pill.selected .engine-name {
@@ -81,12 +386,12 @@
 
 .engine-pill-desc {
   font-size: 12px;
-  color: var(--text-muted, #64748b);
+  color: #64748b;
   margin-top: 4px;
   line-height: 1.4;
 }
 
-/* 推送结果即时通知横幅 */
+/* 11. 推送结果即时通知横幅 */
 .push-result-banner {
   display: flex;
   align-items: flex-start;
@@ -152,7 +457,7 @@
   opacity: 1;
 }
 
-/* 引擎徽章 */
+/* 12. 引擎徽章 */
 .engine-tag {
   display: inline-block;
   padding: 3px 8px;
@@ -179,7 +484,7 @@
   border: 1px solid #fbcfe8;
 }
 
-/* 状态徽章 */
+/* 13. 状态徽章 */
 .log-status-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -205,35 +510,26 @@
 
 .log-summary-text {
   font-size: 12.5px;
-  color: var(--text-secondary, #334155);
+  color: #334155;
   line-height: 1.4;
 }
 
-/* 表格行过渡效果 */
-tr {
-  transition: background-color 0.15s ease;
-}
-
-tr:hover td {
-  background-color: var(--bg-hover, #f8fafc);
-}
-
-/* 优雅滚动条 */
+/* 14. 滚动条美化 */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary, #f1f5f9);
+  background: #f1f5f9;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color, #cbd5e1);
+  background: #cbd5e1;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted, #94a3b8);
+  background: #94a3b8;
 }

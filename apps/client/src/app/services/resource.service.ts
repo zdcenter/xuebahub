@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, map, of, catchError } from 'rxjs';
 
 export interface ResourceLinkDto {
   id?: string;
@@ -43,6 +43,7 @@ export interface ResourceItemDto {
   is_recommended?: boolean;
   cover_image?: string;
   poster_image?: string;
+  preview_images?: string[];
   file_tree?: any[];
   links?: ResourceLinkDto[];
 }
@@ -339,6 +340,16 @@ export class ResourceService {
         channel_counts: res.data?.channel_counts || {},
         stage_counts: res.data?.stage_counts || {}
       }))
+    );
+  }
+
+  // 获取单篇资源详情 (公开详情端点)
+  get(idOrSlug: string): Observable<ResourceItemDto | null> {
+    return this.http.get<{ code: number; data: { resource: ResourceItemDto } }>(
+      `${this.baseUrl}/api/v1/public/resources/${idOrSlug}`
+    ).pipe(
+      map(res => res.data?.resource || null),
+      catchError(() => of(null))
     );
   }
 
@@ -761,8 +772,12 @@ export class ResourceService {
     return this.http.get<{ code: number; data: { items: ResourceRequestDto[]; counts: Record<string, number> } }>(url).pipe(map(r => r.data));
   }
 
-  updateAdminRequest(id: string, data: Partial<ResourceRequestDto>): Observable<ResourceRequestDto> {
-    return this.http.put<{ code: number; message: string; data: ResourceRequestDto }>(`${this.baseUrl}/api/v1/admin/requests/${id}`, data).pipe(map(r => r.data));
+  updateAdminRequest(id: string, data: Partial<ResourceRequestDto> & { send_email_notification?: boolean }): Observable<{ code: number; message: string; data: ResourceRequestDto; email_sent?: boolean; email_to?: string; email_msg?: string }> {
+    return this.http.put<{ code: number; message: string; data: ResourceRequestDto; email_sent?: boolean; email_to?: string; email_msg?: string }>(`${this.baseUrl}/api/v1/admin/requests/${id}`, data);
+  }
+
+  notifyAdminRequest(id: string): Observable<{ code: number; message: string; email_to?: string; data: ResourceRequestDto }> {
+    return this.http.post<{ code: number; message: string; email_to?: string; data: ResourceRequestDto }>(`${this.baseUrl}/api/v1/admin/requests/${id}/notify`, {});
   }
 
   deleteAdminRequest(id: string): Observable<void> {
@@ -1129,6 +1144,8 @@ export interface ResourceRequestDto {
   fulfilled_note?: string;
   vote_count: number;
   client_ip?: string;
+  email_notified?: boolean;
+  email_notified_at?: string | null;
   created_at: string;
   updated_at: string;
 }

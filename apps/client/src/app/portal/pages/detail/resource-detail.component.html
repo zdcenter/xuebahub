@@ -34,14 +34,24 @@
         <!-- 2. 主体左右结构 (左侧大尺寸高质封面 + 右侧元信息及扫码下载区，高度完美拉齐并消除留白) -->
         <div class="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
           
-          <!-- 左侧：封面展示 (3:4黄金竖版比例，尺寸与右侧元信息及网盘地址栏高度严丝合缝对齐，和谐协调) -->
-          <div class="w-56 sm:w-60 md:w-[250px] lg:w-[252px] max-w-[255px] shrink-0 aspect-[3/4] rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-slate-100 relative group mx-auto md:mx-0 select-none transition-shadow hover:shadow-lg">
-            <img *ngIf="resource()?.cover_image"
-                 [src]="resource()?.cover_image"
-                 [alt]="resource()?.title"
-                 class="w-full h-full object-cover object-top" />
-            
-            <!-- 仿真统编标准书皮 (无外置封面时 100% 仿真统编版正版教科书，色彩随学科自适应) -->
+          <!-- 左侧：封面展示与高清原图画廊预览 (3:4黄金竖版比例) -->
+          <div class="shrink-0 mx-auto md:mx-0">
+            <div (click)="allPreviewImages().length > 0 && openLightbox(0)"
+                 [class.cursor-zoom-in]="allPreviewImages().length > 0"
+                 class="w-56 sm:w-60 md:w-[250px] lg:w-[252px] max-w-[255px] aspect-[3/4] rounded-2xl overflow-hidden shadow-md border border-slate-200 bg-slate-100 relative group select-none transition-shadow hover:shadow-lg">
+              <img *ngIf="resource()?.cover_image"
+                   [src]="resource()?.cover_image"
+                   [alt]="resource()?.title"
+                   class="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-102" />
+              
+              <!-- 悬浮点击放大提示胶囊 (提升试卷清晰度信赖感) -->
+              <div *ngIf="allPreviewImages().length > 0" class="absolute inset-0 bg-slate-950/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                <span class="px-3 py-1.5 rounded-full bg-white/95 text-slate-900 text-xs font-bold shadow-xl flex items-center gap-1.5 backdrop-blur-md">
+                  <span>🔍</span> 全屏放大预览
+                </span>
+              </div>
+              
+              <!-- 仿真统编标准书皮 (无外置封面时 100% 仿真统编版正版教科书，色彩随学科自适应) -->
             <div *ngIf="!resource()?.cover_image"
                  class="w-full h-full flex flex-col justify-between p-5 bg-gradient-to-br text-white relative"
                  [ngClass]="subjectBgColor">
@@ -74,6 +84,17 @@
               </div>
             </div>
           </div>
+
+          <!-- 多图试卷样卷微缩图导航 (仅在包含多页试卷图时展示) -->
+          <div *ngIf="allPreviewImages().length > 1" class="flex gap-2 mt-2.5 overflow-x-auto pb-1 max-w-[255px]">
+            <button *ngFor="let img of allPreviewImages(); let idx = index"
+                    (click)="openLightbox(idx)"
+                    type="button"
+                    class="w-11 h-15 rounded-lg overflow-hidden border-2 border-slate-200 hover:border-emerald-500 shadow-2xs transition shrink-0 cursor-pointer">
+              <img [src]="img" class="w-full h-full object-cover" />
+            </button>
+          </div>
+        </div>
 
           <!-- 右侧：元信息面板 + 扫码直出区 -->
           <div class="flex-1 min-w-0 w-full space-y-5">
@@ -674,5 +695,85 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- 微信 / QQ 环境下点击网盘下载的右上角防屏蔽引导蒙层 -->
+  <app-wechat-guide-modal 
+    [isOpen]="showWechatGuide()" 
+    [targetUrl]="wechatGuideTargetLink()?.share_url" 
+    [extractCode]="wechatGuideTargetLink()?.extract_code" 
+    (close)="showWechatGuide.set(false)">
+  </app-wechat-guide-modal>
+
+  <!-- 全屏试卷与封面高清画廊查看器 (Fullscreen Lightbox) -->
+  <div *ngIf="isLightboxOpen()" 
+       class="fixed inset-0 z-[99999] bg-slate-950/95 backdrop-blur-md flex flex-col justify-between p-4 sm:p-6 select-none animate-fadeIn"
+       (click)="closeLightbox()">
+    
+    <!-- 顶部操作控制栏 -->
+    <div class="flex items-center justify-between z-10" (click)="$event.stopPropagation()">
+      <div class="flex items-center gap-3">
+        <span class="text-xs sm:text-sm font-bold text-white/90 truncate max-w-xs sm:max-w-md">
+          {{ resource()?.title }}
+        </span>
+        <span *ngIf="allPreviewImages().length > 1" class="text-xs font-mono font-bold text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700">
+          {{ lightboxIndex() + 1 }} / {{ allPreviewImages().length }}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- 缩放按钮组 -->
+        <div class="hidden sm:flex items-center bg-slate-800/80 border border-slate-700/80 rounded-xl p-1 gap-1">
+          <button type="button" (click)="zoomOut($event)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-700 text-white text-xs font-bold transition cursor-pointer">－</button>
+          <span class="text-xs font-mono font-bold text-slate-300 px-2">{{ (lightboxZoom() * 100).toFixed(0) }}%</span>
+          <button type="button" (click)="zoomIn($event)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-700 text-white text-xs font-bold transition cursor-pointer">＋</button>
+          <button type="button" (click)="resetZoom($event)" class="px-2 h-7 flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 text-xs transition cursor-pointer">1:1</button>
+        </div>
+
+        <button type="button" (click)="closeLightbox()" class="w-9 h-9 rounded-full bg-slate-800/90 hover:bg-slate-700 border border-slate-700 flex items-center justify-center text-white text-sm font-bold transition cursor-pointer">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- 主展示区 (支持手势/点击与上一页下一页) -->
+    <div class="flex-1 flex items-center justify-center relative overflow-hidden my-2">
+      <!-- 上一张 -->
+      <button *ngIf="allPreviewImages().length > 1"
+              type="button"
+              (click)="prevImage($event)"
+              class="absolute left-2 sm:left-6 z-10 w-11 h-11 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 text-white flex items-center justify-center text-lg font-bold shadow-xl transition cursor-pointer active:scale-95">
+        ‹
+      </button>
+
+      <!-- 放大图片容器 -->
+      <div class="max-h-full max-w-full flex items-center justify-center transition-transform duration-200"
+           [style.transform]="'scale(' + lightboxZoom() + ')'"
+           (click)="$event.stopPropagation()">
+        <img [src]="allPreviewImages()[lightboxIndex()]" 
+             [alt]="resource()?.title"
+             class="max-h-[82vh] max-w-[90vw] object-contain rounded-xl shadow-2xl select-none pointer-events-auto" />
+      </div>
+
+      <!-- 下一张 -->
+      <button *ngIf="allPreviewImages().length > 1"
+              type="button"
+              (click)="nextImage($event)"
+              class="absolute right-2 sm:right-6 z-10 w-11 h-11 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 text-white flex items-center justify-center text-lg font-bold shadow-xl transition cursor-pointer active:scale-95">
+        ›
+      </button>
+    </div>
+
+    <!-- 底部缩略图导航栏 (多张预览图时) -->
+    <div *ngIf="allPreviewImages().length > 1" class="flex justify-center gap-2 z-10 overflow-x-auto py-1" (click)="$event.stopPropagation()">
+      <button *ngFor="let img of allPreviewImages(); let idx = index"
+              type="button"
+              (click)="lightboxIndex.set(idx); lightboxZoom.set(1)"
+              class="w-10 h-14 rounded-lg overflow-hidden border-2 transition shrink-0 cursor-pointer"
+              [class]="idx === lightboxIndex() ? 'border-emerald-400 shadow-md scale-105' : 'border-slate-700 opacity-60 hover:opacity-100'">
+        <img [src]="img" class="w-full h-full object-cover" />
+      </button>
+    </div>
+
   </div>
 </div>
