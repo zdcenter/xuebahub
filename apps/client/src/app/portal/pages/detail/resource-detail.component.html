@@ -295,6 +295,223 @@
           </div>
         </div>
 
+        <!-- 4. 方案2：权威品质背书保障矩阵 (大幅消除用户对模糊扫描/陈旧盗版的顾虑) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+          <div class="p-3 bg-slate-50/80 hover:bg-emerald-50/40 rounded-xl border border-slate-200/80 transition flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg shrink-0">
+              🛡️
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-slate-900 truncate">2026 同步新考纲</div>
+              <div class="text-[11px] text-slate-500 truncate">严选名校教研组同步题</div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-50/80 hover:bg-blue-50/40 rounded-xl border border-slate-200/80 transition flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-lg shrink-0">
+              📄
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-slate-900 truncate">矢量高清无水印</div>
+              <div class="text-[11px] text-slate-500 truncate">标准 A4 打印清晰锐利</div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-50/80 hover:bg-amber-50/40 rounded-xl border border-slate-200/80 transition flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-lg shrink-0">
+              ✍️
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-slate-900 truncate">配全套官方参考答案</div>
+              <div class="text-[11px] text-slate-500 truncate">逐题解题思路与规范步骤</div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-50/80 hover:bg-teal-50/40 rounded-xl border border-slate-200/80 transition flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center text-lg shrink-0">
+              ⚡
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-slate-900 truncate">多端永久免解压</div>
+              <div class="text-[11px] text-slate-500 truncate">手机/电脑/平板随时查阅</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 5. 方案2核心：资料内页高清样张试看 & 毛玻璃转存阻断引导 (Conversion Gate) -->
+      <div class="p-5 sm:p-6 lg:p-8 border-t border-slate-100 space-y-4 bg-slate-50/40">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="p-2 bg-blue-50 rounded-xl border border-blue-200 text-blue-700 text-lg shadow-2xs">
+              📄
+            </span>
+            <div>
+              <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <span>资料真题高清内页试读</span>
+                <span class="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                  真实样张 · 拒绝模糊
+                </span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">
+                支持放大查阅排版质量与公式清晰度，转存网盘即可获取全本原件与名师参考答案
+              </p>
+            </div>
+          </div>
+
+          <div class="text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs shrink-0 self-start sm:self-auto">
+            共约 <strong class="text-emerald-700 font-mono font-bold">{{ estimatedPages() }}</strong> 页完整原件
+          </div>
+        </div>
+
+        <!-- 试卷样张三卡片横向流：前2页高清展示 + 第3页毛玻璃答案阻断 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          
+          <!-- 第 1 页样张：封面或第一页真实题面 -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-xs flex flex-col justify-between group relative overflow-hidden">
+            <div class="flex items-center justify-between text-xs text-slate-500 pb-2 mb-2 border-b border-slate-100">
+              <span class="font-bold text-slate-700">样张 01 · 首页试看</span>
+              <span class="text-[11px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">高清矢量</span>
+            </div>
+
+            <!-- 图像预览或真实排版仿真试卷头 -->
+            <div (click)="allPreviewImages().length > 0 && openLightbox(0)"
+                 class="aspect-[3/4] bg-slate-50 rounded-xl border border-slate-200 overflow-hidden relative cursor-zoom-in group/img flex flex-col justify-between p-3.5 select-none">
+              <img *ngIf="resource()?.cover_image"
+                   [src]="resource()?.cover_image"
+                   [alt]="resource()?.title"
+                   class="absolute inset-0 w-full h-full object-cover object-top" />
+              
+              <!-- 仿真考卷内页效果 (若无真实单页图) -->
+              <div *ngIf="!resource()?.cover_image" class="w-full h-full flex flex-col justify-between text-slate-800 text-[10px]">
+                <div class="text-center border-b border-slate-300 pb-2">
+                  <div class="font-extrabold text-xs text-slate-900 tracking-wide line-clamp-2">{{ resource()?.title }}</div>
+                  <div class="text-slate-500 text-[9px] mt-1">考试时间：120分钟 · 满分：150分 · 绝密★启用前</div>
+                </div>
+                <div class="space-y-2 py-2">
+                  <div class="font-bold text-slate-900">一、选择题（本大题共 10 小题，每小题 3 分）</div>
+                  <div class="text-slate-600 leading-snug">1. 下列关于考点基础概念的叙述，最准确的一项是（ ）</div>
+                  <div class="text-slate-600 leading-snug">2. 综合推导与实际应用变式训练（真题第2题演练）</div>
+                  <div class="text-slate-400 text-[9px] italic">... 高清试题排版 · 公式字符清晰 ...</div>
+                </div>
+                <div class="pt-1 border-t border-slate-200 flex justify-between text-slate-400 text-[9px]">
+                  <span>第 1 页 (共 {{ estimatedPages() }} 页)</span>
+                  <span class="font-mono">学霸网·教研正版</span>
+                </div>
+              </div>
+
+              <!-- 悬浮点击全屏放大放大镜提示 -->
+              <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                <span class="px-2.5 py-1 rounded-full bg-white/95 text-slate-900 text-xs font-bold shadow-lg flex items-center gap-1 backdrop-blur-md">
+                  <span>🔍</span> 点击放大查看排版细节
+                </span>
+              </div>
+            </div>
+            
+            <div class="mt-2 text-center text-[11px] text-slate-400">
+              支持点击全屏缩放检验清晰度
+            </div>
+          </div>
+
+          <!-- 第 2 页样张：第二页试题试看 -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-xs flex flex-col justify-between group relative overflow-hidden">
+            <div class="flex items-center justify-between text-xs text-slate-500 pb-2 mb-2 border-b border-slate-100">
+              <span class="font-bold text-slate-700">样张 02 · 核心考题与题型</span>
+              <span class="text-[11px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">无水印可打印</span>
+            </div>
+
+            <div (click)="allPreviewImages().length > 1 ? openLightbox(1) : openLightbox(0)"
+                 class="aspect-[3/4] bg-slate-50 rounded-xl border border-slate-200 overflow-hidden relative cursor-zoom-in group/img flex flex-col justify-between p-3.5 select-none">
+              <img *ngIf="allPreviewImages().length > 1"
+                   [src]="allPreviewImages()[1]"
+                   [alt]="resource()?.title"
+                   class="absolute inset-0 w-full h-full object-cover object-top" />
+              
+              <div *ngIf="allPreviewImages().length <= 1" class="w-full h-full flex flex-col justify-between text-slate-800 text-[10px]">
+                <div class="border-b border-slate-200 pb-1.5">
+                  <div class="font-bold text-slate-900">二、填空题与重点主观解答题</div>
+                  <div class="text-slate-500 text-[9px]">请将标准步骤书写在对应答题区域内</div>
+                </div>
+                <div class="space-y-2 py-1.5 flex-1">
+                  <div class="text-slate-700 leading-snug">11. 经典考点综合模型求值与图象性质判定：__________</div>
+                  <div class="text-slate-700 leading-snug">12. 重点实验探究与推导步骤规范训练题...</div>
+                  <div class="text-slate-700 leading-snug">13. 名校压轴考点母题变式与创新应用...</div>
+                  <div class="text-slate-400 text-[9px] italic">（整页试卷排版工整，无任何模糊重影与黑边）</div>
+                </div>
+                <div class="pt-1 border-t border-slate-200 flex justify-between text-slate-400 text-[9px]">
+                  <span>第 2 页 (共 {{ estimatedPages() }} 页)</span>
+                  <span class="font-mono">支持A4极清打印</span>
+                </div>
+              </div>
+
+              <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                <span class="px-2.5 py-1 rounded-full bg-white/95 text-slate-900 text-xs font-bold shadow-lg flex items-center gap-1 backdrop-blur-md">
+                  <span>🔍</span> 点击放大查看排版细节
+                </span>
+              </div>
+            </div>
+
+            <div class="mt-2 text-center text-[11px] text-slate-400">
+              试题字迹锐利 · 格式与正规考卷一致
+            </div>
+          </div>
+
+          <!-- 第 3 页样张：毛玻璃遮罩阻断卡片 (转化核心武器) -->
+          <div *ngIf="primaryLink as link" class="bg-white rounded-2xl border-2 border-emerald-400/60 p-3 shadow-md flex flex-col justify-between relative overflow-hidden">
+            <div class="flex items-center justify-between text-xs text-slate-500 pb-2 mb-2 border-b border-emerald-100">
+              <span class="font-bold text-emerald-800 flex items-center gap-1">
+                <span>🔒</span>
+                <span>样张 03 · 答案与解析</span>
+              </span>
+              <span class="text-[11px] text-amber-800 font-bold bg-amber-100 px-1.5 py-0.5 rounded">答案已锁定</span>
+            </div>
+
+            <!-- 毛玻璃模糊背景 + 正中间悬浮转存解锁引导卡片 -->
+            <div class="aspect-[3/4] rounded-xl overflow-hidden relative flex items-center justify-center p-4 select-none bg-slate-100 border border-slate-200">
+              
+              <!-- 背后模拟试卷答案排版并施加高斯模糊 -->
+              <div class="absolute inset-0 p-4 text-[9px] text-slate-400 blur-sm pointer-events-none select-none flex flex-col justify-between bg-white/80">
+                <div class="font-bold text-slate-600 text-[10px]">【参考答案与全套评分标准】</div>
+                <div class="space-y-1.5">
+                  <p>1~5 CABBD  6~10 DCABC</p>
+                  <p>11. 解：由题意得由基本性质可知综合得证...</p>
+                  <p>12. 【解析】本题主要考查核心知识点的综合运用...</p>
+                  <p>13. 【评分细则】第一问3分，第二问5分，步骤完整...</p>
+                  <p>14. 创新压轴模型详尽解题反思与名师避坑技巧...</p>
+                </div>
+                <div class="text-right text-[8px] text-slate-300">学霸网答案详析</div>
+              </div>
+
+              <!-- 悬浮解锁转存卡片 (强烈的行动驱动力) -->
+              <div class="relative z-10 w-full text-center space-y-3 bg-white/95 backdrop-blur-md p-4 rounded-xl shadow-xl border border-emerald-200">
+                <div class="w-10 h-10 mx-auto rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shadow-sm">
+                  🔒
+                </div>
+                <div>
+                  <h4 class="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug">
+                    全套试题与官方逐题答案解析
+                  </h4>
+                  <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                    本资料共含约 <strong class="text-emerald-700">{{ estimatedPages() }}</strong> 页完整原件与名师参考答案，转存网盘即可秒解全本
+                  </p>
+                </div>
+                <a [href]="link.share_url"
+                   (click)="onDownloadClick(link, $event)"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer">
+                  <span>🚀 转存网盘解锁全套</span>
+                </a>
+              </div>
+            </div>
+
+            <div class="mt-2 text-center text-[11px] font-bold text-emerald-800">
+              免解压 · 一键保存到个人网盘
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <!-- 📁 核心亮点：网盘内含文件清单与目录结构 (SEO 搜索引擎高权重大杀器) -->

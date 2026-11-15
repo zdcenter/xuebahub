@@ -208,6 +208,14 @@ export class ResourceDetailComponent implements OnInit {
     private sanitizer: DomSanitizer
   ) {}
 
+  // 估算总页数 (若有显式定义则取真实值，否则基于文件大小智能推算)
+  estimatedPages = computed<number>(() => {
+    const res = this.resource();
+    if (res?.page_count && res.page_count > 0) return res.page_count;
+    const size = parseFloat(res?.file_size || '15') || 15;
+    return Math.max(18, Math.min(128, Math.round(size * 2.5)));
+  });
+
   // 判定是否为主推夸克网盘
   get primaryLink(): ResourceLinkDto | null {
     const list = this.links();
