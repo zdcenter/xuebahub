@@ -706,8 +706,8 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 	if pageSize < 1 {
 		pageSize = 20
 	}
-	if pageSize > 200 {
-		pageSize = 200
+	if pageSize > 10000 {
+		pageSize = 10000
 	}
 
 	query := database.DB.Model(&model.Resource{})
@@ -750,6 +750,8 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND resource_links.status = 'invalid')")
 	} else if statusFilter == "reported" {
 		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND resource_links.status = 'reported')")
+	} else if statusFilter == "dead_or_reported" {
+		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND (resource_links.status = 'invalid' OR resource_links.status = 'reported'))")
 	}
 	if accountID != "" && accountID != "all" {
 		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND resource_links.account_id::text = ?)", accountID)

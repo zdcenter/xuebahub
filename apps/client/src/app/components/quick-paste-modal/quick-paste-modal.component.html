@@ -10,33 +10,11 @@
             <span class="header-icon">⚡</span>
             <div>
               <h2 class="header-title">极速粘贴解析工作台</h2>
-              <span class="header-badge">右上角驻留抽屉 · 支持单次多资源批量识别</span>
+              <span class="header-badge">全局随地唤起 · 杂乱文本智能批量识别与极速入库</span>
             </div>
           </div>
           <button type="button" class="btn-close-drawer" (click)="close()" title="收起工作台 (Esc)">
             ✕ 收起
-          </button>
-        </div>
-
-        <!-- 顶部功能选项卡 -->
-        <div class="drawer-tabs">
-          <button 
-            type="button" 
-            class="tab-btn" 
-            [class.active]="activeTab() === 'paste'" 
-            (click)="activeTab.set('paste')">
-            <span>📋 极速粘贴解析</span>
-            @if (parsedItems().length > 0) {
-              <span class="tab-pill-badge">{{ parsedItems().length }}</span>
-            }
-          </button>
-          <button 
-            type="button" 
-            class="tab-btn" 
-            [class.active]="activeTab() === 'extension'" 
-            (click)="activeTab.set('extension')">
-            <span>🌐 浏览器采集助手 (油猴)</span>
-            <span class="tab-pill-badge gold">v1.4.0 升级版</span>
           </button>
         </div>
       </div>
@@ -51,9 +29,8 @@
 
       <!-- 抽屉滚动内容区 -->
       <div class="drawer-body">
-        @if (activeTab() === 'paste') {
-          <!-- 1. 文本输入区域 -->
-          <div class="section-card">
+        <!-- 1. 文本输入区域 -->
+        <div class="section-card">
             <div class="card-header-row">
               <span class="card-title">📝 粘贴杂乱文本 (支持单条或多条网盘链接混合)</span>
               <div class="header-shortcuts">
@@ -204,127 +181,58 @@
               </div>
             }
           </div>
-        } @else {
-          <!-- Tab 2: 浏览器采集助手 (油猴脚本) -->
-          <div class="section-card extension-card">
-            <!-- 独立中枢快捷提示条 -->
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-              <div style="font-size: 13px; color: #1e40af; line-height: 1.5;">
-                <strong>💡 采集助手现已作为主功能独立常驻左侧菜单！</strong>
-                <div style="color: #3b82f6; font-size: 12px;">拥有专属的采集全景面板、一键在线安装、多盘兼容矩阵与配置中枢。</div>
-              </div>
-              <button 
-                type="button" 
-                (click)="goToCollector()"
-                style="background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
-                👉 打开专属管理页
-              </button>
-            </div>
 
-            <div class="ext-hero-box">
-              <span class="ext-hero-icon">🚀</span>
-              <div>
-                <h3 class="ext-hero-title">学霸网专属浏览器采集助手 (v1.4.0 升级版)</h3>
-                <p class="ext-hero-desc">全网多网盘自动识别（夸克、百度网盘包括自定义短链提取码、UC网盘、迅雷、阿里云盘、123云盘等），支持智能识别教育资料/电子教材频道，右侧抽屉式极速入库，平滑无缝同步至学霸网后台！</p>
-              </div>
-            </div>
-
-            <!-- 快捷按钮栏 -->
-            <div class="ext-btn-row">
-              <button type="button" class="btn-ext-action" style="background: #2563eb; color: #fff; border: none;" (click)="installOnline()">
-                🚀 调起油猴一键安装
-              </button>
-              <button type="button" class="btn-ext-action copy" (click)="copyUserScript()">
-                📋 复制 v1.4.0 脚本代码
-              </button>
-              <button type="button" class="btn-ext-action download" (click)="downloadUserScript()">
-                💾 下载脚本文件 (.user.js)
-              </button>
-            </div>
-
-            <!-- 参数配置看板 -->
-            <div class="ext-config-box">
-              <h4 class="config-box-title">⚙️ 预置后端同步参数</h4>
-              <div class="config-item">
-                <span class="config-key">API 接口地址：</span>
-                <span class="config-val code">{{ apiBaseUrl() }}</span>
-              </div>
-              <div class="config-item">
-                <span class="config-key">管理员 Auth Token：</span>
-                <span class="config-val code">{{ adminToken() ? (adminToken().slice(0, 16) + '...' + adminToken().slice(-8)) : '已自动同步当前登录凭证' }}</span>
-              </div>
-            </div>
-
-            <!-- 安装教程步骤 -->
-            <div class="ext-steps-box">
-              <h4 class="steps-box-title">📖 3 秒极速安装与更新教程</h4>
-              <div class="step-row">
-                <span class="step-num">1</span>
-                <div>
-                  <strong>浏览器安装 Tampermonkey (篡改猴)</strong>
-                  <p>Chrome 需在 <code>chrome://extensions/</code> 右上角打开【开发者模式】或在篡改猴详情中打开【允许用户脚本】。</p>
-                </div>
-              </div>
-              <div class="step-row">
-                <span class="step-num">2</span>
-                <div>
-                  <strong>安装或覆盖新脚本 (v1.4.0)</strong>
-                  <p>点击上方【🚀 调起油猴一键安装】或【复制 v1.4.0 脚本代码】覆盖粘贴并保存。</p>
-                </div>
-              </div>
-              <div class="step-row">
-                <span class="step-num">3</span>
-                <div>
-                  <strong>全网多盘批量采集实测</strong>
-                  <p>打开任何含有夸克、百度、UC、迅雷等网盘链接的网页，点击右下角【⚡ 采集到学霸网】，即可智能识别、一键推送到草稿箱或直接发布！</p>
-                </div>
-              </div>
-            </div>
+          <!-- 底部指引：浏览器采集助手 -->
+          <div style="margin-top: 16px; padding: 12px 16px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #64748b;">
+            <span>🌐 如需在浏览网页时一键采集网盘资源，可使用独立的采集助手。</span>
+            <button 
+              type="button" 
+              (click)="goToCollector()" 
+              style="background: none; border: none; color: #2563eb; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">
+              打开浏览器采集助手管理页 →
+            </button>
           </div>
-        }
-      </div>
+        </div>
 
       <!-- 底部固定吸底操作条 -->
-      @if (activeTab() === 'paste') {
-        <div class="drawer-footer" style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button 
-            type="button" 
-            class="btn-footer-sub" 
-            (click)="submitToDrafts()"
-            [disabled]="getSelectedCount() === 0 || isSubmitting()"
-            title="将识别的资源转存为待审核草稿">
-            @if (isSubmitting()) {
-              <span>⏳ 正在处理...</span>
-            } @else {
-              <span>📥 存入草稿箱 ({{ getSelectedCount() }})</span>
-            }
-          </button>
+      <div class="drawer-footer" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button 
+          type="button" 
+          class="btn-footer-sub" 
+          (click)="submitToDrafts()"
+          [disabled]="getSelectedCount() === 0 || isSubmitting()"
+          title="将识别的资源转存为待审核草稿">
+          @if (isSubmitting()) {
+            <span>⏳ 正在处理...</span>
+          } @else {
+            <span>📥 存入草稿箱 ({{ getSelectedCount() }})</span>
+          }
+        </button>
 
-          <button 
-            type="button" 
-            class="btn-footer-sub" 
-            style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;"
-            (click)="submitToDirectEdit()"
-            [disabled]="getSelectedCount() === 0"
-            title="将首个选中的资源填充到新增表单中进行逐项微调">
-            <span>✍️ 填入表单查看</span>
-          </button>
+        <button 
+          type="button" 
+          class="btn-footer-sub" 
+          style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;"
+          (click)="submitToDirectEdit()"
+          [disabled]="getSelectedCount() === 0"
+          title="将首个选中的资源填充到新增表单中进行逐项微调">
+          <span>✍️ 填入表单查看</span>
+        </button>
 
-          <button 
-            type="button" 
-            class="btn-footer-main" 
-            style="flex: 1; min-width: 160px; background: linear-gradient(135deg, #059669 0%, #047857 100%);"
-            (click)="submitInstantPublish()"
-            [disabled]="getSelectedCount() === 0 || isSubmitting()"
-            title="立即将勾选的资源批量写入数据库并设为已上架展示">
-            @if (isSubmitting()) {
-              <span>⏳ 正在秒级落库...</span>
-            } @else {
-              <span>🚀 立即落库上架 ({{ getSelectedCount() }} 套)</span>
-            }
-          </button>
-        </div>
-      }
+        <button 
+          type="button" 
+          class="btn-footer-main" 
+          style="flex: 1; min-width: 160px; background: linear-gradient(135deg, #059669 0%, #047857 100%);"
+          (click)="submitInstantPublish()"
+          [disabled]="getSelectedCount() === 0 || isSubmitting()"
+          title="立即将勾选的资源批量写入数据库并设为已上架展示">
+          @if (isSubmitting()) {
+            <span>⏳ 正在秒级落库...</span>
+          } @else {
+            <span>🚀 立即落库上架 ({{ getSelectedCount() }} 套)</span>
+          }
+        </button>
+      </div>
     </div>
   </div>
 }

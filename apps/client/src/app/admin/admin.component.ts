@@ -352,8 +352,8 @@ export class AdminComponent implements OnInit {
     return pages;
   });
 
-  // 列表筛选与统计：支持一键切换“全部 / 仅失效 / 仅用户报错”
-  listFilter = signal<'all' | 'invalid' | 'reported'>('all');
+  // 列表筛选与统计：支持一键切换“全部 / 仅失效 / 仅用户报错 / 仅失效与报错”
+  listFilter = signal<'all' | 'invalid' | 'reported' | 'dead_or_reported'>('all');
 
   invalidResourceCount = computed(() => {
     return this.resources().filter(r => r.links?.some(l => l.status === 'invalid')).length;
@@ -361,6 +361,10 @@ export class AdminComponent implements OnInit {
 
   reportedResourceCount = computed(() => {
     return this.resources().filter(r => r.links?.some(l => l.status === 'reported')).length;
+  });
+
+  deadOrReportedCount = computed(() => {
+    return this.resources().filter(r => r.links?.some(l => l.status === 'invalid' || l.status === 'reported')).length;
   });
 
   // 列表多维分类快捷筛选 (100% 动态读取数据库 categories 字典)
@@ -538,11 +542,97 @@ export class AdminComponent implements OnInit {
     }
   }
 
-  setListFilter(filter: 'all' | 'invalid' | 'reported') {
+  setListFilter(filter: 'all' | 'invalid' | 'reported' | 'dead_or_reported') {
     this.listFilter.set(filter);
     this.currentPage.set(1);
     this.jumpPageInput.set('1');
     this.loadResources();
+  }
+
+  // --- 全站资料完整导出备份 (JSON) ---
+  isExportingBackup = signal<boolean>(false);
+
+  exportAllResourcesBackup() {
+    this.isExportingBackup.set(true);
+    this.showToast('正在导出全站资料及网盘链接备份...');
+    this.resService.list({
+      channel: 'all',
+      stage: 'all',
+      grade: 'all',
+      term: 'all',
+      subject: 'all',
+      edition: 'all',
+      account_id: 'all',
+      page: 1,
+      limit: 10000
+    }).subscribe({
+      next: (res) => {
+        this.isExportingBackup.set(false);
+        const data = {
+          export_time: new Date().toISOString(),
+          version: '1.0',
+          total: res.items?.length || 0,
+          resources: res.items || []
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        a.href = url;
+        a.download = `xuebaw_resources_backup_${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        this.showToast(`🎉 成功导出 ${data.total} 套资料的完整 JSON 备份！`, 'success');
+      },
+      error: (err) => {
+        this.isExportingBackup.set(false);
+        this.showToast('导出备份失败: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
+
+  // --- 草稿箱智能查重与多网盘合并 ---
+  findDuplicateResource(title: string): ResourceItemDto | undefined {
+    if (!title || !this.resources().length) return undefined;
+    const clean = title.trim().toLowerCase().replace(/[\s\-_【】\[\]（）()]/g, '');
+    if (clean.length < 3) return undefined;
+    return this.resources().find(r => {
+      const t = r.title.trim().toLowerCase().replace(/[\s\-_【】\[\]（）()]/g, '');
+      return t === clean || (t.length >= 6 && clean.length >= 6 && (t.includes(clean) || clean.includes(t)));
+    });
+  }
+
+  mergeDraftIntoResource(draft: any, existing: ResourceItemDto) {
+    if (!draft || !existing?.id) return;
+    const links = Array.isArray(existing.links) ? [...existing.links] : [];
+    if (links.some(l => l.share_url === draft.share_url)) {
+      this.showToast('该网盘链接已存在于《' + existing.title + '》中，无需重复合并', 'error');
+      return;
+    }
+    links.push({
+      drive_type: draft.drive_type || 'quark',
+      share_url: draft.share_url,
+      extract_code: draft.extract_code || '',
+      file_size: draft.file_size || '',
+      file_type: 'PDF',
+      is_primary: false,
+      status: 'active'
+    });
+    this.resService.update(existing.id, { title: existing.title, links }).subscribe({
+      next: () => {
+        this.resService.updateCrawlerDraftStatus(draft.id, 'approved').subscribe({
+          next: () => {
+            this.showToast(`🎉 成功将网盘链接追加至已有资料《${existing.title}》，已生成多网盘合集！`, 'success');
+            this.loadCrawlerDrafts();
+            this.loadCrawlerConfigAndStats();
+            this.loadResources();
+          }
+        });
+      },
+      error: (err) => this.showToast(`合并失败: ${err.error?.message || err.message}`, 'error')
+    });
   }
 
   onKeywordSearch() {

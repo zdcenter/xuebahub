@@ -387,26 +387,47 @@
                   type="button"
                   class="filter-tab-pill" 
                   [class.active]="listFilter() === 'all'" 
-                  (click)="listFilter.set('all')">
+                  (click)="setListFilter('all')">
                   全部 ({{ totalCount() }})
                 </button>
                 <button 
                   type="button"
                   class="filter-tab-pill danger" 
+                  [class.active]="listFilter() === 'dead_or_reported'" 
+                  (click)="setListFilter('dead_or_reported')"
+                  title="一键筛选所有包含失效或报错网盘链接的资料">
+                  ⚠️ 仅看失效/报错 ({{ deadOrReportedCount() }})
+                </button>
+                <button 
+                  type="button"
+                  class="filter-tab-pill danger" 
                   [class.active]="listFilter() === 'invalid'" 
-                  (click)="listFilter.set('invalid')">
-                  🚨 仅看失效资料 ({{ invalidResourceCount() }})
+                  (click)="setListFilter('invalid')">
+                  🚨 仅失效 ({{ invalidResourceCount() }})
                 </button>
                 <button 
                   type="button"
                   class="filter-tab-pill warning" 
                   [class.active]="listFilter() === 'reported'" 
-                  (click)="listFilter.set('reported')">
-                  ⚠️ 仅看用户报错 ({{ reportedResourceCount() }})
+                  (click)="setListFilter('reported')">
+                  📢 仅报错 ({{ reportedResourceCount() }})
                 </button>
               </div>
             </div>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <button 
+                type="button"
+                class="btn" 
+                style="background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; font-weight: 600;"
+                [disabled]="isExportingBackup()"
+                (click)="exportAllResourcesBackup()"
+                title="一键将全站所有资料元数据与网盘链接完整导出为标准化 JSON 备份文件">
+                @if (isExportingBackup()) {
+                  <span>⏳ 正在导出...</span>
+                } @else {
+                  <span>📥 备份导出 (JSON)</span>
+                }
+              </button>
               <button 
                 type="button"
                 class="btn" 
@@ -3057,6 +3078,7 @@
                   </thead>
                   <tbody>
                     @for (draft of crawlerDrafts(); track draft.id) {
+                      @let dup = findDuplicateResource(draft.title);
                       <tr [style.background]="isDraftSelected(draft.id) ? '#f0fdf4' : 'transparent'">
                         <td style="text-align: center;">
                           <input 
@@ -3069,6 +3091,13 @@
                           <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px; line-height: 1.4;">
                             {{ draft.title }}
                           </div>
+                          @if (dup) {
+                            <div style="margin-top: 4px; margin-bottom: 4px;">
+                              <span class="badge" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-size: 11px;">
+                                ⚠️ 库中已有同名: 《{{ dup.title }}》
+                              </span>
+                            </div>
+                          }
                           <div style="font-size: 11px; color: #64748b; display: flex; align-items: center; gap: 8px;">
                             <span>💾 大小: {{ draft.file_size || '未知' }}</span>
                             <span>🕒 {{ draft.created_at | date:'yyyy-MM-dd HH:mm' }}</span>
@@ -3138,6 +3167,17 @@
                                 title="自动将此第三方夸克链接转存到我的网盘，并一键替换为专属分成推广链"
                                 style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-size: 11px; padding: 4px 8px; cursor: pointer; white-space: nowrap; font-weight: 700;">
                                 {{ transferringDraftId() === draft.id ? '🔄 转存中...' : '⚡ 转存换链' }}
+                              </button>
+                            }
+
+                            @if (dup && draft.status !== 'approved') {
+                              <button 
+                                type="button" 
+                                class="btn btn-sm" 
+                                (click)="mergeDraftIntoResource(draft, dup)"
+                                title="检测到资料库中已有同名资料《{{ dup.title }}》，点击将此网盘链接合并追加为该资料的备用网盘"
+                                style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 11px; padding: 4px 8px; font-weight: 700; cursor: pointer; white-space: nowrap;">
+                                🔄 合并为备用盘
                               </button>
                             }
 
