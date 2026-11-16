@@ -27,10 +27,43 @@
       <!-- 弹窗主体内容区 -->
       <div class="modal-body">
         
+        <!-- 0. 本地 JSON 备份文件一键拖拽/点击上传卡片 -->
+        <div 
+          class="file-dropzone-box"
+          [class.dragging]="isDragging()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+          (click)="fileInput.click()"
+          style="border: 2px dashed #93c5fd; border-radius: 10px; padding: 18px 20px; background: #f0f7ff; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 14px;">
+          <input 
+            #fileInput 
+            type="file" 
+            accept=".json,application/json,text/plain" 
+            (change)="onFileSelected($event)" 
+            style="display: none;" 
+          />
+          <div style="display: flex; align-items: center; justify-content: center; gap: 14px;">
+            <span style="font-size: 28px;">📁</span>
+            <div style="text-align: left;">
+              <div style="font-size: 14px; font-weight: 700; color: #1e40af;">
+                @if (selectedFileName()) {
+                  <span>已载入备份文件：<strong>{{ selectedFileName() }}</strong> ({{ selectedFileSize() }})</span>
+                } @else {
+                  <span>点击选择本地 <code>.json</code> 备份文件，或将文件直接拖拽至此处</span>
+                }
+              </div>
+              <div style="font-size: 11.5px; color: #3b82f6; margin-top: 3px;">
+                支持直接加载本系统导出的 <code>xuebaw_resources_backup_*.json</code> 备份文件，瞬时解析并支持一键全量还原
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 1. 粘贴输入区域 -->
         <div class="input-card">
           <div class="input-header-row">
-            <span class="input-label">📝 粘贴资料数据包代码 / JSON 结构</span>
+            <span class="input-label">📝 或直接在此粘贴资料数据包 JSON 结构代码</span>
             <div class="input-actions">
               <button type="button" class="btn-action-text" (click)="readClipboard()">
                 {{ i18n.t('transfer.readClipboard') }}

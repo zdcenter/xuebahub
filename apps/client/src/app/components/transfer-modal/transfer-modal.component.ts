@@ -42,6 +42,11 @@ export class TransferModalComponent {
   isSubmitting = signal<boolean>(false);
   feedback = signal<string | null>(null);
 
+  // 本地文件上传与拖拽状态
+  selectedFileName = signal<string | null>(null);
+  selectedFileSize = signal<string | null>(null);
+  isDragging = signal<boolean>(false);
+
   constructor() {
     effect(() => {
       if (this.isOpen()) {
@@ -58,6 +63,60 @@ export class TransferModalComponent {
     this.closed.emit();
   }
 
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    this.processFile(file);
+    input.value = '';
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(true);
+  }
+
+  onDragLeave(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(false);
+  }
+
+  onDrop(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(false);
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      this.processFile(file);
+    }
+  }
+
+  private processFile(file: File) {
+    if (!file.name.endsWith('.json') && file.type !== 'application/json' && file.type !== 'text/plain') {
+      this.feedback.set('⚠️ 请选择 .json 格式的资料备份文件');
+      return;
+    }
+    this.selectedFileName.set(file.name);
+    const sizeKb = (file.size / 1024).toFixed(1);
+    this.selectedFileSize.set(file.size > 1024 * 1024 ? (file.size / (1024 * 1024)).toFixed(2) + ' MB' : sizeKb + ' KB');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      if (content) {
+        this.rawText.set(content);
+        this.parseContent(content);
+        this.feedback.set(`✅ 成功从备份文件【${file.name}】(${this.selectedFileSize()}) 识别出 ${this.parsedItems().length} 套完整资料！`);
+      }
+    };
+    reader.onerror = () => {
+      this.feedback.set('❌ 读取备份文件失败，请确认文件完整后重试');
+    };
+    reader.readAsText(file);
+  }
+
   onTextChange(text: string) {
     this.rawText.set(text);
     this.parseContent(text);
@@ -66,6 +125,8 @@ export class TransferModalComponent {
   clear() {
     this.rawText.set('');
     this.parsedItems.set([]);
+    this.selectedFileName.set(null);
+    this.selectedFileSize.set(null);
     this.feedback.set(null);
   }
 

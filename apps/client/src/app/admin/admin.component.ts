@@ -572,6 +572,8 @@ export class AdminComponent implements OnInit {
           export_time: new Date().toISOString(),
           version: '1.0',
           total: res.items?.length || 0,
+          channels: this.channels() || [],
+          categories: this.categories() || [],
           resources: res.items || []
         };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

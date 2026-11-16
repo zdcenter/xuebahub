@@ -473,6 +473,17 @@
   transform: none;
 }
 
+.file-dropzone-box:hover {
+  background: #e0f2fe !important;
+  border-color: #2563eb !important;
+}
+
+.file-dropzone-box.dragging {
+  background: #dbeafe !important;
+  border-color: #1d4ed8 !important;
+  transform: scale(1.01);
+}
+
 /* 响应式优化 */
 @media (max-width: 640px) {
   .transfer-modal-card {

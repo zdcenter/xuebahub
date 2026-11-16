@@ -554,14 +554,14 @@ export class I18nService {
       'smart.adoptTitle': '一键采纳替换',
       'smart.titleAdopted': '已成功采纳并替换为规范主标题！',
       'smart.dismiss': '忽略',
-      'transfer.modalTitle': '跨站资料包同步与批量导入',
-      'transfer.modalSubtitle': '无缝识别从本地开发或其他服务器导出的完整资料数据包，包含完整标题、副标题、学段、学科及网盘直达链接，秒级落库',
-      'transfer.pastePlaceholder': '请在此粘贴从资料库复制的数据包文本（Ctrl+V），或点击下方按钮直接读取系统剪贴板...',
+      'transfer.modalTitle': '资料备份导入与跨站还原中枢',
+      'transfer.modalSubtitle': '支持直接上传 .json 备份文件、拖拽放入或粘贴结构化数据包，包含完整标题、学段分类与多网盘链接，秒级落库',
+      'transfer.pastePlaceholder': '请在此粘贴从资料库复制的数据包文本（Ctrl+V），或点击上方选择本地 .json 备份文件...',
       'transfer.readClipboard': '📋 读取系统剪贴板',
       'transfer.clear': '清空内容',
       'transfer.sample': '💡 填入示例数据包',
       'transfer.parsedSuccess': '已成功识别出 {count} 套完整资料',
-      'transfer.parsedEmpty': '未检测到有效资料数据包，请确保在原后台勾选后点击【📋 复制资料数据包】',
+      'transfer.parsedEmpty': '未检测到有效资料数据包，请确保在原后台勾选后点击【📋 复制资料数据包】或直接上传备份文件',
       'transfer.colSelect': '选择',
       'transfer.colTitle': '资料主标题与副标题',
       'transfer.colMeta': '学段与版本',
@@ -575,7 +575,7 @@ export class I18nService {
       'transfer.copyPackage': '📋 复制资料数据包',
       'transfer.copySuccess': '✅ 已成功复制 {count} 套完整资料包至剪贴板！可前往新服务器直接粘贴导入。',
       'transfer.copyEmpty': '请先勾选需要导出的资料',
-      'transfer.openImportModal': '📋 粘贴资料包导入'
+      'transfer.openImportModal': '📤 备份导入 / 还原 (JSON)'
     },
     'en': {
       'common.confirmTitle': 'Confirm Action',
@@ -1124,9 +1124,9 @@ export class I18nService {
       'smart.adoptTitle': 'Adopt Title',
       'smart.titleAdopted': 'Successfully adopted as main title!',
       'smart.dismiss': 'Dismiss',
-      'transfer.modalTitle': 'Cross-Site Resource Transfer & Batch Import',
-      'transfer.modalSubtitle': 'Seamlessly import complete resource packages exported from local dev or another server, with full titles, subtitles, stages, and drive links',
-      'transfer.pastePlaceholder': 'Paste exported package JSON here (Ctrl+V), or click button below to read clipboard...',
+      'transfer.modalTitle': 'Resource Backup Import & Restore Hub',
+      'transfer.modalSubtitle': 'Upload JSON backup files or paste data packages to restore resources, metadata and netdisk links in seconds',
+      'transfer.pastePlaceholder': 'Paste exported package JSON here (Ctrl+V), or upload a .json backup file above...',
       'transfer.readClipboard': '📋 Read System Clipboard',
       'transfer.clear': 'Clear',
       'transfer.sample': '💡 Load Sample Package',
@@ -1145,7 +1145,7 @@ export class I18nService {
       'transfer.copyPackage': '📋 Copy Resource Package',
       'transfer.copySuccess': '✅ Successfully copied {count} resources to clipboard! You can paste and import on the target server.',
       'transfer.copyEmpty': 'Please select resources to export first',
-      'transfer.openImportModal': '📋 Paste & Import Package'
+      'transfer.openImportModal': '📤 Backup Import / Restore (JSON)'
     }
   };
 
