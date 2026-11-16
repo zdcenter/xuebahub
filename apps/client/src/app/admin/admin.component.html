@@ -672,6 +672,19 @@
                 <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff; border: none; font-weight: 600; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);" (click)="batchPushSelectedToSeo()" title="将选中的资料批量推送到百度与必应搜索引擎加快收录">
                   ⚡ 百度/必应主动收录
                 </button>
+                <button 
+                  type="button" 
+                  class="btn btn-sm" 
+                  style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: 600;" 
+                  [disabled]="isPushingDeadLinks()"
+                  (click)="batchPushSelectedDeadLinksToBaidu()" 
+                  title="将选中的失效或下架资料批量向百度站长平台死链接口提交下线删除，防止网站权重受损">
+                  @if (isPushingDeadLinks()) {
+                    <span>⏳ 提交中...</span>
+                  } @else {
+                    <span>🧹 百度死链下线</span>
+                  }
+                </button>
 
                 <!-- 批量指定归属网盘账号 -->
                 <select 
@@ -933,6 +946,17 @@
 
                         <!-- 下排：内容维护与文案提取 (1键直达) -->
                         <div class="action-grid-row">
+                          <button 
+                            type="button" 
+                            class="btn-direct-action" 
+                            [style.background]="(hasInvalidLink(res) || hasReportedLink(res)) ? '#fee2e2' : '#f0fdf4'"
+                            [style.color]="(hasInvalidLink(res) || hasReportedLink(res)) ? '#dc2626' : '#15803d'"
+                            [style.border-color]="(hasInvalidLink(res) || hasReportedLink(res)) ? '#fca5a5' : '#86efac'"
+                            [style.font-weight]="(hasInvalidLink(res) || hasReportedLink(res)) ? '700' : '600'"
+                            (click)="openQuickLinkModal(res, $event)" 
+                            [title]="(hasInvalidLink(res) || hasReportedLink(res)) ? '🚨 包含失效或报错网盘链接，点击极速补链并恢复正常' : '⚡ 快速查看、替换或追加多网盘链接'">
+                            <span>⚡ {{ (hasInvalidLink(res) || hasReportedLink(res)) ? '快速补链' : '补链/换链' }}</span>
+                          </button>
                           <button 
                             type="button" 
                             class="btn-direct-action copy" 
@@ -8779,6 +8803,162 @@
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  }
+
+  <!-- ⚡ 资料快速补链与换链微弹窗 (Quick In-Place Link Repair Modal) -->
+  @if (isQuickLinkModalOpen() && quickLinkTarget(); as target) {
+    <div class="modal-backdrop" (click)="closeQuickLinkModal()" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 1050; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 16px;">
+      <div class="modal-card" (click)="$event.stopPropagation()" style="background: #ffffff; width: 100%; max-width: 680px; border-radius: 14px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; max-height: 90vh; overflow: hidden; border: 1px solid #e2e8f0;">
+        
+        <!-- 弹窗头部 -->
+        <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">⚡</span>
+            <div>
+              <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a;">快速补链与网盘健康维护</h3>
+              <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                原子更新网盘分享链接 · 保存后自动恢复为健康状态并清空报错记录
+              </div>
+            </div>
+          </div>
+          <button type="button" (click)="closeQuickLinkModal()" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer; padding: 4px 8px; border-radius: 6px;">✕</button>
+        </div>
+
+        <!-- 目标资料信息提示 -->
+        <div style="padding: 12px 20px; background: #eff6ff; border-bottom: 1px solid #dbeafe; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <div style="min-width: 0;">
+            <div style="font-size: 11px; font-weight: 700; color: #2563eb; text-transform: uppercase;">当前正在维护的资料</div>
+            <div style="font-size: 14px; font-weight: 700; color: #1e3a8a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              《{{ target.title }}》
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px; flex-shrink: 0;">
+            @if (hasInvalidLink(target)) {
+              <span class="badge" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; font-size: 11px; font-weight: 700;">🚨 含有失效盘</span>
+            }
+            @if (hasReportedLink(target)) {
+              <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 11px; font-weight: 700;">⚠️ 用户报错中</span>
+            }
+            @if (!hasInvalidLink(target) && !hasReportedLink(target)) {
+              <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-size: 11px; font-weight: 700;">🟢 当前健康</span>
+            }
+          </div>
+        </div>
+
+        <!-- 链接配置列表 -->
+        <div style="padding: 16px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px;">
+          @for (link of quickLinkList(); track $index) {
+            <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; background: #ffffff; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.2s;" [style.border-color]="link.is_primary ? '#3b82f6' : '#e2e8f0'">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <select 
+                    [(ngModel)]="link.drive_type"
+                    style="padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a;">
+                    <option value="quark">⚡ 夸克网盘</option>
+                    <option value="baidu">📦 百度网盘</option>
+                    <option value="alipan">☁️ 阿里云盘</option>
+                    <option value="uc">🚀 UC网盘</option>
+                    <option value="xunlei">⚡ 迅雷云盘</option>
+                    <option value="123">📁 123云盘</option>
+                  </select>
+                  @if (link.is_primary) {
+                    <span style="background: #2563eb; color: #ffffff; font-size: 11px; padding: 2px 8px; border-radius: 9999px; font-weight: 700;">★ 主网盘</span>
+                  } @else {
+                    <button 
+                      type="button" 
+                      (click)="setPrimaryQuickLink($index)"
+                      style="background: none; border: 1px solid #cbd5e1; color: #64748b; font-size: 11px; padding: 2px 8px; border-radius: 9999px; cursor: pointer;">
+                      设为主盘
+                    </button>
+                  }
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  @if (link.drive_type === 'quark' && link.share_url) {
+                    <button 
+                      type="button" 
+                      (click)="quickTransferInModal($index)"
+                      [disabled]="quickLinkTransferringIndex() === $index"
+                      title="一键转存第三方夸克链接至本站网盘，并自动替换为您的分成推广链"
+                      style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; cursor: pointer;">
+                      {{ quickLinkTransferringIndex() === $index ? '🔄 转存中...' : '⚡ 一键转存换链' }}
+                    </button>
+                  }
+                  @if (quickLinkList().length > 1) {
+                    <button 
+                      type="button" 
+                      (click)="removeQuickLinkRow($index)"
+                      title="删除此网盘链接"
+                      style="background: none; border: none; color: #ef4444; font-size: 14px; cursor: pointer; padding: 2px 6px;">
+                      🗑️
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- 分享链接与提取码输入行 -->
+              <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                  <label style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 3px; display: block;">分享链接 (URL):</label>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="link.share_url"
+                    placeholder="https://pan.quark.cn/s/... 或 https://pan.baidu.com/s/..."
+                    style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: monospace; color: #0f172a;"
+                  />
+                </div>
+                <div style="width: 110px;">
+                  <label style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 3px; display: block;">提取码 (可选):</label>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="link.extract_code"
+                    placeholder="如: abcd"
+                    style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: monospace; color: #0f172a;"
+                  />
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- 添加备用盘按钮 -->
+          <button 
+            type="button"
+            (click)="addQuickLinkRow()"
+            style="width: 100%; padding: 10px; border: 1.5px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; color: #2563eb; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>➕ 追加多网盘备用链接 (如百度/夸克/UC/阿里)</span>
+          </button>
+        </div>
+
+        <!-- 弹窗底部操作条 -->
+        <div style="padding: 14px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <div style="font-size: 12px; color: #64748b;">
+            💡 补齐保存后，系统将自动重置失效标识并将状态置为健康
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button 
+              type="button" 
+              class="btn btn-secondary" 
+              (click)="closeQuickLinkModal()"
+              style="padding: 6px 14px; font-size: 13px;">
+              取消
+            </button>
+            <button 
+              type="button" 
+              class="btn" 
+              (click)="saveQuickLinks()"
+              [disabled]="isSavingQuickLinks()"
+              style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff; font-weight: 700; border: none; padding: 6px 20px; font-size: 13px; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);">
+              @if (isSavingQuickLinks()) {
+                <span>⏳ 正在保存...</span>
+              } @else {
+                <span>💾 保存并置为健康正常</span>
+              }
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   }

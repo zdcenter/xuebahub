@@ -81,6 +81,30 @@ func (h *SeoHandler) BatchPush(c fiber.Ctx) error {
 	return c.JSON(summary)
 }
 
+type BatchDelistRequest struct {
+	ResourceIDs []uuid.UUID `json:"resource_ids"`
+	CustomURLs  []string    `json:"custom_urls"`
+}
+
+// BatchDelist 批量将失效资源提交至百度死链删除接口下线
+func (h *SeoHandler) BatchDelist(c fiber.Ctx) error {
+	var req BatchDelistRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "请求参数格式错误: " + err.Error(),
+		})
+	}
+
+	summary, err := h.seoService.BatchDelist(req.ResourceIDs, req.CustomURLs)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(summary)
+}
+
 type PushAllRequest struct {
 	Engine string `json:"engine"` // "all", "baidu", "bing"
 	Limit  int    `json:"limit"`  // 默认 1000

@@ -453,6 +453,11 @@ export class ResourceService {
     );
   }
 
+  // ⚡ 快速原子补链/换链微服务（只更新链接列表，自动恢复健康状态并清空报错）
+  quickUpdateLinks(id: string, links: any[]): Observable<any> {
+    return this.http.put<{ code: number; message: string; data: any }>(`${this.apiUrl}/${id}/links`, { links });
+  }
+
   // 快速更新资源统计量（浏览量与转存量）
   updateStats(id: string, data: { view_count?: number; save_count?: number }): Observable<any> {
     return this.http.patch<{ code: number; message: string; data: any }>(
@@ -1018,6 +1023,14 @@ export class ResourceService {
     return this.http.post<SeoBatchPushSummaryDto>(`${this.baseUrl}/api/v1/admin/seo/push-all`, {
       engine,
       limit
+    });
+  }
+
+  // 🧹 批量向百度搜索引擎提交死链下线 (POST /del)
+  pushDeadLinksToSeo(params: { resource_ids?: string[]; custom_urls?: string[] }): Observable<SeoBatchPushSummaryDto> {
+    return this.http.post<SeoBatchPushSummaryDto>(`${this.baseUrl}/api/v1/admin/seo/dead-links/push`, {
+      resource_ids: params.resource_ids || [],
+      custom_urls: params.custom_urls || []
     });
   }
 

@@ -127,6 +127,57 @@ func (s *SeoService) PushUrlsToBaidu(siteDomain, token string, urls []string) (*
 	return &baiduResp, rawResp, nil
 }
 
+// PushDeadUrlsToBaidu 向百度搜索资源平台提交死链删除 (POST /del)
+func (s *SeoService) PushDeadUrlsToBaidu(siteDomain, token string, urls []string) (*BaiduPushResponse, string, error) {
+	if token == "" {
+		return nil, "", errors.New("尚未配置百度搜索资源平台准入密钥 (Token)")
+	}
+	if len(urls) == 0 {
+		return nil, "", errors.New("待删除死链 URL 列表为空")
+	}
+
+	domain := siteDomain
+	if strings.HasPrefix(domain, "http://") || strings.HasPrefix(domain, "https://") {
+		u, err := url.Parse(domain)
+		if err == nil && u.Host != "" {
+			domain = u.Host
+		}
+	}
+
+	apiURL := fmt.Sprintf("http://data.zz.baidu.com/del?site=%s&token=%s", url.QueryEscape(domain), url.QueryEscape(token))
+	bodyPayload := strings.Join(urls, "\n")
+
+	req, err := http.NewRequest("POST", apiURL, strings.NewReader(bodyPayload))
+	if err != nil {
+		return nil, "", fmt.Errorf("创建百度死链请求失败: %w", err)
+	}
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("User-Agent", "curl/7.12.1 (XuebaWebmasterBot/1.0)")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("请求百度死链接口网络错误: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("读取百度接口返回失败: %w", err)
+	}
+	rawResp := string(respBytes)
+
+	var baiduResp BaiduPushResponse
+	if err := json.Unmarshal(respBytes, &baiduResp); err != nil {
+		return nil, rawResp, fmt.Errorf("解析百度接口返回失败 (HTTP %d): %s", resp.StatusCode, rawResp)
+	}
+
+	if baiduResp.Error != 0 {
+		return &baiduResp, rawResp, fmt.Errorf("百度返回错误代码 %d: %s", baiduResp.Error, baiduResp.Message)
+	}
+
+	return &baiduResp, rawResp, nil
+}
+
 type IndexNowRequest struct {
 	Host        string   `json:"host"`
 	Key         string   `json:"key"`
@@ -369,6 +420,98 @@ func (s *SeoService) BatchPush(engine string, resourceIDs []uuid.UUID, manualURL
 	s.db.Create(&pushLog)
 
 	log.Printf("[SeoService] BatchPush finished. Engine: %s, URLs: %d, Status: %s, Summary: %s", engine, len(targetURLs), summary.Status, summary.SummaryMessage)
+	return summary, nil
+}
+
+// BatchDelist 批量将失效资料或死链提交至百度搜索引擎进行下线删除
+func (s *SeoService) BatchDelist(resourceIDs []uuid.UUID, manualURLs []string) (*SeoBatchPushSummary, error) {
+	cfg, err := s.GetConfig()
+	if err != nil {
+		return nil, fmt.Errorf("获取 SEO 配置失败: %w", err)
+	}
+
+	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
+	if sitePrefix == "" {
+		sitePrefix = "https://xuebaw.com"
+	}
+
+	urlMap := make(map[string]bool)
+	var targetURLs []string
+
+	// 1. 如果传了资源 ID，从数据库查出真实 slug 拼装 URL
+	if len(resourceIDs) > 0 {
+		var resources []model.Resource
+		s.db.Where("id IN ?", resourceIDs).Select("id", "slug").Find(&resources)
+		for _, r := range resources {
+			fullURL := fmt.Sprintf("%s/resource/%s", sitePrefix, r.Slug)
+			if !urlMap[fullURL] {
+				urlMap[fullURL] = true
+				targetURLs = append(targetURLs, fullURL)
+			}
+		}
+	}
+
+	// 2. 如果传了手动自定义 URL
+	for _, raw := range manualURLs {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			continue
+		}
+		if !strings.HasPrefix(trimmed, "http://") && !strings.HasPrefix(trimmed, "https://") {
+			trimmed = sitePrefix + "/" + strings.TrimLeft(trimmed, "/")
+		}
+		if !urlMap[trimmed] {
+			urlMap[trimmed] = true
+			targetURLs = append(targetURLs, trimmed)
+		}
+	}
+
+	if len(targetURLs) == 0 {
+		return nil, errors.New("待提交死链 URL 为空，请勾选资料或输入有效 URL")
+	}
+
+	summary := &SeoBatchPushSummary{
+		TotalURLs: len(targetURLs),
+		URLs:      targetURLs,
+		Details:   make(map[string]interface{}),
+	}
+
+	if cfg.BaiduToken == "" {
+		return nil, errors.New("尚未配置百度搜索资源平台准入密钥 (Token)，无法调用死链删除接口")
+	}
+
+	bResp, rawBaidu, bErr := s.PushDeadUrlsToBaidu(sitePrefix, cfg.BaiduToken, targetURLs)
+	now := time.Now()
+	urlsJSON, _ := json.Marshal(targetURLs)
+
+	pushLog := model.SeoPushLog{
+		Engine:    "baidu_delist",
+		URLCount:  len(targetURLs),
+		URLs:      datatypes.JSON(urlsJSON),
+		CreatedAt: now,
+	}
+
+	if bErr != nil {
+		summary.Status = "failed"
+		summary.BaiduError = bErr.Error()
+		summary.SummaryMessage = fmt.Sprintf("百度死链提交失败: %s", bErr.Error())
+		pushLog.Status = "failed"
+		pushLog.ErrorMessage = bErr.Error()
+		pushLog.ResponseBody = rawBaidu
+		s.db.Create(&pushLog)
+		return summary, bErr
+	}
+
+	summary.Status = "success"
+	summary.BaiduSuccess = bResp.Success
+	summary.BaiduRemain = bResp.Remain
+	summary.SummaryMessage = fmt.Sprintf("🎉 百度死链删除接口提交成功 %d 条！今日剩余删除配额: %d", bResp.Success, bResp.Remain)
+
+	pushLog.Status = "success"
+	pushLog.ResultSummary = summary.SummaryMessage
+	pushLog.ResponseBody = rawBaidu
+	s.db.Create(&pushLog)
+
 	return summary, nil
 }
 

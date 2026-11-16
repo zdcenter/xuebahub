@@ -635,6 +635,180 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  // --- ⚡ 快速补链与换链微弹窗 (Quick In-Place Link Repair Modal) ---
+  isQuickLinkModalOpen = signal<boolean>(false);
+  quickLinkTarget = signal<ResourceItemDto | null>(null);
+  quickLinkList = signal<any[]>([]);
+  isSavingQuickLinks = signal<boolean>(false);
+  quickLinkTransferringIndex = signal<number | null>(null);
+
+  openQuickLinkModal(res: ResourceItemDto, event?: Event) {
+    if (event) event.stopPropagation();
+    this.quickLinkTarget.set(res);
+    const rawLinks = res.links && res.links.length > 0 ? res.links : [];
+    const list = rawLinks.length > 0
+      ? rawLinks.map(l => ({
+          id: l.id,
+          drive_type: l.drive_type || 'quark',
+          share_url: l.share_url || '',
+          extract_code: l.extract_code || '',
+          file_size: l.file_size || '15.0 MB',
+          file_type: l.file_type || 'PDF',
+          status: l.status || 'active',
+          is_primary: Boolean(l.is_primary)
+        }))
+      : [{
+          drive_type: 'quark',
+          share_url: '',
+          extract_code: '',
+          file_size: '15.0 MB',
+          file_type: 'PDF',
+          status: 'active',
+          is_primary: true
+        }];
+
+    if (!list.some(l => l.is_primary)) {
+      list[0].is_primary = true;
+    }
+    this.quickLinkList.set(list);
+    this.isQuickLinkModalOpen.set(true);
+  }
+
+  closeQuickLinkModal() {
+    this.isQuickLinkModalOpen.set(false);
+    this.quickLinkTarget.set(null);
+    this.quickLinkList.set([]);
+    this.quickLinkTransferringIndex.set(null);
+  }
+
+  addQuickLinkRow() {
+    const list = [...this.quickLinkList()];
+    const hasQuark = list.some(l => l.drive_type === 'quark');
+    const defaultDrive = hasQuark ? 'baidu' : 'quark';
+    list.push({
+      drive_type: defaultDrive,
+      share_url: '',
+      extract_code: '',
+      file_size: list[0]?.file_size || '15.0 MB',
+      file_type: 'PDF',
+      status: 'active',
+      is_primary: false
+    });
+    this.quickLinkList.set(list);
+  }
+
+  removeQuickLinkRow(index: number) {
+    const list = [...this.quickLinkList()];
+    if (list.length <= 1) {
+      this.showToast('至少需要保留一个网盘分享链接！', 'error');
+      return;
+    }
+    const wasPrimary = list[index].is_primary;
+    list.splice(index, 1);
+    if (wasPrimary && list.length > 0) {
+      list[0].is_primary = true;
+    }
+    this.quickLinkList.set(list);
+  }
+
+  setPrimaryQuickLink(index: number) {
+    const list = this.quickLinkList().map((l, i) => ({
+      ...l,
+      is_primary: i === index
+    }));
+    this.quickLinkList.set(list);
+  }
+
+  quickTransferInModal(index: number) {
+    const list = this.quickLinkList();
+    const item = list[index];
+    if (!item || !item.share_url || item.drive_type !== 'quark') return;
+
+    this.quickLinkTransferringIndex.set(index);
+    this.showToast('🔄 正在将该夸克链接转存至您的网盘并生成专属推广链接...');
+
+    this.resService.autoTransferAndShare({
+      share_url: item.share_url,
+      passcode: item.extract_code || ''
+    }).subscribe({
+      next: (result) => {
+        this.quickLinkTransferringIndex.set(null);
+        if (result && result.new_share_url) {
+          list[index].share_url = result.new_share_url;
+          list[index].status = 'active';
+          if (result.file_size) list[index].file_size = result.file_size;
+          if (result.extract_code) list[index].extract_code = result.extract_code;
+          this.quickLinkList.set([...list]);
+          this.showToast('⚡ 转存换链成功！已自动替换为您专属的夸克分成推广链接！', 'success');
+        } else {
+          this.showToast('转存完成，但未返回新链接', 'error');
+        }
+      },
+      error: (err) => {
+        this.quickLinkTransferringIndex.set(null);
+        this.showToast(err?.error?.message || '转存换链失败，请确认网盘账号管理中 Cookie 正常', 'error');
+      }
+    });
+  }
+
+  saveQuickLinks() {
+    const target = this.quickLinkTarget();
+    if (!target?.id) return;
+    const list = this.quickLinkList();
+
+    for (let i = 0; i < list.length; i++) {
+      const l = list[i];
+      if (!l.share_url || !l.share_url.trim()) {
+        this.showToast(`第 ${i + 1} 个网盘链接的分享地址不能为空！`, 'error');
+        return;
+      }
+      if (!l.share_url.startsWith('http://') && !l.share_url.startsWith('https://')) {
+        this.showToast(`第 ${i + 1} 个网盘链接必须以 http:// 或 https:// 开头！`, 'error');
+        return;
+      }
+    }
+
+    this.isSavingQuickLinks.set(true);
+    this.resService.quickUpdateLinks(target.id, list).subscribe({
+      next: () => {
+        this.isSavingQuickLinks.set(false);
+        this.closeQuickLinkModal();
+        this.showToast(`🎉 成功修复《${target.title}》的网盘链接，已恢复为正常健康状态！`, 'success');
+        this.loadResources();
+        this.loadDashboardStats();
+      },
+      error: (err) => {
+        this.isSavingQuickLinks.set(false);
+        this.showToast('保存补链失败: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
+
+  // --- 🧹 批量提交死链至百度搜索资源平台下线 ---
+  isPushingDeadLinks = signal<boolean>(false);
+
+  batchPushSelectedDeadLinksToBaidu() {
+    const ids = this.selectedResourceIds();
+    if (!ids || ids.length === 0) {
+      this.showToast('请先勾选需要向搜索引擎提交死链下线的资料！', 'error');
+      return;
+    }
+
+    this.isPushingDeadLinks.set(true);
+    this.showToast('正在向百度搜索资源平台提交死链下线...');
+    this.resService.pushDeadLinksToSeo({ resource_ids: ids }).subscribe({
+      next: (res: any) => {
+        this.isPushingDeadLinks.set(false);
+        this.showToast(res.summary_message || `🎉 成功向百度死链接口提交 ${res.total_urls || ids.length} 条死链删除申请！`, 'success');
+        this.clearResourceSelection();
+      },
+      error: (err: any) => {
+        this.isPushingDeadLinks.set(false);
+        this.showToast('死链提交失败: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
+
   onKeywordSearch() {
     this.currentPage.set(1);
     this.jumpPageInput.set('1');

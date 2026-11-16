@@ -945,6 +945,102 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 	})
 }
 
+// QuickUpdateLinksRequest 快速补链请求体
+type QuickUpdateLinksRequest struct {
+	Links []model.ResourceLink `json:"links"`
+}
+
+// AdminQuickUpdateLinks 后台快速补链/换链微服务（原子级只替换链接、恢复健康状态并清除报错投诉）
+func (h *ResourceHandler) AdminQuickUpdateLinks(c fiber.Ctx) error {
+	idStr := c.Params("id")
+	resUUID, err := uuid.Parse(idStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效资源ID"})
+	}
+
+	var existing model.Resource
+	if err := database.DB.Preload("Links").First(&existing, "id = ?", resUUID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "资源不存在"})
+	}
+
+	var req QuickUpdateLinksRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
+	}
+
+	if len(req.Links) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "至少需要保留一个有效的网盘分享链接"})
+	}
+
+	// 保留旧链接的原有点击转存数
+	oldClickCounts := make(map[string]int)
+	for _, oldL := range existing.Links {
+		oldClickCounts[oldL.DriveType] = oldL.ClickCount
+	}
+
+	var defaultAcc model.NetdiskAccount
+	database.DB.Where("is_default = true AND status = 'valid'").First(&defaultAcc)
+
+	// 删除旧链接并插入新链接
+	database.DB.Where("resource_id = ?", existing.ID).Delete(&model.ResourceLink{})
+
+	hasPrimary := false
+	for i := range req.Links {
+		req.Links[i].ResourceID = existing.ID
+		req.Links[i].ID = uuid.New()
+		// 补链后默认自动恢复为 active 健康状态，清空报错原因
+		if req.Links[i].Status == "" || req.Links[i].Status == "reported" || req.Links[i].Status == "invalid" {
+			req.Links[i].Status = "active"
+		}
+		req.Links[i].InvalidReason = ""
+
+		if req.Links[i].ClickCount == 0 {
+			if prev, ok := oldClickCounts[req.Links[i].DriveType]; ok {
+				req.Links[i].ClickCount = prev
+			}
+		}
+		if req.Links[i].AccountID != nil && *req.Links[i].AccountID != uuid.Nil {
+			var acc model.NetdiskAccount
+			if err := database.DB.Select("account_name").First(&acc, "id = ?", *req.Links[i].AccountID).Error; err == nil {
+				req.Links[i].AccountName = acc.AccountName
+			}
+		} else if defaultAcc.ID != uuid.Nil && req.Links[i].DriveType == defaultAcc.DriveType {
+			req.Links[i].AccountID = &defaultAcc.ID
+			req.Links[i].AccountName = defaultAcc.AccountName
+		}
+		if req.Links[i].FileSize == "" {
+			req.Links[i].FileSize = "15.0 MB"
+		}
+		if req.Links[i].FileType == "" {
+			req.Links[i].FileType = "PDF"
+		}
+		if req.Links[i].IsPrimary {
+			hasPrimary = true
+		}
+	}
+	if !hasPrimary && len(req.Links) > 0 {
+		req.Links[0].IsPrimary = true
+	}
+
+	if err := database.DB.Create(&req.Links).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "保存新网盘链接失败: " + err.Error()})
+	}
+
+	// 重新拉取完整资源以供返回
+	database.DB.Preload("Links").First(&existing, "id = ?", resUUID)
+
+	// Cloudflare 边缘缓存刷新
+	if h.seo != nil {
+		h.seo.PurgeForResource(&existing)
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "网盘链接已成功补齐/替换，已恢复为正常健康状态！",
+		"data":    existing,
+	})
+}
+
 // AdminUpdateResourceStats 快速更新资源的浏览量和转存量（支持列表行内直接修改）
 func (h *ResourceHandler) AdminUpdateResourceStats(c fiber.Ctx) error {
 	idStr := c.Params("id")
