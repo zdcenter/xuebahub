@@ -416,6 +416,26 @@ export class ResourceService {
     );
   }
 
+  // 批量设置网盘归属账号
+  batchAssignAccount(ids: string[], account_id: string): Observable<{ affected: number }> {
+    return this.http.post<{ code: number; message: string; data: { affected: number } }>(
+      `${this.apiUrl}/batch-assign-account`,
+      { ids, account_id }
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  // 批量设置资料所属频道
+  batchAssignChannel(ids: string[], channel: string): Observable<{ affected: number }> {
+    return this.http.post<{ code: number; message: string; data: { affected: number } }>(
+      `${this.apiUrl}/batch-assign-channel`,
+      { ids, channel }
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
   // 跨站资料包批量导入并直接上架
   batchImport(resources: Partial<ResourceItemDto>[], autoPublish: boolean = true): Observable<{ total: number; imported: number }> {
     return this.http.post<{ code: number; message: string; data: { total: number; imported: number } }>(
@@ -535,6 +555,12 @@ export class ResourceService {
   verifyAccount(id: string): Observable<NetdiskAccountDto> {
     return this.http.post<{ code: number; message: string; data: NetdiskAccountDto }>(`${this.baseUrl}/api/v1/admin/netdisk/accounts/${id}/verify`, {}).pipe(
       map(res => res.data)
+    );
+  }
+
+  verifyAllAccounts(): Observable<{ message: string }> {
+    return this.http.post<{ code: number; message: string }>(`${this.baseUrl}/api/v1/admin/netdisk/accounts/verify-all`, {}).pipe(
+      map(res => ({ message: res.message }))
     );
   }
 

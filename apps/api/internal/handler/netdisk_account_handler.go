@@ -305,6 +305,58 @@ func (h *NetdiskAccountHandler) VerifyAccount(c fiber.Ctx) error {
 	})
 }
 
+// VerifyAllAccounts 一键检测所有账号状态与容量
+func (h *NetdiskAccountHandler) VerifyAllAccounts(c fiber.Ctx) error {
+	count := h.verifyAllAccountsInternal()
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": fmt.Sprintf("已成功完成对 %d 个网盘账号的状态心跳与容量检测", count),
+	})
+}
+
+// StartHeartbeatRoutine 启动后台心跳定时器
+func (h *NetdiskAccountHandler) StartHeartbeatRoutine(interval time.Duration) {
+	time.Sleep(15 * time.Second)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	h.verifyAllAccountsInternal()
+
+	for range ticker.C {
+		h.verifyAllAccountsInternal()
+	}
+}
+
+func (h *NetdiskAccountHandler) verifyAllAccountsInternal() int {
+	var accounts []model.NetdiskAccount
+	if err := database.DB.Where("cookie != ''").Find(&accounts).Error; err != nil {
+		return 0
+	}
+
+	for _, acc := range accounts {
+		verifiedInfo, err := h.transferSvc.VerifyCookie(acc.Cookie)
+		now := time.Now()
+		acc.LastVerifiedAt = &now
+		if err != nil {
+			acc.Status = "expired"
+			acc.ErrorMessage = err.Error()
+		} else {
+			acc.Status = "valid"
+			acc.Nickname = verifiedInfo.Nickname
+			acc.TotalCapacity = verifiedInfo.TotalCapacity
+			acc.UsedCapacity = verifiedInfo.UsedCapacity
+			acc.FreeCapacity = verifiedInfo.FreeCapacity
+			if verifiedInfo.IsOverQuota {
+				acc.ErrorMessage = fmt.Sprintf("空间已超限 (已占用 %s / 配额 %s)，请及时扩容或清理", verifiedInfo.UsedCapacity, verifiedInfo.TotalCapacity)
+			} else {
+				acc.ErrorMessage = ""
+			}
+		}
+		database.DB.Save(&acc)
+	}
+	return len(accounts)
+}
+
 // ListFolders 查询指定网盘账号中的文件夹列表
 func (h *NetdiskAccountHandler) ListFolders(c fiber.Ctx) error {
 	idStr := c.Params("id")

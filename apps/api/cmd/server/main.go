@@ -126,6 +126,8 @@ func main() {
 	admin.Post("/resources", resH.AdminCreateResource)
 	admin.Post("/resources/batch-toggle", resH.AdminBatchTogglePublish)
 	admin.Post("/resources/batch-delete", resH.AdminBatchDeleteResources)
+	admin.Post("/resources/batch-assign-account", resH.AdminBatchAssignAccount)
+	admin.Post("/resources/batch-assign-channel", resH.AdminBatchAssignChannel)
 	admin.Post("/resources/batch-import", resH.AdminBatchImportResources)
 	admin.Put("/resources/:id", resH.AdminUpdateResource)
 	admin.Patch("/resources/:id/stats", resH.AdminUpdateResourceStats)
@@ -187,6 +189,7 @@ func main() {
 	admin.Get("/netdisk/accounts", netdiskAccountH.ListAccounts)
 	admin.Post("/netdisk/accounts", netdiskAccountH.SaveAccount)
 	admin.Delete("/netdisk/accounts/:id", netdiskAccountH.DeleteAccount)
+	admin.Post("/netdisk/accounts/verify-all", netdiskAccountH.VerifyAllAccounts)
 	admin.Post("/netdisk/accounts/:id/verify", netdiskAccountH.VerifyAccount)
 	admin.Post("/netdisk/accounts/:id/default", netdiskAccountH.SetDefaultAccount)
 	admin.Get("/netdisk/accounts/:id/folders", netdiskAccountH.ListFolders)
@@ -195,6 +198,9 @@ func main() {
 	admin.Post("/netdisk/transfer-share", netdiskAccountH.AutoTransferAndShare)
 	admin.Get("/netdisk/default-account/files", netdiskAccountH.ListDefaultAccountFiles)
 	admin.Post("/netdisk/default-account/create-share", netdiskAccountH.CreateShareFromDefaultAccount)
+
+	// 启动网盘账号健康心跳与容量定时校验轮询 (每6小时自动轮询一次)
+	go netdiskAccountH.StartHeartbeatRoutine(6 * time.Hour)
 
 	// 电报智能采集与草稿池管理 (Crawler & Drafts Ingestion)
 	admin.Get("/crawler/config", crawlerH.GetConfig)

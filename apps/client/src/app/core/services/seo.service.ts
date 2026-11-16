@@ -41,5 +41,21 @@ export class SeoService {
   reset() {
     this.title.setTitle(this.defaultTitle);
     this.meta.updateTag({ name: 'description', content: this.defaultDesc });
+    if (typeof document !== 'undefined') {
+      const script = document.getElementById('app-structured-data');
+      if (script) script.remove();
+    }
+  }
+
+  setJsonLd(schema: object | object[]) {
+    if (typeof document === 'undefined') return;
+    let script = document.getElementById('app-structured-data') as HTMLScriptElement;
+    if (!script) {
+      script = document.createElement('script');
+      script.id = 'app-structured-data';
+      script.type = 'application/ld+json';
+      document.head.appendChild(script);
+    }
+    script.text = JSON.stringify(schema);
   }
 }

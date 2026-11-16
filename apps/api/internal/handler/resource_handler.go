@@ -1251,6 +1251,111 @@ func (h *ResourceHandler) AdminBatchDeleteResources(c fiber.Ctx) error {
 	})
 }
 
+// AdminBatchAssignAccount 批量设置资料的网盘归属账号
+func (h *ResourceHandler) AdminBatchAssignAccount(c fiber.Ctx) error {
+	type Request struct {
+		IDs       []string `json:"ids"`
+		AccountID string   `json:"account_id"`
+	}
+
+	var req Request
+	if err := c.Bind().Body(&req); err != nil || len(req.IDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "请提供有效的资料ID列表",
+		})
+	}
+
+	var parsedIDs []uuid.UUID
+	for _, idStr := range req.IDs {
+		if id, err := uuid.Parse(idStr); err == nil {
+			parsedIDs = append(parsedIDs, id)
+		}
+	}
+	if len(parsedIDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "未找到有效资料ID"})
+	}
+
+	var targetAccount model.NetdiskAccount
+	var targetAccID *uuid.UUID
+	var targetAccName string
+
+	if req.AccountID != "" && req.AccountID != "none" {
+		accUUID, err := uuid.Parse(req.AccountID)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效网盘账号ID"})
+		}
+		if err := database.DB.First(&targetAccount, "id = ?", accUUID).Error; err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "未找到指定网盘账号"})
+		}
+		targetAccID = &targetAccount.ID
+		targetAccName = targetAccount.AccountName
+	}
+
+	updates := map[string]interface{}{
+		"account_name": targetAccName,
+	}
+	if targetAccID != nil {
+		updates["account_id"] = targetAccID
+	} else {
+		updates["account_id"] = nil
+	}
+
+	if err := database.DB.Model(&model.ResourceLink{}).
+		Where("resource_id IN (?)", parsedIDs).
+		Updates(updates).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "批量更新归属失败: " + err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": fmt.Sprintf("成功为 %d 条资料更新网盘归属账号", len(parsedIDs)),
+		"data": fiber.Map{
+			"affected": len(parsedIDs),
+		},
+	})
+}
+
+// AdminBatchAssignChannel 批量设置资料所属频道
+func (h *ResourceHandler) AdminBatchAssignChannel(c fiber.Ctx) error {
+	type Request struct {
+		IDs     []string `json:"ids"`
+		Channel string   `json:"channel"`
+	}
+
+	var req Request
+	if err := c.Bind().Body(&req); err != nil || len(req.IDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "请提供有效的资料ID列表",
+		})
+	}
+
+	var parsedIDs []uuid.UUID
+	for _, idStr := range req.IDs {
+		if id, err := uuid.Parse(idStr); err == nil {
+			parsedIDs = append(parsedIDs, id)
+		}
+	}
+	if len(parsedIDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "未找到有效资料ID"})
+	}
+
+	if err := database.DB.Model(&model.Resource{}).
+		Where("id IN (?)", parsedIDs).
+		Update("channel", req.Channel).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "批量更新频道失败: " + err.Error()})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": fmt.Sprintf("成功为 %d 条资料更新所属频道为 [%s]", len(parsedIDs), req.Channel),
+		"data": fiber.Map{
+			"affected": len(parsedIDs),
+		},
+	})
+}
+
 // AdminBatchImportResources 跨站资料包批量导入并直接上架
 func (h *ResourceHandler) AdminBatchImportResources(c fiber.Ctx) error {
 	type ImportPayload struct {

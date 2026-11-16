@@ -331,6 +331,28 @@
     </header>
 
     <div class="content-body">
+      <!-- ⚠️ 网盘账号状态与容量预警条 (P2: 失效与超限主动告警) -->
+      @if (hasExpiredOrWarningAccounts()) {
+        <div class="card" style="margin-bottom: 20px; padding: 14px 20px; border-radius: 12px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.35); display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 22px;">⚠️</span>
+            <div style="font-size: 13px;">
+              <strong style="color: #f59e0b; font-size: 14px;">网盘账号状态告警：</strong>
+              <span style="color: #334155;">
+                检测到账号【{{ warningAccountsList()[0].account_name }}】{{ warningAccountsList()[0].status === 'expired' || warningAccountsList()[0].status === 'invalid' ? 'Cookie 凭证已失效' : '存储空间已超限' }}，可能导致资料自动转存中断，请及时更新凭据或清理空间！
+              </span>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            class="btn btn-sm"
+            (click)="switchTab('accounts')" 
+            style="background: #f59e0b; color: #0f172a; font-weight: 700; border: none; cursor: pointer; white-space: nowrap; padding: 6px 14px; border-radius: 8px;">
+            立即前往网盘管理维护 ➔
+          </button>
+        </div>
+      }
+
       <!-- 1. 资料列表视图 -->
       @if (currentTab() === 'list') {
         <div class="card table-card">
@@ -613,6 +635,27 @@
                 <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff; border: none; font-weight: 600; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);" (click)="batchPushSelectedToSeo()" title="将选中的资料批量推送到百度与必应搜索引擎加快收录">
                   ⚡ 百度/必应主动收录
                 </button>
+
+                <!-- 批量指定归属网盘账号 -->
+                <select 
+                  #batchAccSelect
+                  style="padding: 4px 8px; border-radius: 6px; font-size: 12px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer;"
+                  (change)="batchAssignAccount(batchAccSelect.value); batchAccSelect.value = ''">
+                  <option value="">👤 批量改归属网盘...</option>
+                  <option *ngFor="let acc of accounts()" [value]="acc.id">归属到: {{ acc.account_name }}</option>
+                  <option value="none">解除网盘归属</option>
+                </select>
+
+                <!-- 批量划转所属频道 -->
+                <select 
+                  #batchChannelSelect
+                  style="padding: 4px 8px; border-radius: 6px; font-size: 12px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer;"
+                  (change)="batchAssignChannel(batchChannelSelect.value); batchChannelSelect.value = ''">
+                  <option value="">📁 批量调整频道...</option>
+                  <option value="edu">划入: 刚需教材与学习资料 (edu)</option>
+                  <option value="book">划入: 统编电子教材专区 (book)</option>
+                </select>
+
                 <button type="button" class="btn btn-sm btn-batch-enable" (click)="batchToggleResources(true)">
                   {{ i18n.t('resource.batchPublish') }}
                 </button>
@@ -3992,9 +4035,12 @@
             <div style="display: flex; flex-direction: column; gap: 16px;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="font-size: 15px; font-weight: 700; color: #0f172a;">已托管的网盘账号 ({{ accounts().length }})</h3>
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                   <button type="button" class="btn btn-sm btn-primary" (click)="startAddNewAccount()" style="font-weight: 600;">➕ 添加新网盘账号</button>
-                  <button type="button" class="btn btn-sm btn-secondary" (click)="loadAccounts()">🔄 刷新状态</button>
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="verifyAllAccounts()" [disabled]="verifyAllLoading()" title="全量批量检测所有已托管账号的Cookie有效性与存储空间">
+                    {{ verifyAllLoading() ? '⏳ 正在检测...' : '🔄 一键检测所有账号状态' }}
+                  </button>
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="loadAccounts()">刷新列表</button>
                 </div>
               </div>
 

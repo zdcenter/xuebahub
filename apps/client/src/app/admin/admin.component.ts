@@ -2526,6 +2526,32 @@ export class AdminComponent implements OnInit {
     return this.accounts().find(a => a.id === this.accountForm.id);
   }
 
+  // 账号状态告警计算
+  hasExpiredOrWarningAccounts = computed(() => {
+    return this.accounts().some(a => a.status === 'expired' || a.status === 'invalid' || a.is_over_quota);
+  });
+
+  warningAccountsList = computed(() => {
+    return this.accounts().filter(a => a.status === 'expired' || a.status === 'invalid' || a.is_over_quota);
+  });
+
+  verifyAllLoading = signal<boolean>(false);
+
+  verifyAllAccounts() {
+    this.verifyAllLoading.set(true);
+    this.resService.verifyAllAccounts().subscribe({
+      next: (res) => {
+        this.verifyAllLoading.set(false);
+        this.showToast(res.message || '全量网盘账号检测完成');
+        this.loadAccounts(true);
+      },
+      error: (err) => {
+        this.verifyAllLoading.set(false);
+        this.showToast('检测失败: ' + (err.message || '网络错误'), 'error');
+      }
+    });
+  }
+
   loadAccounts(preserveSelection = true) {
     this.accountLoading.set(true);
     this.resService.listAccounts().subscribe({
@@ -4457,6 +4483,71 @@ export class AdminComponent implements OnInit {
       error: (err) => {
         this.loading.set(false);
         this.showToast('批量删除失败: ' + (err.message || '网络错误'), 'error');
+      }
+    });
+  }
+
+  // 批量更换归属网盘账号
+  async batchAssignAccount(targetAccountId: string) {
+    const ids = this.selectedResourceIds();
+    if (ids.length === 0) return;
+    if (!targetAccountId) return;
+
+    const accName = targetAccountId === 'none' 
+      ? '清除网盘绑定' 
+      : (this.accounts().find(a => a.id === targetAccountId)?.account_name || '指定账号');
+
+    const ok = await this.confirmDialog({
+      title: '批量划转网盘账号归属',
+      message: `确定要将选中的 ${ids.length} 篇资料的网盘归属统一设置为【${accName}】吗？`,
+      confirmText: '确定修改',
+      type: 'info',
+      icon: '👤'
+    });
+    if (!ok) return;
+
+    this.loading.set(true);
+    this.resService.batchAssignAccount(ids, targetAccountId).subscribe({
+      next: (res) => {
+        this.loading.set(false);
+        this.clearResourceSelection();
+        this.loadResources();
+        this.showToast(`成功批量归属 ${res.affected} 篇资料至【${accName}】`);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.showToast('批量设置网盘账号失败: ' + (err.message || '网络错误'), 'error');
+      }
+    });
+  }
+
+  // 批量划转频道 (学习资料 vs 统编电子教材)
+  async batchAssignChannel(channel: string) {
+    const ids = this.selectedResourceIds();
+    if (ids.length === 0) return;
+    if (!channel) return;
+
+    const channelName = channel === 'book' ? '统编电子教材专区' : '刚需教材与学习资料';
+    const ok = await this.confirmDialog({
+      title: '批量调整所属频道',
+      message: `确定要将选中的 ${ids.length} 篇资料统一划入【${channelName}】频道吗？`,
+      confirmText: '确定划入',
+      type: 'info',
+      icon: '📁'
+    });
+    if (!ok) return;
+
+    this.loading.set(true);
+    this.resService.batchAssignChannel(ids, channel).subscribe({
+      next: (res) => {
+        this.loading.set(false);
+        this.clearResourceSelection();
+        this.loadResources();
+        this.showToast(`成功将 ${res.affected} 篇资料批量划入【${channelName}】`);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.showToast('批量设置频道失败: ' + (err.message || '网络错误'), 'error');
       }
     });
   }

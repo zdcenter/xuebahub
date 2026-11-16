@@ -343,6 +343,62 @@ export class ResourceDetailComponent implements OnInit {
     return this.normalizeFileTree(tree);
   });
 
+  // 目录树即时过滤检索
+  treeSearchQuery = signal<string>('');
+
+  filteredDisplayTree = computed(() => {
+    const query = this.treeSearchQuery().trim().toLowerCase();
+    const fullTree = this.displayTree();
+    if (!query) {
+      return fullTree;
+    }
+
+    const filterNodes = (nodes: any[]): any[] => {
+      const filtered: any[] = [];
+      for (const node of nodes) {
+        if (node.is_dir) {
+          const matchedChildren = Array.isArray(node.children) ? filterNodes(node.children) : [];
+          if ((node.name || '').toLowerCase().includes(query) || matchedChildren.length > 0) {
+            filtered.push({
+              ...node,
+              children: matchedChildren.length > 0 ? matchedChildren : (node.children || [])
+            });
+          }
+        } else {
+          if ((node.name || '').toLowerCase().includes(query)) {
+            filtered.push(node);
+          }
+        }
+      }
+      return filtered;
+    };
+
+    return filterNodes(fullTree);
+  });
+
+  // 搜索匹配文件数统计
+  searchMatchCount = computed<number>(() => {
+    const query = this.treeSearchQuery().trim();
+    if (!query) return 0;
+    return this.countTotalFiles(this.filteredDisplayTree());
+  });
+
+  onTreeSearchChange(val: string) {
+    this.treeSearchQuery.set(val);
+    if (val.trim()) {
+      // 搜索时自动全量展开所有匹配目录，方便一眼定位
+      const allPaths = this.collectAllDirPaths(this.filteredDisplayTree());
+      this.expandedPaths.set(new Set(allPaths));
+    }
+  }
+
+  clearTreeSearch() {
+    this.treeSearchQuery.set('');
+    const firstLevelPaths = this.collectFirstLevelDirPaths(this.displayTree());
+    this.expandedPaths.set(new Set(firstLevelPaths));
+    this.allExpanded.set(false);
+  }
+
   // 统计文件总数
   totalFileCount = computed(() => {
     const res = this.resource();
@@ -350,6 +406,26 @@ export class ResourceDetailComponent implements OnInit {
     if (!Array.isArray(tree)) return 0;
     return this.countTotalFiles(tree);
   });
+
+  // 提取目录树中的代表性子文件名（用于深层 SEO 关键词）
+  private extractSubfileKeywords(nodes: any[], limit = 12): string[] {
+    const names: string[] = [];
+    const walk = (items: any[]) => {
+      for (const item of items) {
+        if (names.length >= limit) return;
+        if (!item.is_dir && item.name) {
+          const cleanName = item.name.replace(/\.[a-zA-Z0-9]+$/, '').trim();
+          if (cleanName && cleanName.length > 1 && !names.includes(cleanName)) {
+            names.push(cleanName);
+          }
+        } else if (item.children) {
+          walk(item.children);
+        }
+      }
+    };
+    walk(nodes);
+    return names;
+  }
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -368,15 +444,78 @@ export class ResourceDetailComponent implements OnInit {
         if (resourceItem && (resourceItem.id || resourceItem.title)) {
           this.resource.set(resourceItem);
           this.links.set(res?.links || resourceItem.links || []);
+
+          const tree = Array.isArray(resourceItem.file_tree) ? resourceItem.file_tree : [];
+          const totalFiles = this.countTotalFiles(tree);
+
+          // 提取长尾 SEO 关键词与生成富媒体 Schema.org
+          const subfileKeywords = this.extractSubfileKeywords(tree, 10);
+          const keywords = [
+            resourceItem.title,
+            this.stageLabel,
+            resourceItem.subject,
+            resourceItem.grade,
+            resourceItem.edition,
+            ...subfileKeywords,
+            '高清PDF下载',
+            'A4无损打印',
+            '夸克网盘转存',
+            '百度网盘'
+          ].filter(Boolean).join(', ');
+
           this.seoService.update({
             title: `${resourceItem.title} - 高清网盘下载与转存`,
-            description: resourceItem.description || `${resourceItem.title}，正版高清PDF/视频课件，支持A4无损打印与极速转存。`
+            description: resourceItem.description || `${resourceItem.title}，正版高清PDF/视频课件，支持A4无损打印与极速转存。内含 ${totalFiles} 个精品教学资料与试卷。`,
+            keywords
+          });
+
+          // 注入 Schema.org 结构化数据 (LearningResource / Book + BreadcrumbList)
+          const isBook = resourceItem.stage === 'book' || resourceItem.channel === 'book';
+          this.seoService.setJsonLd({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': isBook ? 'Book' : 'LearningResource',
+                '@id': this.currentUrl,
+                'name': resourceItem.title,
+                'description': resourceItem.description || resourceItem.title,
+                'inLanguage': 'zh-CN',
+                'educationalLevel': this.stageLabel,
+                'datePublished': resourceItem.created_at || '2026-01-01',
+                'provider': {
+                  '@type': 'Organization',
+                  'name': '学霸网',
+                  'url': 'https://www.xuebaw.com'
+                }
+              },
+              {
+                '@type': 'BreadcrumbList',
+                'itemListElement': [
+                  {
+                    '@type': 'ListItem',
+                    'position': 1,
+                    'name': '首页',
+                    'item': 'https://www.xuebaw.com'
+                  },
+                  {
+                    '@type': 'ListItem',
+                    'position': 2,
+                    'name': this.stageLabel,
+                    'item': `https://www.xuebaw.com${this.stageHref}`
+                  },
+                  {
+                    '@type': 'ListItem',
+                    'position': 3,
+                    'name': resourceItem.title,
+                    'item': this.currentUrl
+                  }
+                ]
+              }
+            ]
           });
 
           // 默认展示策略：大文件集默认仅展开第1级主文件夹（保持页面清爽优雅，避免撑爆高度）
           // 同时底层 DOM 全量渲染并由 CSS 进行折叠控制，确保百度/Google 爬虫可以 100% 收录全部长尾文件名！
-          const tree = Array.isArray(resourceItem.file_tree) ? resourceItem.file_tree : [];
-          const totalFiles = this.countTotalFiles(tree);
           if (totalFiles <= 10) {
             // 文件总数 <= 10 时，直接全部展开
             const allPaths = this.collectAllDirPaths(tree);
@@ -551,20 +690,60 @@ export class ResourceDetailComponent implements OnInit {
     return /micromessenger/i.test(ua) || /qq\//i.test(ua) || /mqqbrowser/i.test(ua);
   }
 
+  // 下载与转存友好反馈 Toast / 快捷操作
+  downloadToast = signal<{
+    extractCode?: string;
+    targetUrl: string;
+    isQuark: boolean;
+    driveName: string;
+  } | null>(null);
+  private toastTimer: any = null;
+
+  showDownloadFeedback(link: ResourceLinkDto) {
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    const isQuark = link.drive_type === 'quark' || Boolean(link.share_url && link.share_url.includes('quark.cn'));
+    const driveName = this.getDriveLabel(link.drive_type).name;
+    this.downloadToast.set({
+      extractCode: link.extract_code,
+      targetUrl: link.share_url,
+      isQuark,
+      driveName
+    });
+    this.toastTimer = setTimeout(() => {
+      this.closeDownloadToast();
+    }, 5000);
+  }
+
+  closeDownloadToast() {
+    this.downloadToast.set(null);
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+  }
+
+  openQuarkApp(shareUrl: string) {
+    if (typeof window === 'undefined') return;
+    const encoded = encodeURIComponent(shareUrl);
+    // 调起夸克 App scheme
+    window.location.href = `quark://browser?url=${encoded}`;
+    // 延迟兜底
+    setTimeout(() => {
+      window.location.href = shareUrl;
+    }, 1200);
+  }
+
   // 点击直达/下载时校验额度
   onDownloadClick(link: ResourceLinkDto, event: MouseEvent) {
     event.preventDefault();
     const res = this.resource();
     const slug = res?.slug || res?.id || '';
 
+    // 无论前置校验结果，第一时间同步将提取码写入剪贴板（符合浏览器安全策略）
+    if (link.extract_code && typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(link.extract_code).catch(() => {});
+    }
+
     this.memberService.consumeQuota(slug).subscribe({
       next: (result) => {
         if (result.allowed) {
-          // 复制提取码
-          if (link.extract_code && typeof navigator !== 'undefined' && navigator.clipboard) {
-            navigator.clipboard.writeText(link.extract_code).catch(() => {});
-          }
-
           // 若在微信或 QQ 内置浏览器中，拦截并调起右上角蒙层指引 (防链接屏蔽与白屏)
           if (this.isWeChatOrQQ()) {
             this.wechatGuideTargetLink.set(link);
@@ -572,6 +751,9 @@ export class ResourceDetailComponent implements OnInit {
             this.memberService.fetchQuotaStatus(slug).subscribe();
             return;
           }
+
+          // 浮现提取码与快速转存反馈条
+          this.showDownloadFeedback(link);
 
           // 在新标签页中打开网盘直达地址
           if (typeof window !== 'undefined') {
@@ -594,6 +776,7 @@ export class ResourceDetailComponent implements OnInit {
           this.showWechatGuide.set(true);
           return;
         }
+        this.showDownloadFeedback(link);
         if (typeof window !== 'undefined') {
           window.open(link.share_url, '_blank');
         }
