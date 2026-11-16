@@ -92,6 +92,8 @@
                   <div class="overflow-hidden">
                     <div class="text-xs font-bold text-slate-800 truncate">{{ item.title }}</div>
                     <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400">
+                      <span *ngIf="item.channel_slug === 'book'" class="text-purple-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200/60">📖 电子教材</span>
+                      <span *ngIf="item.channel_slug === 'edu'" class="text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/60">📚 学习资料</span>
                       <span *ngIf="item.stage" class="text-blue-600 font-semibold">{{ item.stage }}</span>
                       <span *ngIf="item.grade">{{ item.grade }}</span>
                       <span *ngIf="item.subject" class="text-emerald-700 font-medium">{{ item.subject }}</span>

@@ -15,6 +15,7 @@ tmp/
 *.test
 *.out
 apps/api/bin/
+apps/api/server
 /server
 
 # Logs

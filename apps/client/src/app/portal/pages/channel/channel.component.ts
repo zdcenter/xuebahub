@@ -334,8 +334,21 @@ export class ChannelComponent implements OnInit {
       stageVal = slug;
     }
 
+    // 频道判定：
+    // 若在全局搜索状态（queryParam 存在且未指定 channel），不传 channel 以实现全站联合搜索（同时搜出学习资料与电子教材）；
+    // 若为常规浏览（首页、小学、初中等专区），明确指定 channel = 'edu'，锁定学习资料专区，杜绝电子课本混入。
+    const hasKeyword = !!this.queryParam();
+    let channelVal: string | undefined = undefined;
+    if (hasKeyword) {
+      channelVal = undefined; // 全局通搜模式 (跨频道)
+    } else if (slug && slug !== 'all' && !isKnownStage) {
+      channelVal = slug;
+    } else {
+      channelVal = 'edu';     // 常规学习资料模式 (排除电子教材)
+    }
+
     this.portalService.getResources({
-      channel: isKnownStage ? undefined : (slug === 'all' ? undefined : slug),
+      channel: channelVal,
       stage: stageVal,
       grade: this.gradeParam() || undefined,
       term: this.termParam() || undefined,

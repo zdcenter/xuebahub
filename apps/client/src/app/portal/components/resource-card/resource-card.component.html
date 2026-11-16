@@ -30,6 +30,12 @@
     <div class="flex-1 min-w-0 space-y-1.5">
       <!-- 标签与状态流 (低饱和高雅微胶囊) -->
       <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+        <span *ngIf="resource.channel_slug === 'book'" class="px-2 py-0.5 bg-purple-50 text-purple-700 font-bold rounded-lg border border-purple-200/60">
+          📖 统编教材
+        </span>
+        <span *ngIf="resource.channel_slug === 'edu'" class="px-2 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200/60">
+          📚 学习资料
+        </span>
         <span *ngIf="resource.stage" class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-200/60">
           {{ resource.stage }}
         </span>

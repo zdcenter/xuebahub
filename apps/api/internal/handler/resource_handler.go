@@ -118,15 +118,23 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 		Where("channel_slug IN (SELECT slug FROM channels WHERE is_active = true)").
 		Preload("Links")
 
-	// 智能兼容：如果客户端将学段（primary, junior, senior, cert, exam 等）作为 channel 传入
+	// 频道隔离与全局搜索联动逻辑：
+	// 1. 若显式指定了频道 (如 channel=book 或 channel=edu)，严格按指定频道精准筛选
+	// 2. 若传入的是学段标识（primary, junior, senior, cert, exam 等），归属于学习资料频道 (channel_slug = 'edu')
+	// 3. 若处于全局搜索模式 (keyword != "") 且未指定特定 channel，打通全站活跃频道联合搜索 (同时覆盖学习资料与电子教材)
+	// 4. 若为常规浏览模式 (keyword == "" 且未指定 channel)，默认锁定主频道 'edu'，确保首页与学段专区纯粹展示教辅题库与微课，电子教材完全隔离至 /book
 	if channel != "" && channel != "all" {
 		if IsKnownStage(channel) {
 			if stage == "" {
 				stage = channel
 			}
+			query = query.Where("channel_slug = ?", "edu")
 		} else {
 			query = query.Where("channel_slug = ?", channel)
 		}
+	} else if keyword == "" {
+		// 常规浏览模式：默认锁定学习资料频道 (edu)
+		query = query.Where("channel_slug = ?", "edu")
 	}
 	if stage != "" && stage != "all" {
 		stdStage := NormalizeStage(stage)
