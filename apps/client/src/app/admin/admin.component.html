@@ -412,13 +412,6 @@
                 title="跨站从本地或其他服务器一键粘贴完整资料包并直接秒级上架">
                 {{ i18n.t('transfer.openImportModal') }}
               </button>
-              <button 
-                type="button"
-                class="btn" 
-                style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; font-weight: 700; border: none; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);" 
-                (click)="openQuickPasteModal()">
-                ⚡ 快速粘贴入库
-              </button>
               <button class="btn" style="background: #e0f2fe; color: #0284c7; font-weight: 600;" (click)="openBatchCheckModal()">
                 🛡️ 一键巡检链接 (防封限频)
               </button>
@@ -3668,15 +3661,6 @@
               
               <!-- 快捷操作按钮组 -->
               <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
-                <button 
-                  type="button" 
-                  class="btn btn-primary" 
-                  (click)="openCrawlerPasteModal()"
-                  style="background: #ffffff; color: #0284c7; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <span>📋</span>
-                  <span>{{ i18n.t('crawler.pasteIngest') }}</span>
-                </button>
-
                 <button 
                   type="button" 
                   class="btn btn-secondary" 
@@ -8544,6 +8528,19 @@
     [batchResources]="activeVideoBatch()"
     (closed)="closeVideoModal()">
   </app-video-script-modal>
+
+  <!-- ⚡ 全局右下角极速粘贴解析入库悬浮按钮 (Global Quick Paste FAB) -->
+  @if (!showQuickPasteModal()) {
+    <button 
+      type="button" 
+      class="global-quick-paste-fab"
+      (click)="openQuickPasteModal()"
+      title="随时随地一键唤起极速粘贴解析工作台 (支持单/多网盘资源秒级识别与入库)">
+      <span class="fab-icon">⚡</span>
+      <span class="fab-text">极速粘贴入库</span>
+      <span class="fab-badge">全局</span>
+    </button>
+  }
 
   <!-- ⚡ 快速粘贴智能解析入库独立弹窗 (Quick Paste Modal) -->
   <app-quick-paste-modal
