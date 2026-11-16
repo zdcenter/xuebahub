@@ -91,7 +91,7 @@
     </div>
 
     <nav class="nav-menu">
-      <!-- 1. 资料与内容管理 -->
+      <!-- 1. 📚 资料与内容中心 -->
       <div class="nav-section">
         <div class="nav-section-title">{{ i18n.t('nav.groupContent') }}</div>
         <button 
@@ -119,75 +119,11 @@
             <span class="nav-pill-badge hot">{{ requestsCounts().pending }}</span>
           }
         </button>
-        <button 
-          type="button"
-          [class.active]="currentTab() === 'schools'" 
-          (click)="switchTab('schools')">
-          <span class="icon">🏫</span>
-          <span class="nav-label">{{ i18n.t('nav.schools') }}</span>
-          <span class="nav-pill-badge">{{ regions().length }}</span>
-        </button>
       </div>
 
-      <!-- 2. 专区与前台运营 -->
+      <!-- 2. 🌐 自动化采集中枢 -->
       <div class="nav-section">
-        <div class="nav-section-title">{{ i18n.t('nav.groupOperations') }}</div>
-        <button 
-          type="button"
-          [class.active]="currentTab() === 'channels'" 
-          (click)="switchTab('channels')">
-          <span class="icon">🏷️</span>
-          <span class="nav-label">{{ i18n.t('nav.channels') }}</span>
-          <span class="nav-pill-badge">{{ channels().length }}</span>
-        </button>
-        <button 
-          type="button"
-          [class.active]="currentTab() === 'categories'" 
-          (click)="switchTab('categories')">
-          <span class="icon">📚</span>
-          <span class="nav-label">{{ i18n.t('nav.categories') }}</span>
-          <span class="nav-pill-badge">{{ categories().length }}</span>
-        </button>
-        <button 
-          type="button"
-          [class.active]="currentTab() === 'hotsearches'" 
-          (click)="switchTab('hotsearches')">
-          <span class="icon">🔥</span>
-          <span class="nav-label">{{ i18n.t('nav.hotsearches') }}</span>
-          <span class="nav-pill-badge hot">{{ hotSearches().length }}</span>
-        </button>
-        <button 
-          type="button"
-          [class.active]="currentTab() === 'navmenus'" 
-          (click)="switchTab('navmenus')">
-          <span class="icon">🧭</span>
-          <span class="nav-label">{{ i18n.t('nav.navmenus') }}</span>
-          <span class="nav-pill-badge">{{ navMenus().length }}</span>
-        </button>
-      </div>
-
-      <!-- 3. 网盘与数据中台 -->
-      <div class="nav-section">
-        <div class="nav-section-title">{{ i18n.t('nav.groupStorage') }}</div>
-        <button 
-          type="button"
-          [class.active]="currentTab() === 'stats'" 
-          (click)="switchTab('stats')">
-          <span class="icon">📈</span>
-          <span class="nav-label">{{ i18n.t('nav.stats') }}</span>
-        </button>
-        <button 
-          type="button"
-          [class.active]="currentTab() === 'accounts'" 
-          (click)="switchTab('accounts')">
-          <span class="icon">☁️</span>
-          <span class="nav-label">{{ i18n.t('nav.accounts') }}</span>
-        </button>
-      </div>
-
-      <!-- 4. 🌐 自动化采集中枢 -->
-      <div class="nav-section">
-        <div class="nav-section-title">自动化采集中枢</div>
+        <div class="nav-section-title">{{ i18n.t('nav.groupCollector') }}</div>
         <button 
           type="button"
           [class.active]="currentTab() === 'drafts'" 
@@ -217,9 +153,60 @@
         </button>
       </div>
 
-      <!-- 4.1 📧 邮件营销与 🔍 搜索引擎收录中枢 -->
+      <!-- 3. 🧭 栏目与分类架构 -->
       <div class="nav-section">
-        <div class="nav-section-title">{{ i18n.t('nav.groupEmail') }}</div>
+        <div class="nav-section-title">{{ i18n.t('nav.groupTaxonomy') }}</div>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'channels'" 
+          (click)="switchTab('channels')">
+          <span class="icon">🏷️</span>
+          <span class="nav-label">{{ i18n.t('nav.channels') }}</span>
+          <span class="nav-pill-badge">{{ channels().length }}</span>
+        </button>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'navmenus'" 
+          (click)="switchTab('navmenus')">
+          <span class="icon">🧭</span>
+          <span class="nav-label">{{ i18n.t('nav.navmenus') }}</span>
+          <span class="nav-pill-badge">{{ navMenus().length }}</span>
+        </button>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'categories'" 
+          (click)="switchTab('categories')">
+          <span class="icon">📚</span>
+          <span class="nav-label">{{ i18n.t('nav.categories') }}</span>
+          <span class="nav-pill-badge">{{ categories().length }}</span>
+        </button>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'schools'" 
+          (click)="switchTab('schools')">
+          <span class="icon">🏫</span>
+          <span class="nav-label">{{ i18n.t('nav.schools') }}</span>
+          <span class="nav-pill-badge">{{ regions().length }}</span>
+        </button>
+      </div>
+
+      <!-- 4. 🚀 流量增长与推广 -->
+      <div class="nav-section">
+        <div class="nav-section-title">{{ i18n.t('nav.groupMarketing') }}</div>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'stats'" 
+          (click)="switchTab('stats')">
+          <span class="icon">📈</span>
+          <span class="nav-label">{{ i18n.t('nav.stats') }}</span>
+        </button>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'seo'" 
+          (click)="switchTab('seo')">
+          <span class="icon">🔍</span>
+          <span class="nav-label">{{ i18n.t('seo.nav') }}</span>
+        </button>
         <button 
           type="button"
           [class.active]="currentTab() === 'email'" 
@@ -229,30 +216,11 @@
         </button>
         <button 
           type="button"
-          [class.active]="currentTab() === 'seo'" 
-          (click)="switchTab('seo')">
-          <span class="icon">🔍</span>
-          <span class="nav-label">{{ i18n.t('seo.nav') }}</span>
-        </button>
-      </div>
-
-      <!-- 5. 系统与全局 -->
-      <div class="nav-section">
-        <div class="nav-section-title">{{ i18n.t('nav.groupSystem') }}</div>
-        <button 
-          type="button"
-          [class.active]="currentTab() === 'members'" 
-          (click)="switchTab('members')">
-          <span class="icon">👑</span>
-          <span class="nav-label">会员与额度</span>
-          <span class="nav-pill-badge hot">VIP</span>
-        </button>
-        <button 
-          type="button"
-          [class.active]="currentTab() === 'settings'" 
-          (click)="switchTab('settings')">
-          <span class="icon">⚙️</span>
-          <span class="nav-label">{{ i18n.t('nav.settings') }}</span>
+          [class.active]="currentTab() === 'hotsearches'" 
+          (click)="switchTab('hotsearches')">
+          <span class="icon">🔥</span>
+          <span class="nav-label">{{ i18n.t('nav.hotsearches') }}</span>
+          <span class="nav-pill-badge hot">{{ hotSearches().length }}</span>
         </button>
         <button 
           type="button"
@@ -261,6 +229,41 @@
           title="打开学霸网主站宣发文案与全网推广物料">
           <span class="icon">📢</span>
           <span class="nav-label">{{ i18n.t('sitePromo.btn') }}</span>
+        </button>
+      </div>
+
+      <!-- 5. ☁️ 网盘与存储中台 -->
+      <div class="nav-section">
+        <div class="nav-section-title">{{ i18n.t('nav.groupStorage') }}</div>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'accounts'" 
+          (click)="switchTab('accounts')">
+          <span class="icon">☁️</span>
+          <span class="nav-label">{{ i18n.t('nav.accounts') }}</span>
+          <span class="nav-pill-badge" [class.hot]="hasExpiredOrWarningAccounts()">
+            {{ accounts().length }}
+          </span>
+        </button>
+      </div>
+
+      <!-- 6. 👑 商业化与系统配置 -->
+      <div class="nav-section">
+        <div class="nav-section-title">{{ i18n.t('nav.groupSystem') }}</div>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'members'" 
+          (click)="switchTab('members')">
+          <span class="icon">👑</span>
+          <span class="nav-label">会员角色与卡密</span>
+          <span class="nav-pill-badge hot">VIP</span>
+        </button>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'settings'" 
+          (click)="switchTab('settings')">
+          <span class="icon">⚙️</span>
+          <span class="nav-label">{{ i18n.t('nav.settings') }}</span>
         </button>
       </div>
     </nav>
