@@ -225,6 +225,7 @@ func main() {
 	admin.Get("/crawler/webhook/info", crawlerH.GetWebhookInfo)
 	admin.Get("/crawler/drafts", crawlerH.ListDrafts)
 	admin.Post("/crawler/drafts/ingest-text", crawlerH.IngestText)
+	admin.Post("/crawler/ingest-text", crawlerH.IngestText)
 	admin.Patch("/crawler/drafts/:id/status", crawlerH.UpdateDraftStatus)
 	admin.Delete("/crawler/drafts/:id", crawlerH.DeleteDraft)
 	admin.Post("/crawler/drafts/batch", crawlerH.BatchDraftAction)

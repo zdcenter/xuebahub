@@ -969,6 +969,17 @@ export class AdminComponent implements OnInit {
     this.closeQuickPasteModal();
   }
 
+  downloadCollectorScript() {
+    const link = document.createElement('a');
+    link.href = '/xuebaw-collector.user.js';
+    link.target = '_blank';
+    link.download = 'xuebaw-collector.user.js';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.showToast('📥 正在下载/唤起油猴安装学霸网采集助手 (xuebaw-collector.user.js)');
+  }
+
   onFastPasteKeyDown(event: KeyboardEvent) {
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault();

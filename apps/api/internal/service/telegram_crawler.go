@@ -350,6 +350,11 @@ func (s *TelegramCrawlerService) ExtractDraftsFromText(rawText string, sourceNam
 			}
 		}
 
+		targetChannel := "edu"
+		if strings.Contains(rawText, "#频道: book") || strings.Contains(rawText, "#channel: book") || strings.Contains(rawText, "电子教材") || strings.Contains(rawText, "电子课本") {
+			targetChannel = "book"
+		}
+
 		draft := model.ResourceDraft{
 			ID:          uuid.New(),
 			Title:       cleanTitle,
@@ -363,7 +368,7 @@ func (s *TelegramCrawlerService) ExtractDraftsFromText(rawText string, sourceNam
 			RawText:     rawText,
 			Status:      "pending",
 			IsSafe:      true,
-			RawInfo:     datatypes.JSON([]byte(fmt.Sprintf(`{"extracted_at":"%s","source":"telegram"}`, time.Now().Format(time.RFC3339)))),
+			RawInfo:     datatypes.JSON([]byte(fmt.Sprintf(`{"extracted_at":"%s","source":"collector","channel":"%s"}`, time.Now().Format(time.RFC3339), targetChannel))),
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		}
@@ -382,6 +387,8 @@ func (s *TelegramCrawlerService) DetectDriveType(urlStr string) string {
 		return "quark"
 	case strings.Contains(low, "baidu.com"):
 		return "baidu"
+	case strings.Contains(low, "uc.cn"):
+		return "uc"
 	case strings.Contains(low, "alipan.com") || strings.Contains(low, "aliyundrive.com"):
 		return "alipan"
 	case strings.Contains(low, "xunlei.com"):

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.3.1
-// @description  全网教育与网盘资源一键多资源批量采集神器！右侧贴边滑出抽屉工作台（原文零遮挡）；紧凑三行卡片排版：标题独立一行、网盘直链独立一行（完整无截断）、提取码独立一行；精准提取真实标题，平滑零闪烁批量同步！
+// @version      1.4.0
+// @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别；右侧贴边滑出抽屉工作台（原文零遮挡）；紧凑三行排版、智能提取码匹配与目标频道划转！
 // @author       学霸网开发团队
 // @match        *://*/*
 // @exclude      *://localhost:*/*
@@ -529,9 +529,21 @@
     const items = [];
     const seenUrls = new Set();
 
-    const urlPattern = /https?:\/\/(?:pan\.quark\.cn\/s\/[a-zA-Z0-9_\-]+|pan\.baidu\.com\/s\/[a-zA-Z0-9_\-]+(?:\?pwd=[a-zA-Z0-9]+)?|(?:www\.)?(?:alipan|aliyundrive)\.com\/s\/[a-zA-Z0-9_\-]+|www\.123pan\.com\/s\/[a-zA-Z0-9_\-]+|pan\.xunlei\.com\/s\/[a-zA-Z0-9_\-]+)/gi;
+    function detectDriveInfo(urlStr) {
+      const u = (urlStr || '').toLowerCase();
+      if (u.includes('quark.cn')) return { type: 'quark', label: '⚡ 夸克' };
+      if (u.includes('baidu.com')) return { type: 'baidu', label: '☁️ 百度' };
+      if (u.includes('uc.cn')) return { type: 'uc', label: '🐿️ UC' };
+      if (u.includes('xunlei.com')) return { type: 'xunlei', label: '⚡ 迅雷' };
+      if (u.includes('alipan.com') || u.includes('aliyundrive.com')) return { type: 'aliyun', label: '📦 阿里' };
+      if (u.includes('123pan.com') || u.includes('123684.com')) return { type: '123pan', label: '📦 123' };
+      if (u.includes('189.cn')) return { type: 'tianyi', label: '☁️ 天翼' };
+      return { type: 'other', label: '🔗 网盘' };
+    }
 
-    const aLinks = Array.from(document.querySelectorAll('a[href*="quark.cn/s/"], a[href*="baidu.com/s/"], a[href*="alipan.com/s/"], a[href*="123pan.com/s/"]'));
+    const urlPattern = /https?:\/\/(?:pan\.quark\.cn\/s\/[a-zA-Z0-9_\-]+|pan\.baidu\.com\/(?:s\/[a-zA-Z0-9_\-]+|share\/init\?surl=[a-zA-Z0-9_\-]+)(?:\?pwd=[a-zA-Z0-9]+)?|(?:www\.)?(?:alipan|aliyundrive)\.com\/s\/[a-zA-Z0-9_\-]+|(?:www\.)?(?:123pan|123684)\.com\/s\/[a-zA-Z0-9_\-]+|pan\.xunlei\.com\/s\/[a-zA-Z0-9_\-]+|(?:drive|fast)\.uc\.cn\/s\/[a-zA-Z0-9_\-]+|cloud\.189\.cn\/(?:t|web\/share\?code=)[a-zA-Z0-9_\-]+)/gi;
+
+    const aLinks = Array.from(document.querySelectorAll('a[href*="quark.cn/s/"], a[href*="baidu.com/"], a[href*="uc.cn/s/"], a[href*="alipan.com/s/"], a[href*="123pan.com/s/"], a[href*="123684.com/s/"], a[href*="xunlei.com/s/"], a[href*="189.cn/"]'));
     aLinks.forEach((a, idx) => {
       const href = a.href.trim();
       if (!seenUrls.has(href)) {
@@ -548,20 +560,19 @@
         }
         if (!code) {
           const parentText = a.parentElement ? a.parentElement.innerText : '';
-          const codeMatch = parentText.match(/(?:提取码|密码|pwd|code)[:：\s]*([a-zA-Z0-9]{4,8})/i);
+          const codeMatch = parentText.match(/(?:提取码|密码|pwd|code|访问码)[:：\s]*([a-zA-Z0-9]{4,8})/i);
           if (codeMatch) code = codeMatch[1].trim();
         }
 
-        let driveType = href.includes('quark.cn') ? 'quark' : (href.includes('baidu.com') ? 'baidu' : 'other');
-        let driveLabel = href.includes('quark.cn') ? '⚡ 夸克' : (href.includes('baidu.com') ? '📦 百度' : '云盘');
+        const driveInfo = detectDriveInfo(href);
 
         items.push({
           id: 'item_' + Math.random().toString(36).slice(2, 8),
           title: title.slice(0, 100),
           shareUrl: href,
           code: code,
-          driveType: driveType,
-          driveLabel: driveLabel,
+          driveType: driveInfo.type,
+          driveLabel: driveInfo.label,
           selected: true
         });
       }
@@ -588,7 +599,7 @@
             }
 
             let title = line.replace(cleanUrl, '')
-              .replace(/(?:夸克|百度|网盘|链接|下载|地址|提取码|密码|pwd|code|点此访问|点击下载)[:：\s]*/gi, '')
+              .replace(/(?:夸克|百度|UC|阿里|迅雷|网盘|链接|下载|地址|提取码|密码|pwd|code|点此访问|点击下载)[:：\s]*/gi, '')
               .replace(/[《【]([^》】]{4,80})[》】]/, '$1')
               .trim();
 
@@ -603,16 +614,15 @@
               title = `${docTitle} (资源 ${items.length + 1})`;
             }
 
-            let driveType = cleanUrl.includes('quark.cn') ? 'quark' : (cleanUrl.includes('baidu.com') ? 'baidu' : 'other');
-            let driveLabel = cleanUrl.includes('quark.cn') ? '⚡ 夸克' : (cleanUrl.includes('baidu.com') ? '📦 百度' : '云盘');
+            const driveInfo = detectDriveInfo(cleanUrl);
 
             items.push({
               id: 'item_' + Math.random().toString(36).slice(2, 8),
               title: title.slice(0, 100),
               shareUrl: cleanUrl,
               code: code,
-              driveType: driveType,
-              driveLabel: driveLabel,
+              driveType: driveInfo.type,
+              driveLabel: driveInfo.label,
               selected: true
             });
           }
@@ -711,6 +721,14 @@
             </div>
           </div>
         ` : ''}
+
+        <div class="xb-channel-row" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; padding: 6px 10px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; flex-shrink: 0;">
+          <span style="font-weight: 700; color: #334155; white-space: nowrap;">📁 划入频道：</span>
+          <select id="xb-channel-select" style="flex: 1; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; background: #ffffff; color: #0f172a; font-weight: 600;">
+            <option value="edu">刚需教材与学习资料 (edu)</option>
+            <option value="book">统编电子教材专区 (book)</option>
+          </select>
+        </div>
 
         <div class="xb-items-list" id="xb-items-list">
           ${itemsHtml}
@@ -817,8 +835,9 @@
         submitBtn.disabled = true;
         submitBtn.textContent = `⏳ 正在批量推送 ${selectedItems.length} 个资料...`;
 
+        const channel = container.querySelector('#xb-channel-select')?.value || 'edu';
         const combinedText = selectedItems.map(it => {
-          return `${it.title}\n${it.shareUrl} 提取码: ${it.code}`;
+          return `${it.title}\n${it.shareUrl} 提取码: ${it.code} #频道: ${channel}`;
         }).join('\n\n');
 
         sendToXueBaW(combinedText, (err, res) => {
@@ -849,7 +868,8 @@
       return;
     }
 
-    const endpoint = `${API_BASE.replace(/\/$/, '')}/api/v1/admin/crawler/ingest-text`;
+    const endpoint = `${API_BASE.replace(/\/$/, '')}/api/v1/admin/crawler/drafts/ingest-text`;
+    const fallbackEndpoint = `${API_BASE.replace(/\/$/, '')}/api/v1/admin/crawler/ingest-text`;
     const payload = JSON.stringify({
       raw_text: rawText,
       source_name: `浏览器助手 (${document.domain})`,
@@ -863,33 +883,53 @@
       headers['Authorization'] = `Bearer ${ADMIN_TOKEN}`;
     }
 
-    if (typeof GM_xmlhttpRequest !== 'undefined') {
-      GM_xmlhttpRequest({
-        method: 'POST',
-        url: endpoint,
-        headers: headers,
-        data: payload,
-        onload: function(response) {
-          if (response.status >= 200 && response.status < 300) {
-            callback(null, response.responseText);
-          } else {
-            callback(`HTTP ${response.status}: ${response.responseText}`);
+    const doRequest = (targetUrl, isFallback = false) => {
+      if (typeof GM_xmlhttpRequest !== 'undefined') {
+        GM_xmlhttpRequest({
+          method: 'POST',
+          url: targetUrl,
+          headers: headers,
+          data: payload,
+          onload: function(response) {
+            if (response.status >= 200 && response.status < 300) {
+              callback(null, response.responseText);
+            } else if (response.status === 404 && !isFallback) {
+              doRequest(fallbackEndpoint, true);
+            } else {
+              callback(`HTTP ${response.status}: ${response.responseText}`);
+            }
+          },
+          onerror: function(e) {
+            if (!isFallback) {
+              doRequest(fallbackEndpoint, true);
+            } else {
+              callback('网络异常或跨域受限，请确认 API_BASE 是否可通');
+            }
           }
-        },
-        onerror: function(e) {
-          callback('网络异常或跨域受限，请确认 API_BASE 是否可通');
-        }
-      });
-    } else {
-      fetch(endpoint, {
-        method: 'POST',
-        headers: headers,
-        body: payload
-      })
-      .then(res => res.json())
-      .then(data => callback(null, data))
-      .catch(e => callback(e.message));
-    }
+        });
+      } else {
+        fetch(targetUrl, {
+          method: 'POST',
+          headers: headers,
+          body: payload
+        })
+        .then(res => {
+          if (res.status === 404 && !isFallback) {
+            return doRequest(fallbackEndpoint, true);
+          }
+          return res.json().then(data => callback(null, data));
+        })
+        .catch(e => {
+          if (!isFallback) {
+            doRequest(fallbackEndpoint, true);
+          } else {
+            callback(e.message);
+          }
+        });
+      }
+    };
+
+    doRequest(endpoint, false);
   }
 
   function openSettingsModal() {
