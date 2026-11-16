@@ -185,9 +185,17 @@
         </button>
       </div>
 
-      <!-- 4. ✈️ Telegram 运营中枢 -->
+      <!-- 4. 🌐 自动化采集中枢 -->
       <div class="nav-section">
-        <div class="nav-section-title">{{ i18n.t('nav.groupTelegram') }}</div>
+        <div class="nav-section-title">自动化采集中枢</div>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'collector'" 
+          (click)="switchTab('collector')">
+          <span class="icon">🧩</span>
+          <span class="nav-label">浏览器采集助手</span>
+          <span class="nav-pill-badge hot">v1.4.0</span>
+        </button>
         <button 
           type="button"
           [class.active]="currentTab() === 'crawler'" 
@@ -280,6 +288,7 @@
             @if (currentTab() === 'add') { ✍️ 录入并发布新试卷/视频 }
             @if (currentTab() === 'edit') { ✏️ 编辑修改资料 }
             @if (currentTab() === 'stats') { 📊 推广收益与转化分析 }
+            @if (currentTab() === 'collector') { 🧩 浏览器采集助手 (v1.4.0 全网自动化采集中枢) }
             @if (currentTab() === 'crawler') { ✈️ {{ i18n.t('crawler.title') }} }
             @if (currentTab() === 'email') { 📧 {{ i18n.t('email.title') }} }
             @if (currentTab() === 'seo') { 🔍 {{ i18n.t('seo.title') }} }
@@ -295,6 +304,7 @@
           </h1>
           <p class="subtitle">
             @if (currentTab() === 'edit') { 全屏宽幅视野沉浸式修改资料所有配置与封面海报，保存后自动返回资料管理库 }
+            @else if (currentTab() === 'collector') { 深度打通夸克、百度、UC、迅雷、阿里等全网网盘分享页，右侧抽屉式极速识别，毫秒级直接落库或推送到草稿池 }
             @else if (currentTab() === 'members') { 自由配置游客、普通会员及各等级 VIP 的每日获取额度与标价，批量生成卡密并一键复制用于淘宝/闲鱼全自动发卡 }
             @else if (currentTab() === 'channels') { 动态管理教辅资料顶级频道与业务线，支持一键上下线与排序 }
             @else if (currentTab() === 'categories') { {{ i18n.t('category.subtitle') }} }
@@ -2734,6 +2744,280 @@
                   }
                 </div>
               }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- 3.9 🧩 浏览器采集助手 (v1.4.0 独立采集中枢) -->
+      @if (currentTab() === 'collector') {
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- 顶部业务横幅 -->
+          <div class="account-hero-banner" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1e40af 100%);">
+            <div class="hero-left">
+              <div class="hero-badge" style="background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); color: #e0e7ff;">
+                🧩 自动化采集中枢 · v1.4.0 升级版
+              </div>
+              <h2>浏览器智能采集助手 · 全网资源入库中枢</h2>
+              <p>专为学霸网教辅与教材运营打造的油猴用户脚本。打开任意网盘分享页、资源论坛或公众号文章，右侧无遮挡抽屉滑出，一键提取真实试卷标题、自动匹配提取码、智能分配资料/教材频道，秒级落库发布！</p>
+              
+              <!-- 快捷操作按钮组 -->
+              <div style="display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap;">
+                <button 
+                  type="button" 
+                  class="btn btn-primary" 
+                  (click)="installCollectorOnline()"
+                  style="background: #ffffff; color: #1e40af; font-weight: 700; border: none; box-shadow: 0 4px 14px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 20px; border-radius: 8px; font-size: 14px;">
+                  <span>🚀</span>
+                  <span>调起油猴一键安装</span>
+                </button>
+
+                <button 
+                  type="button" 
+                  class="btn btn-secondary" 
+                  (click)="copyCollectorCode()"
+                  style="background: rgba(255,255,255,0.16); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 18px; border-radius: 8px; font-size: 14px;">
+                  <span>📋</span>
+                  <span>复制脚本完整代码</span>
+                </button>
+
+                <button 
+                  type="button" 
+                  class="btn btn-secondary" 
+                  (click)="downloadCollectorScript()"
+                  style="background: rgba(255,255,255,0.16); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 18px; border-radius: 8px; font-size: 14px;">
+                  <span>📥</span>
+                  <span>下载 .user.js 文件</span>
+                </button>
+
+                <button 
+                  type="button" 
+                  class="btn btn-secondary" 
+                  (click)="openQuickPasteModal()"
+                  style="background: rgba(255,255,255,0.12); color: #ffffff; border: 1px solid rgba(255,255,255,0.25); font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 18px; border-radius: 8px; font-size: 14px;">
+                  <span>⚡</span>
+                  <span>打开极速粘贴抽屉</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 核心状态指标卡片 (3列网格) -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            <!-- 卡片 1: 脚本版本 -->
+            <div style="background: #ffffff; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 13px; color: #64748b; font-weight: 600;">脚本发布版本</span>
+                <span style="background: #dbeafe; color: #1e40af; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 9999px;">已发布最新</span>
+              </div>
+              <div style="font-size: 26px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span>v1.4.0</span>
+                <span style="font-size: 13px; font-weight: normal; color: #059669; background: #ecfdf5; padding: 2px 8px; border-radius: 4px;">左右分屏 · 多盘直连</span>
+              </div>
+              <div style="font-size: 12px; color: #64748b; line-height: 1.5;">
+                支持夸克、百度网盘、UC网盘、迅雷、阿里、123pan、天翼云全网多盘自动识别与频道直选。
+              </div>
+            </div>
+
+            <!-- 卡片 2: API 接口配置 -->
+            <div style="background: #ffffff; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 13px; color: #64748b; font-weight: 600;">API 后端对接地址</span>
+                <button type="button" (click)="copyCollectorApi()" style="background: #f1f5f9; color: #3b82f6; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;">
+                  复制地址
+                </button>
+              </div>
+              <div style="font-size: 14px; font-weight: 700; color: #0f172a; font-family: monospace; word-break: break-all; background: #f8fafc; padding: 6px 10px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                {{ collectorApiBaseUrl() }}
+              </div>
+              <div style="font-size: 12px; color: #059669; display: flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                <span>双端自动兼容（/crawler/ingest-text 与 /crawler/drafts/ingest-text）</span>
+              </div>
+            </div>
+
+            <!-- 卡片 3: 管理员身份凭证 -->
+            <div style="background: #ffffff; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 13px; color: #64748b; font-weight: 600;">管理员身份凭证 (JWT Token)</span>
+                <button type="button" (click)="copyCollectorToken()" style="background: #f1f5f9; color: #3b82f6; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;">
+                  复制令牌
+                </button>
+              </div>
+              <div style="font-size: 13px; font-weight: 700; color: #0f172a; font-family: monospace; word-break: break-all; background: #f8fafc; padding: 6px 10px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                {{ collectorAdminToken() ? (collectorAdminToken().slice(0, 16) + '...' + collectorAdminToken().slice(-8)) : '未检测到登录令牌' }}
+              </div>
+              <div style="font-size: 12px; color: #64748b;">
+                脚本已自动预置当前管理员 Token，直接安装即可免密向后台推送！
+              </div>
+            </div>
+          </div>
+
+          <!-- 全网网盘采集支持生态矩阵 -->
+          <div style="background: #ffffff; border-radius: 12px; padding: 24px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+              <div>
+                <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">🌐 全网多网盘采集支持矩阵</h3>
+                <p style="font-size: 13px; color: #64748b;">v1.4.0 升级版新增 UC 网盘与百度网盘多种自定义提取码格式支持，覆盖全网 99% 的教辅与课本分享场景</p>
+              </div>
+              <span style="background: #f0fdf4; color: #16a34a; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">
+                7 大主流网盘原生支持
+              </span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+              <!-- 夸克网盘 -->
+              <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                    <span>⚡</span>
+                    <span>夸克网盘 (主推)</span>
+                  </span>
+                  <span style="background: #ffedd5; color: #c2410c; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">主推转化</span>
+                </div>
+                <div style="font-size: 12px; color: #475569; line-height: 1.5;">
+                  <code>pan.quark.cn</code>，支持单文件、多文件目录树解析与免密/带密链接提取，前台无缝对接真实层级展示。
+                </div>
+              </div>
+
+              <!-- 百度网盘 -->
+              <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                    <span>🔵</span>
+                    <span>百度网盘 (深度增强)</span>
+                  </span>
+                  <span style="background: #dbeafe; color: #1e40af; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">全新升级</span>
+                </div>
+                <div style="font-size: 12px; color: #475569; line-height: 1.5;">
+                  <code>pan.baidu.com</code> 及 <code>share/init?surl=</code> 格式，支持 <code>pwd=xxxx</code> 参数自动分离与提取码自愈填充。
+                </div>
+              </div>
+
+              <!-- UC 网盘 -->
+              <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                    <span>🟠</span>
+                    <span>UC 网盘</span>
+                  </span>
+                  <span style="background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">新增支持</span>
+                </div>
+                <div style="font-size: 12px; color: #475569; line-height: 1.5;">
+                  <code>drive.uc.cn</code> 与 <code>fast.uc.cn</code>，阿里旗下不限速大网盘，支持海量教学课件与真题视频极速嗅探。
+                </div>
+              </div>
+
+              <!-- 迅雷网盘 -->
+              <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                    <span>⚡</span>
+                    <span>迅雷云盘</span>
+                  </span>
+                  <span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px;">完美兼容</span>
+                </div>
+                <div style="font-size: 12px; color: #475569; line-height: 1.5;">
+                  <code>pan.xunlei.com</code>，兼容大容量资料包与多文件下载，支持一键识别转存。
+                </div>
+              </div>
+
+              <!-- 阿里云盘 -->
+              <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                    <span>☁️</span>
+                    <span>阿里云盘</span>
+                  </span>
+                  <span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px;">完美兼容</span>
+                </div>
+                <div style="font-size: 12px; color: #475569; line-height: 1.5;">
+                  <code>alipan.com</code>，不限速教育视频与优质网课专用，支持提取码自动识别。
+                </div>
+              </div>
+
+              <!-- 123云盘 -->
+              <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                    <span>📦</span>
+                    <span>123 云盘</span>
+                  </span>
+                  <span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px;">完美兼容</span>
+                </div>
+                <div style="font-size: 12px; color: #475569; line-height: 1.5;">
+                  <code>123pan.com</code>，直连免登录下载极速分享，广泛用于考研与教师资格证合集。
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3步极速安装与升级指引 -->
+          <div style="background: #ffffff; border-radius: 12px; padding: 24px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 16px;">📖 3 步极速安装与更新指南</h3>
+            
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- 步骤 1 -->
+              <div style="display: flex; gap: 14px; align-items: flex-start; padding: 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0;">
+                  1
+                </div>
+                <div style="flex: 1;">
+                  <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
+                    浏览器安装 Tampermonkey (篡改猴) 扩展插件
+                  </div>
+                  <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 6px;">
+                    若未安装，请前往对应浏览器的扩展商店安装官方篡改猴扩展。Chrome 浏览器请在 <code>chrome://extensions/</code> 右上角打开【开发者模式】。
+                  </p>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" style="color: #2563eb; font-size: 12px; text-decoration: underline;">
+                      🔗 Chrome 应用商店下载
+                    </a>
+                    <span style="color: #cbd5e1;">|</span>
+                    <a href="https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd" target="_blank" style="color: #2563eb; font-size: 12px; text-decoration: underline;">
+                      🔗 Edge 扩展商店下载
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 步骤 2 -->
+              <div style="display: flex; gap: 14px; align-items: flex-start; padding: 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0;">
+                  2
+                </div>
+                <div style="flex: 1;">
+                  <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
+                    一键调起安装或手动新建脚本
+                  </div>
+                  <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 8px;">
+                    点击下方【🚀 调起油猴在线安装】按钮，篡改猴将自动弹出脚本安装/更新确认页，点击【安装】或【更新】即可秒级完成！
+                  </p>
+                  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" (click)="installCollectorOnline()" style="background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                      🚀 调起油猴在线安装
+                    </button>
+                    <button type="button" (click)="copyCollectorCode()" style="background: #ffffff; color: #374151; border: 1px solid #d1d5db; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                      📋 复制代码手动粘贴
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 步骤 3 -->
+              <div style="display: flex; gap: 14px; align-items: flex-start; padding: 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: #16a34a; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0;">
+                  3
+                </div>
+                <div style="flex: 1;">
+                  <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
+                    浏览任意资源页面，点击右下角【⚡ 采集到学霸网】
+                  </div>
+                  <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
+                    进入任意含有夸克、百度、UC、阿里等网盘的网页，网页右下角将出现蓝色闪电浮标。点击即可在右侧展开采集中枢，左侧原页面完全可交互，勾选后即可【一键存入草稿】或【秒级直接落库】！
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -8195,7 +8479,8 @@
     [isOpen]="showQuickPasteModal()"
     (closed)="closeQuickPasteModal()"
     (draftCreated)="onQuickPasteDraftCreated()"
-    (directPublish)="onQuickPasteDirectPublish($event)">
+    (directPublish)="onQuickPasteDirectPublish($event)"
+    (openCollector)="switchToCollectorTab()">
   </app-quick-paste-modal>
 
   <!-- 📋 跨站资料包同步与批量导入弹窗 (Cross-site Transfer & Batch Import Modal) -->

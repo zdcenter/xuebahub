@@ -244,7 +244,7 @@ export class AdminComponent implements OnInit {
   dashboardStats = signal<DashboardStatsDto | null>(null);
   statsLoading = signal<boolean>(false);
 
-  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members'>('list');
+  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members'>('list');
   emailPreselectedResource = signal<any>(null);
 
   // --- 侧边栏折叠/展开系统（支持记忆） ---
@@ -969,6 +969,24 @@ export class AdminComponent implements OnInit {
     this.closeQuickPasteModal();
   }
 
+  // --- 🧩 浏览器采集助手 (v1.4.0) 专属大屏与配置系统 ---
+  collectorApiBaseUrl = computed(() => {
+    if (typeof window === 'undefined') return 'http://localhost:4001';
+    const host = window.location.hostname;
+    return (host === 'localhost' || host === '127.0.0.1') ? 'http://localhost:4001' : 'https://api.xuebaw.com:8443';
+  });
+
+  collectorAdminToken = computed(() => {
+    return this.resService.getToken() || (typeof window !== 'undefined' ? (localStorage.getItem('token') || '') : '');
+  });
+
+  installCollectorOnline() {
+    if (typeof window !== 'undefined') {
+      window.open('/xuebaw-collector.user.js', '_blank');
+      this.showToast('🚀 已在新标签页调起油猴脚本安装！若已装 Tampermonkey 将自动弹出安装更新面板。', 'success');
+    }
+  }
+
   downloadCollectorScript() {
     const link = document.createElement('a');
     link.href = '/xuebaw-collector.user.js';
@@ -977,7 +995,49 @@ export class AdminComponent implements OnInit {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    this.showToast('📥 正在下载/唤起油猴安装学霸网采集助手 (xuebaw-collector.user.js)');
+    this.showToast('📥 正在下载学霸网采集助手脚本 (xuebaw-collector.user.js)', 'success');
+  }
+
+  copyCollectorCode() {
+    fetch('/xuebaw-collector.user.js')
+      .then(r => r.text())
+      .then(code => {
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          navigator.clipboard.writeText(code).then(() => {
+            this.showToast('✅ v1.4.0 脚本源码已完整复制到剪贴板！', 'success');
+          });
+        }
+      })
+      .catch(() => {
+        this.showToast('⚠️ 获取脚本失败，请直接点击下载脚本', 'error');
+      });
+  }
+
+  copyCollectorToken() {
+    const token = this.collectorAdminToken();
+    if (!token) {
+      this.showToast('未检测到管理员凭据，请确保已登录', 'error');
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(token).then(() => {
+        this.showToast('✅ 管理员认证令牌 (JWT Auth Token) 已复制！', 'success');
+      });
+    }
+  }
+
+  copyCollectorApi() {
+    const api = this.collectorApiBaseUrl();
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(api).then(() => {
+        this.showToast('✅ API 接口地址已复制到剪贴板！', 'success');
+      });
+    }
+  }
+
+  switchToCollectorTab() {
+    this.closeQuickPasteModal();
+    this.switchTab('collector');
   }
 
   onFastPasteKeyDown(event: KeyboardEvent) {
@@ -3438,12 +3498,14 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members') {
+  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members') {
     this.currentTab.set(tab);
     if (tab === 'list') {
       this.loadResources();
     } else if (tab === 'stats') {
       this.loadDashboardStats();
+    } else if (tab === 'collector') {
+      // 切换至浏览器采集助手独立大屏
     } else if (tab === 'accounts') {
       this.loadAccounts();
     } else if (tab === 'channels') {

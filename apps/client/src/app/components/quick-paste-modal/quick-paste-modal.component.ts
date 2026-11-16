@@ -40,6 +40,7 @@ export class QuickPasteModalComponent {
   closed = output<void>();
   draftCreated = output<void>();
   directPublish = output<ParsedItem>();
+  openCollector = output<void>();
 
   activeTab = signal<'paste' | 'extension'>('paste');
 
@@ -410,6 +411,18 @@ export class QuickPasteModalComponent {
     link.click();
     document.body.removeChild(link);
     this.feedback.set('📥 正在下载油猴安装脚本 (xuebaw-collector.user.js)...');
+  }
+
+  installOnline() {
+    if (typeof window !== 'undefined') {
+      window.open('/xuebaw-collector.user.js', '_blank');
+      this.feedback.set('🚀 已在新标签页调起脚本安装！若已装 Tampermonkey 将自动弹出安装更新面板。');
+    }
+  }
+
+  goToCollector() {
+    this.close();
+    this.openCollector.emit();
   }
 
   clear() {

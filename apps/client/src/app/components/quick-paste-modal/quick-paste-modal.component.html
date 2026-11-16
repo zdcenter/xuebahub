@@ -36,7 +36,7 @@
             [class.active]="activeTab() === 'extension'" 
             (click)="activeTab.set('extension')">
             <span>🌐 浏览器采集助手 (油猴)</span>
-            <span class="tab-pill-badge gold">v1.3 左右分屏对照版</span>
+            <span class="tab-pill-badge gold">v1.4.0 升级版</span>
           </button>
         </div>
       </div>
@@ -207,18 +207,35 @@
         } @else {
           <!-- Tab 2: 浏览器采集助手 (油猴脚本) -->
           <div class="section-card extension-card">
+            <!-- 独立中枢快捷提示条 -->
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+              <div style="font-size: 13px; color: #1e40af; line-height: 1.5;">
+                <strong>💡 采集助手现已作为主功能独立常驻左侧菜单！</strong>
+                <div style="color: #3b82f6; font-size: 12px;">拥有专属的采集全景面板、一键在线安装、多盘兼容矩阵与配置中枢。</div>
+              </div>
+              <button 
+                type="button" 
+                (click)="goToCollector()"
+                style="background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
+                👉 打开专属管理页
+              </button>
+            </div>
+
             <div class="ext-hero-box">
               <span class="ext-hero-icon">🚀</span>
               <div>
-                <h3 class="ext-hero-title">学霸网专属浏览器采集助手 (v1.3 原文对照版)</h3>
-                <p class="ext-hero-desc">右侧贴边滑出抽屉工作台，<strong>左侧原网页 100% 自由交互与滚动对照</strong>！智能剔除“点此访问”等无效锚文本提取真实试卷标题，紧凑卡片排版、完整直链展示、平滑零闪烁批量推送到草稿池！</p>
+                <h3 class="ext-hero-title">学霸网专属浏览器采集助手 (v1.4.0 升级版)</h3>
+                <p class="ext-hero-desc">全网多网盘自动识别（夸克、百度网盘包括自定义短链提取码、UC网盘、迅雷、阿里云盘、123云盘等），支持智能识别教育资料/电子教材频道，右侧抽屉式极速入库，平滑无缝同步至学霸网后台！</p>
               </div>
             </div>
 
             <!-- 快捷按钮栏 -->
             <div class="ext-btn-row">
+              <button type="button" class="btn-ext-action" style="background: #2563eb; color: #fff; border: none;" (click)="installOnline()">
+                🚀 调起油猴一键安装
+              </button>
               <button type="button" class="btn-ext-action copy" (click)="copyUserScript()">
-                📋 复制 v1.3 油猴脚本代码
+                📋 复制 v1.4.0 脚本代码
               </button>
               <button type="button" class="btn-ext-action download" (click)="downloadUserScript()">
                 💾 下载脚本文件 (.user.js)
@@ -251,15 +268,15 @@
               <div class="step-row">
                 <span class="step-num">2</span>
                 <div>
-                  <strong>覆盖保存新脚本 (v1.1)</strong>
-                  <p>点击上方【复制 v1.1 油猴脚本代码】覆盖粘贴并保存。</p>
+                  <strong>安装或覆盖新脚本 (v1.4.0)</strong>
+                  <p>点击上方【🚀 调起油猴一键安装】或【复制 v1.4.0 脚本代码】覆盖粘贴并保存。</p>
                 </div>
               </div>
               <div class="step-row">
                 <span class="step-num">3</span>
                 <div>
-                  <strong>单页多资源批量采集实测</strong>
-                  <p>打开任何含有多个网盘链接的网页，点击右下角【⚡ 采集到学霸网】，即可看到全部资源列表，一键批量勾选入库！</p>
+                  <strong>全网多盘批量采集实测</strong>
+                  <p>打开任何含有夸克、百度、UC、迅雷等网盘链接的网页，点击右下角【⚡ 采集到学霸网】，即可智能识别、一键推送到草稿箱或直接发布！</p>
                 </div>
               </div>
             </div>
