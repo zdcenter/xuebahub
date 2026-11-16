@@ -244,7 +244,7 @@ export class AdminComponent implements OnInit {
   dashboardStats = signal<DashboardStatsDto | null>(null);
   statsLoading = signal<boolean>(false);
 
-  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members'>('list');
+  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members'>('list');
   emailPreselectedResource = signal<any>(null);
 
   // --- 侧边栏折叠/展开系统（支持记忆） ---
@@ -3498,7 +3498,7 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members') {
+  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members') {
     this.currentTab.set(tab);
     if (tab === 'list') {
       this.loadResources();
@@ -3506,6 +3506,9 @@ export class AdminComponent implements OnInit {
       this.loadDashboardStats();
     } else if (tab === 'collector') {
       // 切换至浏览器采集助手独立大屏
+    } else if (tab === 'drafts') {
+      this.loadCrawlerDrafts();
+      this.loadCrawlerConfigAndStats();
     } else if (tab === 'accounts') {
       this.loadAccounts();
     } else if (tab === 'channels') {
@@ -3528,10 +3531,12 @@ export class AdminComponent implements OnInit {
       this.loadMemberUsers(1);
       this.loadSettings();
     } else if (tab === 'crawler') {
-      this.loadCrawlerDrafts();
       this.loadCrawlerConfigAndStats();
       this.loadCrawlerChannels();
       this.loadBroadcastChannels();
+      if (this.crawlerSubTab() === 'drafts') {
+        this.crawlerSubTab.set('ingestion');
+      }
     }
   }
 
