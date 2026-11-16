@@ -622,6 +622,21 @@ func (h *ResourceHandler) AdminCreateResource(c fiber.Ctx) error {
 		res.PosterImage = h.processPosterImage(res.Slug, res.PosterImage)
 	}
 
+	// 自动关联/补齐网盘账号归属信息 (若未显式指定，默认自动归属为默认网盘账号)
+	var defaultAcc model.NetdiskAccount
+	database.DB.Where("is_default = true AND status = 'valid'").First(&defaultAcc)
+	for i := range res.Links {
+		if res.Links[i].AccountID != nil && *res.Links[i].AccountID != uuid.Nil {
+			var acc model.NetdiskAccount
+			if err := database.DB.Select("account_name").First(&acc, "id = ?", *res.Links[i].AccountID).Error; err == nil {
+				res.Links[i].AccountName = acc.AccountName
+			}
+		} else if defaultAcc.ID != uuid.Nil && res.Links[i].DriveType == defaultAcc.DriveType {
+			res.Links[i].AccountID = &defaultAcc.ID
+			res.Links[i].AccountName = defaultAcc.AccountName
+		}
+	}
+
 	if err := database.DB.Create(&res).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "创建失败: " + err.Error()})
 	}
@@ -681,6 +696,7 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 	school := strings.TrimSpace(c.Query("school"))
 	keyword := strings.TrimSpace(c.Query("q"))
 	statusFilter := c.Query("filter") // all | invalid | reported
+	accountID := strings.TrimSpace(c.Query("account_id"))
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	pageSize, _ := strconv.Atoi(c.Query("limit", "20"))
@@ -734,6 +750,9 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND resource_links.status = 'invalid')")
 	} else if statusFilter == "reported" {
 		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND resource_links.status = 'reported')")
+	}
+	if accountID != "" && accountID != "all" {
+		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND resource_links.account_id::text = ?)", accountID)
 	}
 
 	var total int64
@@ -865,6 +884,10 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 			oldClickCounts[oldL.DriveType] = oldL.ClickCount
 		}
 
+		// 如果包含链接更新，保留原有网盘累计转存数并智能关联网盘账号
+		var defaultAcc model.NetdiskAccount
+		database.DB.Where("is_default = true AND status = 'valid'").First(&defaultAcc)
+
 		database.DB.Where("resource_id = ?", existing.ID).Delete(&model.ResourceLink{})
 		for i := range req.Links {
 			req.Links[i].ResourceID = existing.ID
@@ -873,6 +896,15 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 				if prev, ok := oldClickCounts[req.Links[i].DriveType]; ok {
 					req.Links[i].ClickCount = prev
 				}
+			}
+			if req.Links[i].AccountID != nil && *req.Links[i].AccountID != uuid.Nil {
+				var acc model.NetdiskAccount
+				if err := database.DB.Select("account_name").First(&acc, "id = ?", *req.Links[i].AccountID).Error; err == nil {
+					req.Links[i].AccountName = acc.AccountName
+				}
+			} else if defaultAcc.ID != uuid.Nil && req.Links[i].DriveType == defaultAcc.DriveType {
+				req.Links[i].AccountID = &defaultAcc.ID
+				req.Links[i].AccountName = defaultAcc.AccountName
 			}
 			if req.Links[i].FileSize == "" {
 				req.Links[i].FileSize = "15.0 MB"

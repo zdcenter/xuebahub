@@ -539,6 +539,19 @@
                 </select>
               </div>
 
+              <!-- 归属网盘账号筛选 -->
+              <div class="filter-school-box">
+                <span class="school-label">👤 归属网盘:</span>
+                <select [value]="currentAccountFilter()" (change)="filterByAccount($any($event.target).value)" class="school-select">
+                  <option value="all">全部网盘账号</option>
+                  @for (acc of accounts(); track acc.id) {
+                    <option [value]="acc.id">
+                      {{ acc.drive_type === 'quark' ? '⚡ 夸克' : '📦 百度' }}: {{ acc.account_name }} {{ acc.is_default ? '⭐(默认)' : '' }}
+                    </option>
+                  }
+                </select>
+              </div>
+
               <!-- 关键词即时搜索框 -->
               <div class="filter-search-box">
                 <div class="search-input-wrapper">
@@ -558,7 +571,7 @@
               </div>
 
               <!-- 一键重置全部过滤条件 -->
-              @if (currentStageFilter() !== 'all' || currentGradeFilter() !== 'all' || currentTermFilter() !== 'all' || currentSubjectFilter() !== 'all' || currentEditionFilter() !== 'all' || currentSchoolFilter() || adminKeyword()) {
+              @if (currentStageFilter() !== 'all' || currentGradeFilter() !== 'all' || currentTermFilter() !== 'all' || currentSubjectFilter() !== 'all' || currentEditionFilter() !== 'all' || currentSchoolFilter() || currentAccountFilter() !== 'all' || adminKeyword()) {
                 <button type="button" (click)="clearAllFilters()" class="filter-reset-btn" title="清除所有激活的分类与搜索过滤">
                   <span>✕</span>
                   <span>清除全部筛选</span>
@@ -757,6 +770,12 @@
                               <span class="drive-size">{{ l.file_size || '15 MB' }}</span>
                               <span class="drive-divider">·</span>
                               <span class="drive-count"><strong>{{ l.click_count || 0 }}</strong> 转存</span>
+                              @if (l.account_name) {
+                                <span class="drive-divider">·</span>
+                                <span class="drive-account-tag" [title]="'存储于网盘账号: ' + l.account_name" style="font-size: 10px; font-weight: 600; color: #0369a1; background: #e0f2fe; padding: 1px 5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;">
+                                  👤 {{ l.account_name }}
+                                </span>
+                              }
                               
                               <!-- 醒目的状态微徽标 -->
                               @if (l.status === 'invalid') {
@@ -1288,6 +1307,20 @@
               <div class="netdisk-grid">
                 <div class="netdisk-item primary">
                   <div class="netdisk-title">⚡ 夸克网盘链接（主推高佣金通道）<span class="required">*</span></div>
+                  <!-- 存储归属网盘账号选择器 -->
+                  <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #ffffff; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 0; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                      <span>👤 存储归属账号:</span>
+                    </label>
+                    <select [(ngModel)]="newResource.quarkAccountId" (change)="onQuarkAccountChange('new')" name="new_quarkAccountId" class="form-control" style="font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; flex: 1; max-width: 320px;">
+                      <option value="">-- 系统默认账号 (自动继承) --</option>
+                      @for (acc of accounts(); track acc.id) {
+                        <option [value]="acc.id">
+                          {{ acc.drive_type === 'quark' ? '⚡ 夸克' : '📦 百度' }}: {{ acc.account_name }} {{ acc.is_default ? '⭐(默认主号)' : '' }}
+                        </option>
+                      }
+                    </select>
+                  </div>
                   <div class="netdisk-url-box">
                     <input 
                       type="url" 
@@ -1975,6 +2008,20 @@
             <div class="netdisk-grid">
               <div class="netdisk-item primary">
                 <div class="netdisk-title">⚡ 夸克网盘链接（主推高佣金通道）<span class="required">*</span></div>
+                <!-- 存储归属网盘账号选择器 -->
+                <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #ffffff; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                  <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 0; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                    <span>👤 存储归属账号:</span>
+                  </label>
+                  <select [(ngModel)]="editForm.quarkAccountId" (change)="onQuarkAccountChange('edit')" name="edit_quarkAccountId" class="form-control" style="font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; flex: 1; max-width: 320px;">
+                    <option value="">-- 系统默认账号 (自动继承) --</option>
+                    @for (acc of accounts(); track acc.id) {
+                      <option [value]="acc.id">
+                        {{ acc.drive_type === 'quark' ? '⚡ 夸克' : '📦 百度' }}: {{ acc.account_name }} {{ acc.is_default ? '⭐(默认主号)' : '' }}
+                      </option>
+                    }
+                  </select>
+                </div>
                 <div class="netdisk-url-box">
                   <input 
                     type="url" 

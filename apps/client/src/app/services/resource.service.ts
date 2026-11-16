@@ -4,6 +4,8 @@ import { Observable, map, of, catchError } from 'rxjs';
 
 export interface ResourceLinkDto {
   id?: string;
+  account_id?: string;
+  account_name?: string;
   drive_type: string;
   share_url: string;
   extract_code?: string;
@@ -261,6 +263,7 @@ export class ResourceService {
       subject?: string;
       edition?: string;
       school?: string;
+      account_id?: string;
       q?: string;
       filter?: string;
       page?: number;
@@ -279,9 +282,12 @@ export class ResourceService {
         queryParams.push(`stage=${encodeURIComponent(stageParam)}`);
       }
     } else if (paramsOrChannel && typeof paramsOrChannel === 'object') {
-      const { channel, stage, grade, term, subject, edition, school, q, filter, page, limit } = paramsOrChannel;
+      const { channel, stage, grade, term, subject, edition, school, account_id, q, filter, page, limit } = paramsOrChannel;
       if (channel && channel !== 'all') {
         queryParams.push(`channel=${encodeURIComponent(channel)}`);
+      }
+      if (account_id && account_id !== 'all') {
+        queryParams.push(`account_id=${encodeURIComponent(account_id)}`);
       }
       if (stage && stage !== 'all') {
         queryParams.push(`stage=${encodeURIComponent(stage)}`);

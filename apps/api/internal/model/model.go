@@ -85,6 +85,8 @@ type Resource struct {
 type ResourceLink struct {
 	ID            uuid.UUID  `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
 	ResourceID    uuid.UUID  `gorm:"type:uuid;index;not null" json:"resource_id"`
+	AccountID     *uuid.UUID `gorm:"type:uuid;index" json:"account_id"`
+	AccountName   string     `gorm:"type:varchar(100);default:''" json:"account_name"`
 	DriveType     string     `gorm:"type:varchar(30);not null" json:"drive_type"` // quark, baidu, xunlei, aliyun
 	ShareURL      string     `gorm:"type:varchar(500);not null" json:"share_url"`
 	ExtractCode   string     `gorm:"type:varchar(50)" json:"extract_code"`
@@ -100,6 +102,8 @@ type ResourceLink struct {
 	LastCheckedAt *time.Time `json:"last_checked_at"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
+
+	Account *NetdiskAccount `gorm:"foreignKey:AccountID" json:"account,omitempty"`
 }
 
 // SearchLog 搜索记录

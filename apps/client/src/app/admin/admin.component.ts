@@ -370,6 +370,7 @@ export class AdminComponent implements OnInit {
   currentSubjectFilter = signal<string>('all');
   currentEditionFilter = signal<string>('all');
   currentSchoolFilter = signal<string>('');
+  currentAccountFilter = signal<string>('all');
   adminKeyword = signal<string>('');
 
   // 📚 动态年级选项：跟随选中的学段严格物理隔离（数据库驱动）
@@ -484,6 +485,13 @@ export class AdminComponent implements OnInit {
     this.loadResources();
   }
 
+  filterByAccount(accountId: string) {
+    this.currentAccountFilter.set(accountId);
+    this.currentPage.set(1);
+    this.jumpPageInput.set('1');
+    this.loadResources();
+  }
+
   channelCount(channelSlug: string): number {
     if (channelSlug === 'all') return this.channelCounts()['all'] ?? 0;
     return this.channelCounts()[channelSlug] ?? 0;
@@ -497,6 +505,7 @@ export class AdminComponent implements OnInit {
     this.currentSubjectFilter.set('all');
     this.currentEditionFilter.set('all');
     this.currentSchoolFilter.set('');
+    this.currentAccountFilter.set('all');
     this.adminKeyword.set('');
     this.listFilter.set('all');
     this.currentPage.set(1);
@@ -1631,6 +1640,8 @@ export class AdminComponent implements OnInit {
     save_count: 0,
     has_video: false,
     quarkUrl: '',
+    quarkAccountId: '',
+    quarkAccountName: '',
     quarkFileSize: '',
     quarkFileType: 'PDF',
     quarkDesc: '',
@@ -1668,6 +1679,8 @@ export class AdminComponent implements OnInit {
     has_video: false,
     is_published: true,
     quarkUrl: '',
+    quarkAccountId: '',
+    quarkAccountName: '',
     quarkFileSize: '',
     quarkFileType: 'PDF',
     quarkDesc: '',
@@ -2402,6 +2415,17 @@ export class AdminComponent implements OnInit {
     return result;
   }
 
+  // 切换网盘归属账号联动
+  onQuarkAccountChange(target: 'new' | 'edit') {
+    const form = target === 'new' ? this.newResource : this.editForm;
+    const acc = this.accounts().find(a => a.id === form.quarkAccountId);
+    if (acc) {
+      form.quarkAccountName = acc.account_name;
+    } else {
+      form.quarkAccountName = '';
+    }
+  }
+
   // 🔄 自动洗链：一键将对方夸克链接转存到我的网盘并生成专属推广链接
   transferringQuark = signal<boolean>(false);
 
@@ -2416,11 +2440,17 @@ export class AdminComponent implements OnInit {
     this.transferringQuark.set(true);
     this.showToast('🔄 正在连接夸克云端转存并生成专属新链接，请稍候...');
 
-    this.resService.autoTransferAndShare({ share_url: url }).subscribe({
-      next: (result) => {
+    this.resService.autoTransferAndShare({ 
+      share_url: url,
+      account_id: form.quarkAccountId || undefined
+    }).subscribe({
+      next: (result: any) => {
         this.transferringQuark.set(false);
-        if (result && result.new_share_url) {
-          form.quarkUrl = result.new_share_url;
+        const newUrl = result.new_share_url || result.my_share_url;
+        if (newUrl) {
+          form.quarkUrl = newUrl;
+          if (result.account_id) form.quarkAccountId = result.account_id;
+          if (result.account_name) form.quarkAccountName = result.account_name;
           if (result.file_size) {
             form.quarkFileSize = result.file_size;
             form.file_size = result.file_size;
@@ -2438,7 +2468,7 @@ export class AdminComponent implements OnInit {
           if (!form.title && result.share_title) {
             form.title = result.share_title.replace(/\.[^/.]+$/, "");
           }
-          this.showToast(`🎉 成功洗链！已转存到您的夸克网盘并生成专属链接：${result.new_share_url}`);
+          this.showToast(`🎉 成功洗链！已转存到【${result.account_name || '我的夸克网盘'}】并生成专属链接：${newUrl}`);
         }
       },
       error: (err) => {
@@ -2503,6 +2533,11 @@ export class AdminComponent implements OnInit {
         this.accounts.set(accs);
         this.accountLoading.set(false);
         if (accs.length > 0) {
+          const defAcc = accs.find(a => a.is_default && a.status === 'valid') || accs[0];
+          if (!this.newResource.quarkAccountId && defAcc) {
+            this.newResource.quarkAccountId = defAcc.id || '';
+            this.newResource.quarkAccountName = defAcc.account_name;
+          }
           const currentId = this.accountForm.id;
           const target = (preserveSelection && currentId) ? accs.find(a => a.id === currentId) : null;
           if (target) {
@@ -3194,6 +3229,10 @@ export class AdminComponent implements OnInit {
     const quarkLink = item.links?.find(l => l.drive_type === 'quark');
     const baiduLink = item.links?.find(l => l.drive_type === 'baidu');
 
+    const defaultQuarkAcc = this.accounts().find(a => a.is_default && a.status === 'valid') || this.accounts()[0];
+    const initialAccountId = quarkLink?.account_id || defaultQuarkAcc?.id || '';
+    const initialAccountName = quarkLink?.account_name || defaultQuarkAcc?.account_name || '';
+
     this.editForm = {
       id: item.id,
       channel_slug: item.channel_slug || 'edu',
@@ -3213,6 +3252,8 @@ export class AdminComponent implements OnInit {
       has_video: Boolean(item.file_type?.includes('视频') || item.file_type?.includes('MP4') || quarkLink?.file_type?.includes('视频')),
       is_published: item.is_published ?? true,
       quarkUrl: quarkLink?.share_url || '',
+      quarkAccountId: initialAccountId,
+      quarkAccountName: initialAccountName,
       quarkFileSize: quarkLink?.file_size || item.file_size || '',
       quarkFileType: quarkLink?.file_type || (quarkLink?.share_url ? '高清视频课' : 'PDF'),
       quarkDesc: quarkLink?.resource_desc || '',
@@ -3291,6 +3332,8 @@ export class AdminComponent implements OnInit {
         {
           drive_type: 'quark',
           share_url: this.editForm.quarkUrl,
+          account_id: this.editForm.quarkAccountId || undefined,
+          account_name: this.editForm.quarkAccountName || undefined,
           file_size: this.editForm.quarkFileSize || this.editForm.file_size || '',
           file_type: this.editForm.quarkFileType || (this.editForm.has_video ? '高清视频课' : 'PDF'),
           resource_desc: this.editForm.quarkDesc || (this.editForm.has_video ? '包含超清视频合集' : '手机转存立享原画'),
@@ -3333,6 +3376,7 @@ export class AdminComponent implements OnInit {
       subject: this.currentSubjectFilter(),
       edition: this.currentEditionFilter(),
       school: this.currentSchoolFilter(),
+      account_id: this.currentAccountFilter(),
       q: this.adminKeyword().trim(),
       filter: this.listFilter(),
       page: this.currentPage(),
@@ -3736,6 +3780,8 @@ export class AdminComponent implements OnInit {
         {
           drive_type: 'quark',
           share_url: this.newResource.quarkUrl,
+          account_id: this.newResource.quarkAccountId || undefined,
+          account_name: this.newResource.quarkAccountName || undefined,
           file_size: this.newResource.quarkFileSize || this.newResource.file_size || '',
           file_type: this.newResource.quarkFileType || (this.newResource.has_video ? '高清视频课' : 'PDF'),
           resource_desc: this.newResource.quarkDesc || (this.newResource.has_video ? '包含超清视频合集' : '手机转存立享原画'),
