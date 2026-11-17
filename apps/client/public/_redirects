@@ -1,1 +1,3 @@
-/*    /index.html   200
+https://xuebaw.com/*    https://www.xuebaw.com/:splat   301!
+http://xuebaw.com/*     https://www.xuebaw.com/:splat   301!
+/*                      /index.html                     200

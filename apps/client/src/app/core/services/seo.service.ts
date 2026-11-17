@@ -36,6 +36,18 @@ export class SeoService {
     this.meta.updateTag({ property: 'og:description', content: finalDesc });
     this.meta.updateTag({ property: 'og:image', content: config.ogImage || '/og-cover.png' });
     this.meta.updateTag({ property: 'og:type', content: 'website' });
+
+    // Canonical link
+    if (typeof document !== 'undefined') {
+      let link: HTMLLinkElement | null = document.querySelector('link[rel="canonical"]');
+      if (!link) {
+        link = document.createElement('link');
+        link.setAttribute('rel', 'canonical');
+        document.head.appendChild(link);
+      }
+      const canonical = config.canonicalUrl || (typeof window !== 'undefined' ? `https://www.xuebaw.com${window.location.pathname}` : 'https://www.xuebaw.com/');
+      link.setAttribute('href', canonical);
+    }
   }
 
   reset() {
