@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PortalService, HotSearchItem } from '../../../core/services/portal.service';
 import { SeoService } from '../../../core/services/seo.service';
@@ -9,7 +10,7 @@ import { ResourceCardComponent } from '../../components/resource-card/resource-c
 @Component({
   selector: 'app-channel',
   standalone: true,
-  imports: [CommonModule, RouterLink, ResourceCardComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ResourceCardComponent],
   templateUrl: './channel.component.html'
 })
 export class ChannelComponent implements OnInit {
@@ -23,6 +24,15 @@ export class ChannelComponent implements OnInit {
 
   page = signal<number>(1);
   pageSize = signal<number>(20);
+
+  // 现代视图模式 (grid / list)
+  viewMode = signal<'grid' | 'list'>('grid');
+  // PC端高级筛选展开折叠
+  desktopFilterExpanded = signal<boolean>(false);
+  // 移动端全量筛选抽屉开关
+  mobileDrawerOpen = signal<boolean>(false);
+  // 顶部现代搜索输入框
+  searchInput = signal<string>('');
 
   resources = signal<ResourceItemDto[]>([]);
   totalCount = signal<number>(0);
@@ -248,7 +258,25 @@ export class ChannelComponent implements OnInit {
       !!this.termParam();
   });
 
+  // 统计已激活的筛选维度数量 (用于手机端筛选徽标展示)
+  activeFilterCount = computed(() => {
+    let count = 0;
+    if (this.stageParam() !== 'all' && this.channelSlug() === 'all') count++;
+    if (this.gradeParam()) count++;
+    if (this.subjectParam()) count++;
+    if (this.editionParam()) count++;
+    if (this.termParam()) count++;
+    return count;
+  });
+
   ngOnInit() {
+    if (typeof window !== 'undefined') {
+      const savedMode = localStorage.getItem('portal_view_mode');
+      if (savedMode === 'list' || savedMode === 'grid') {
+        this.viewMode.set(savedMode);
+      }
+    }
+
     this.portalService.getHotSearches().subscribe(h => this.hotSearches.set(h));
     this.portalService.getCategoriesGrouped().subscribe(grp => this.categoriesGroup.set(grp));
 
@@ -269,10 +297,48 @@ export class ChannelComponent implements OnInit {
       this.subjectParam.set(params['subject'] || '');
       this.editionParam.set(params['edition'] || '');
       this.queryParam.set(params['q'] || '');
+      this.searchInput.set(params['q'] || '');
       this.page.set(parseInt(params['page'] || '1', 10) || 1);
 
       this.loadResources();
     });
+  }
+
+  // 切换网格 / 列表视图
+  setViewMode(mode: 'grid' | 'list') {
+    this.viewMode.set(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('portal_view_mode', mode);
+    }
+  }
+
+  // 展开/收起桌面端高级筛选
+  toggleDesktopFilter() {
+    this.desktopFilterExpanded.update(v => !v);
+  }
+
+  // 移动端全量抽屉开关
+  openMobileDrawer() {
+    this.mobileDrawerOpen.set(true);
+  }
+
+  closeMobileDrawer() {
+    this.mobileDrawerOpen.set(false);
+  }
+
+  // 顶部现代搜索提交
+  onSearchSubmit() {
+    const q = this.searchInput().trim();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { q: q || null, page: '1' },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  clearSearch() {
+    this.searchInput.set('');
+    this.onSearchSubmit();
   }
 
   updateSeo() {

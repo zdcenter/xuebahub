@@ -1,122 +1,236 @@
-<article class="bg-white rounded-3xl border border-slate-200/90 shadow-academic hover:shadow-academic-hover hover:border-emerald-400 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between group">
-  <!-- 左侧：精美封面/拟物书卷 + 核心信息流 -->
-  <div class="p-4 sm:p-5 flex items-start space-x-3.5 sm:space-x-4 flex-1 min-w-0">
-    
-    <!-- 封面或仿真微图标 (若有实物封面优先渲染 3:4 黄金微缩图，极大增强专业信赖度) -->
-    <div class="flex-shrink-0 relative">
-      <div *ngIf="resource.cover_image" class="w-14 sm:w-16 aspect-[3/4] rounded-xl overflow-hidden shadow-sm border border-slate-200/80 bg-slate-100 group-hover:scale-103 transition-transform">
-        <img [src]="resource.cover_image" [alt]="resource.title" class="w-full h-full object-cover object-top" />
-      </div>
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- 1. 网格卡片模式 (Grid Bento Card: 3:4 黄金拟物封面 + 呼吸感布局) -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<article *ngIf="viewMode === 'grid'"
+         class="group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-emerald-400 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden">
+  
+  <!-- 上半部：拟物 3:4 试卷/教辅封面 + 浮动胶囊 -->
+  <div class="relative p-2.5 sm:p-3 bg-gradient-to-b from-slate-50/80 via-slate-50/30 to-white">
+    <!-- 3:4 比例封面容器 -->
+    <a [routerLink]="['/resource', resource.slug || resource.id]"
+       class="block relative w-full aspect-[3/4] rounded-xl sm:rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs group-hover:shadow-md transition-all duration-300">
+      
+      <!-- 情况 A: 存在真实封面原图 -->
+      <img *ngIf="resource.cover_image"
+           [src]="resource.cover_image"
+           [alt]="resource.title"
+           class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+           loading="lazy" />
 
+      <!-- 情况 B: 拟物真题密卷/教辅书籍仿真封面 (按学科分配柔和高雅色系) -->
       <div *ngIf="!resource.cover_image"
-           class="flex-shrink-0 flex items-center justify-center w-13 h-13 sm:w-15 sm:h-15 rounded-2xl border text-center shadow-2xs group-hover:scale-105 transition-all"
-           [ngClass]="isVideo ? 'bg-gradient-to-br from-blue-50 to-indigo-100/70 border-blue-200' : (isPdf ? 'bg-gradient-to-br from-emerald-50 to-teal-100/70 border-emerald-200' : 'bg-gradient-to-br from-slate-50 to-blue-50/70 border-slate-200')">
-        <div *ngIf="isVideo" class="flex flex-col items-center">
-          <span class="text-xl leading-none">🎬</span>
-          <span class="text-[9px] font-mono font-bold mt-1 text-blue-700">微课视频</span>
+           class="w-full h-full relative p-3 sm:p-4 flex flex-col justify-between bg-gradient-to-br select-none overflow-hidden"
+           [ngClass]="subjectTheme.bgGradient">
+        
+        <!-- 拟真书脊立体装订线 -->
+        <div class="absolute top-0 bottom-0 left-0 w-2.5 bg-gradient-to-r from-black/10 via-white/20 to-transparent border-r border-black/5 z-10"></div>
+        <div class="absolute top-0 bottom-0 left-0 w-0.5" [ngClass]="subjectTheme.spineColor"></div>
+
+        <!-- 试卷卷头装饰/防伪流水线 -->
+        <div class="relative z-10 pl-2">
+          <div class="flex items-center justify-between text-[10px] font-mono font-bold tracking-widest text-slate-400/90 uppercase border-b border-dashed border-slate-300/80 pb-1">
+            <span>绝密 ★ 启用前</span>
+            <span>2026 最新版</span>
+          </div>
+          <div class="mt-2 text-xs font-bold text-slate-700 truncate">
+            {{ resource.edition || '教育部统编审定' }}
+          </div>
         </div>
-        <div *ngIf="!isVideo && isPdf" class="flex flex-col items-center">
-          <span class="text-xl leading-none">📄</span>
-          <span class="text-[9px] font-mono font-bold mt-1 text-emerald-800">高清真题</span>
+
+        <!-- 试卷中央：学科艺术大字水印与印章 -->
+        <div class="relative z-10 my-auto text-center pl-2">
+          <div class="text-3xl sm:text-4xl font-black tracking-tight" [ngClass]="subjectTheme.textColor">
+            {{ resource.subject || '综合' }}
+          </div>
+          <div class="mt-1 text-[11px] font-semibold text-slate-500 truncate">
+            {{ stageLabel }}{{ resource.grade ? ' · ' + resource.grade : '' }}
+          </div>
+          <!-- 试卷仿真横线排版 -->
+          <div class="mt-3 space-y-1 opacity-25">
+            <div class="h-1 bg-slate-400 rounded-full w-3/4 mx-auto"></div>
+            <div class="h-1 bg-slate-400 rounded-full w-1/2 mx-auto"></div>
+          </div>
         </div>
-        <div *ngIf="!isVideo && !isPdf" class="flex flex-col items-center">
-          <span class="text-xl leading-none">📚</span>
-          <span class="text-[9px] font-mono font-bold mt-1 text-slate-700">{{ resource.file_type || '教辅' }}</span>
+
+        <!-- 试卷底栏：格式与矢量印刷标识 -->
+        <div class="relative z-10 pl-2 pt-1 border-t border-slate-200/80 flex items-center justify-between text-[9px] text-slate-400 font-mono">
+          <span class="font-bold text-slate-600">{{ resource.file_type || (isVideo ? 'MP4微课' : 'PDF极清') }}</span>
+          <span>A4矢量排版</span>
         </div>
       </div>
-    </div>
 
-    <!-- 资料详情本体 -->
-    <div class="flex-1 min-w-0 space-y-1.5">
-      <!-- 标签与状态流 (低饱和高雅微胶囊) -->
-      <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
-        <span *ngIf="resource.channel_slug === 'book'" class="px-2 py-0.5 bg-purple-50 text-purple-700 font-bold rounded-lg border border-purple-200/60">
-          📖 统编教材
-        </span>
-        <span *ngIf="resource.channel_slug === 'edu'" class="px-2 py-0.5 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200/60">
-          📚 学习资料
-        </span>
-        <span *ngIf="resource.stage" class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-200/60">
-          {{ resource.stage }}
-        </span>
-        <span *ngIf="resource.grade" class="px-2 py-0.5 bg-slate-100 text-slate-700 font-medium rounded-lg">
-          {{ resource.grade }}
-        </span>
-        <span *ngIf="resource.subject" class="px-2 py-0.5 bg-emerald-50 text-emerald-800 font-bold rounded-lg border border-emerald-200/60">
+      <!-- 浮动在封面上的高质感角标 -->
+      <!-- 左上角：学科精巧药丸 -->
+      <div class="absolute top-2 left-2 z-20 pointer-events-none">
+        <span *ngIf="resource.subject"
+              class="px-2 py-0.5 rounded-lg text-[10px] font-extrabold backdrop-blur-md shadow-2xs border"
+              [ngClass]="subjectTheme.badgeBg">
           {{ resource.subject }}
         </span>
-        <span *ngIf="resource.edition" class="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-lg border border-slate-200">
+      </div>
+
+      <!-- 右上角：网盘秒存支持标签 -->
+      <div class="absolute top-2 right-2 z-20 pointer-events-none flex flex-col items-end gap-1">
+        <span *ngIf="hasQuark"
+              class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white/95 text-emerald-800 border border-emerald-300/80 shadow-2xs backdrop-blur-md flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>夸克秒存</span>
+        </span>
+        <span *ngIf="!hasQuark && hasBaidu"
+              class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white/95 text-blue-700 border border-blue-200 shadow-2xs backdrop-blur-md">
+          百度网盘
+        </span>
+      </div>
+    </a>
+  </div>
+
+  <!-- 下半部：精要信息流与高转化操作区 -->
+  <div class="p-3 sm:p-4 flex-1 flex flex-col justify-between space-y-2">
+    <!-- 极简辅助标签 (杜绝杂乱，仅精选2个核心属性) -->
+    <div class="flex items-center gap-1.5 text-[10px] text-slate-500 flex-wrap">
+      <span *ngIf="stageLabel || resource.grade"
+            class="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium">
+        {{ stageLabel }} {{ resource.grade }}
+      </span>
+      <span *ngIf="resource.edition"
+            class="px-1.5 py-0.5 rounded-md bg-slate-100/80 text-slate-600 truncate max-w-[90px]">
+        {{ resource.edition }}
+      </span>
+      <span *ngIf="resource.term"
+            class="px-1.5 py-0.5 rounded-md bg-slate-100/80 text-slate-600">
+        {{ resource.term }}
+      </span>
+      <span *ngIf="resource.is_recommended"
+            class="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold border border-amber-200/60">
+        🔥 热门
+      </span>
+    </div>
+
+    <!-- 资料标题 (优雅 2 行截断，悬浮翡翠绿过渡) -->
+    <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
+      <a [routerLink]="['/resource', resource.slug || resource.id]" class="hover:underline">
+        {{ resource.title }}
+      </a>
+    </h3>
+
+    <!-- 描述简介 (1 行轻量副标) -->
+    <p *ngIf="cleanDescription" class="text-[11px] text-slate-400 line-clamp-1 leading-normal">
+      {{ cleanDescription }}
+    </p>
+
+    <!-- 底部状态与操作条 -->
+    <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs mt-auto">
+      <div class="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+        <span class="text-slate-500 font-medium">{{ resource.file_size || '12.8 MB' }}</span>
+        <span class="text-emerald-700 font-bold flex items-center gap-0.5">
+          <span>⚡</span>{{ formattedSaveCount }}转存
+        </span>
+      </div>
+
+      <!-- 快速转存或试看按钮 -->
+      <div>
+        <a *ngIf="primaryLink"
+           [href]="primaryLink.share_url"
+           target="_blank"
+           rel="noopener noreferrer"
+           (click)="$event.stopPropagation()"
+           class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200/80 transition-all flex items-center gap-1 shadow-2xs"
+           title="一键直达免密转存">
+          <span>转存</span>
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- 2. 列表视图模式 (List Compact View: 精炼水平卡片，高信息密度) -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<article *ngIf="viewMode === 'list'"
+         class="group bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-emerald-400 hover:-translate-y-0.5 transition-all duration-200 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+  
+  <!-- 左侧：微缩拟物/真实封面 + 核心信息 -->
+  <div class="flex items-start gap-3.5 flex-1 min-w-0">
+    <!-- 3:4 比例精致微缩图 -->
+    <a [routerLink]="['/resource', resource.slug || resource.id]"
+       class="shrink-0 w-13 sm:w-16 aspect-[3/4] rounded-xl overflow-hidden border border-slate-200/80 shadow-2xs relative bg-slate-50 group-hover:scale-103 transition-transform">
+      <img *ngIf="resource.cover_image"
+           [src]="resource.cover_image"
+           [alt]="resource.title"
+           class="w-full h-full object-cover object-top"
+           loading="lazy" />
+      <div *ngIf="!resource.cover_image"
+           class="w-full h-full p-1.5 flex flex-col justify-between items-center text-center bg-gradient-to-br select-none"
+           [ngClass]="subjectTheme.bgGradient">
+        <span class="text-[8px] font-mono font-bold text-slate-400">2026</span>
+        <span class="text-sm font-black" [ngClass]="subjectTheme.textColor">{{ subjectTheme.badgeText }}</span>
+        <span class="text-[8px] text-slate-500 font-bold truncate max-w-full">{{ resource.subject || '全科' }}</span>
+      </div>
+    </a>
+
+    <!-- 信息体 -->
+    <div class="flex-1 min-w-0 space-y-1.5">
+      <!-- 标签与状态 (精简至核心3个) -->
+      <div class="flex items-center gap-1.5 text-[11px] flex-wrap">
+        <span *ngIf="stageLabel || resource.grade"
+              class="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-200/60">
+          {{ stageLabel }} {{ resource.grade }}
+        </span>
+        <span *ngIf="resource.subject"
+              class="px-2 py-0.5 rounded-md font-bold border"
+              [ngClass]="subjectTheme.badgeBg">
+          {{ resource.subject }}
+        </span>
+        <span *ngIf="resource.edition"
+              class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 truncate max-w-[120px]">
           {{ resource.edition }}
         </span>
-        <span *ngIf="resource.region" class="px-2 py-0.5 bg-sky-50 text-sky-700 font-medium rounded-lg border border-sky-200/60">
-          📍 {{ resource.region }}
+        <span *ngIf="resource.term"
+              class="px-2 py-0.5 rounded-md bg-slate-50 text-slate-500 border border-slate-200/60">
+          {{ resource.term }}
         </span>
-        <span *ngIf="resource.is_recommended" class="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 font-bold rounded-lg">
-          🔥 热门真题
-        </span>
-        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/70 font-medium rounded-lg text-[10px]">
+        <span class="px-1.5 py-0.5 text-emerald-700 bg-emerald-50 border border-emerald-200/70 rounded text-[10px] font-medium ml-auto sm:ml-0">
           ● 存活秒存
         </span>
       </div>
 
-      <!-- 核心标题 -->
-      <h3 class="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors leading-snug">
+      <!-- 标题 -->
+      <h3 class="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
         <a [routerLink]="['/resource', resource.slug || resource.id]" class="hover:underline">
           {{ resource.title }}
         </a>
       </h3>
 
-      <!-- 描述特色副标题 -->
-      <p *ngIf="resource.subtitle || resource.description" class="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-        {{ resource.subtitle || resource.description }}
+      <!-- 简介描述 -->
+      <p *ngIf="cleanDescription" class="text-xs text-slate-400 line-clamp-1">
+        {{ cleanDescription }}
       </p>
 
-      <!-- 规格与社会认同数据 -->
-      <div class="flex flex-wrap items-center gap-3 sm:gap-4 pt-1 text-xs text-slate-400 font-mono">
-        <span class="text-slate-600 font-medium flex items-center gap-1">
-          <span>🕒</span> <strong class="text-slate-700 font-semibold">{{ formattedDate }}</strong>
-        </span>
-        <span class="text-slate-600 font-medium flex items-center gap-1">
-          <span>💾</span> 大小：<strong class="text-slate-700 font-semibold">{{ resource.file_size || '12.8 MB' }}</strong>
-        </span>
-        <span class="hidden sm:inline-flex items-center gap-1">
-          <span>👁️</span> {{ resource.view_count || 0 }} 次查阅
-        </span>
-        <span class="text-emerald-700 font-bold flex items-center gap-1">
-          <span>⚡</span> {{ resource.save_count || 0 }} 人已转存
-        </span>
-        <span *ngIf="hasBaidu" class="hidden md:inline-flex px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded text-[11px]">
-          📦 包含百度备用
-        </span>
+      <!-- 规格与数据 -->
+      <div class="flex items-center gap-3 pt-0.5 text-xs text-slate-400 font-mono">
+        <span>🕒 2026 最新收录</span>
+        <span>💾 {{ resource.file_size || '12.8 MB' }}</span>
+        <span class="text-emerald-700 font-bold">⚡ {{ formattedSaveCount }} 人已转存</span>
       </div>
     </div>
   </div>
 
-  <!-- 右侧：高转化行动区 (升级为高点击欲望的翡翠绿胶囊) -->
-  <div class="px-4 py-3 sm:px-5 sm:py-5 bg-slate-50/60 lg:bg-transparent border-t border-slate-100 lg:border-0 flex sm:flex-row lg:flex-col items-stretch lg:items-end justify-end gap-2 flex-shrink-0">
-    <div class="flex flex-col items-stretch lg:items-end gap-1 flex-1 lg:flex-initial">
-      <a *ngIf="primaryLink"
-         [href]="primaryLink.share_url"
-         target="_blank"
-         rel="noopener noreferrer"
-         class="py-2.5 px-4 text-xs font-extrabold rounded-xl flex items-center justify-center space-x-1.5 whitespace-nowrap bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm shadow-emerald-600/25 transition active:scale-95 cursor-pointer"
-         title="免提取码一键转存：下载无损高清真题原件，支持 A4 极清打印">
-        <span>🚀</span>
-        <span>一键转存 (免密)</span>
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 fill-white" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-        </svg>
-      </a>
-      <span class="text-[10px] text-emerald-800 font-semibold text-center lg:text-right hidden sm:block select-none">
-        ⚡ 夸克极速通道 · 转存防失效
-      </span>
-    </div>
-
-    <div class="flex items-center gap-1.5 flex-1 lg:flex-initial">
-      <a [routerLink]="['/resource', resource.slug || resource.id]"
-         class="flex-1 py-2 px-3.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-100 hover:text-slate-900 border border-slate-200 rounded-xl transition text-center whitespace-nowrap shadow-2xs">
-        试看详情 ➔
-      </a>
-    </div>
+  <!-- 右侧：行动按钮区 -->
+  <div class="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100 justify-end">
+    <a [routerLink]="['/resource', resource.slug || resource.id]"
+       class="px-3.5 py-2 text-xs font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition">
+      查看详情
+    </a>
+    <a *ngIf="primaryLink"
+       [href]="primaryLink.share_url"
+       target="_blank"
+       rel="noopener noreferrer"
+       class="px-4 py-2 text-xs font-extrabold rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm shadow-emerald-600/25 transition active:scale-95 flex items-center gap-1.5">
+      <span>🚀</span>
+      <span>一键转存</span>
+    </a>
   </div>
 </article>
