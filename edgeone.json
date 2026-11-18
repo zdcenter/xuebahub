@@ -1,64 +1,19 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/resource/:id/",
-      "destination": "/resource/:id.html"
+      "handle": "filesystem"
     },
     {
-      "source": "/resource/:id",
-      "destination": "/resource/:id.html"
+      "src": "^/resource/([^/]+)/?$",
+      "dest": "/resource/$1/index.html"
     },
     {
-      "source": "/book/",
-      "destination": "/book.html"
+      "src": "^/(book|primary|junior|senior|cert|exam)/?$",
+      "dest": "/$1/index.html"
     },
     {
-      "source": "/book",
-      "destination": "/book.html"
-    },
-    {
-      "source": "/primary/",
-      "destination": "/primary.html"
-    },
-    {
-      "source": "/primary",
-      "destination": "/primary.html"
-    },
-    {
-      "source": "/junior/",
-      "destination": "/junior.html"
-    },
-    {
-      "source": "/junior",
-      "destination": "/junior.html"
-    },
-    {
-      "source": "/senior/",
-      "destination": "/senior.html"
-    },
-    {
-      "source": "/senior",
-      "destination": "/senior.html"
-    },
-    {
-      "source": "/cert/",
-      "destination": "/cert.html"
-    },
-    {
-      "source": "/cert",
-      "destination": "/cert.html"
-    },
-    {
-      "source": "/exam/",
-      "destination": "/exam.html"
-    },
-    {
-      "source": "/exam",
-      "destination": "/exam.html"
-    },
-    {
-      "source": "/*",
-      "destination": "/index.html"
+      "src": "/.*",
+      "dest": "/index.html"
     }
   ]
 }
