@@ -272,8 +272,12 @@
         
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div class="flex items-center gap-2">
-            <span class="p-2 bg-amber-50 rounded-xl border border-amber-200 text-amber-700 text-lg shadow-2xs">
-              📁
+            <span class="p-2 bg-amber-50 rounded-xl border border-amber-200 shadow-2xs flex items-center justify-center">
+              <svg class="w-5 h-5 shrink-0" viewBox="0 0 20 20" fill="none">
+                <path d="M2 4.75C2 3.784 2.784 3 3.75 3h4.386c.464 0 .91.184 1.238.512l1.614 1.613c.164.164.387.256.619.256h4.643c.966 0 1.75.784 1.75 1.75v1.619H2V4.75z" fill="#d97706"/>
+                <path d="M2 7.5h16v7.75c0 .966-.784 1.75-1.75 1.75H3.75c-.966 0-1.75-.784-1.75-1.75V7.5z" fill="#f59e0b"/>
+                <path d="M3 8.5h14v1H3v-1z" fill="#fef3c7" fill-opacity="0.5"/>
+              </svg>
             </span>
             <div>
               <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -298,7 +302,10 @@
           <!-- 资源管理器工具栏 (支持文件即时搜索与过滤) -->
           <div class="bg-slate-50/90 border-b border-slate-200/80 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs select-none">
             <div class="flex items-center space-x-1.5 font-medium text-slate-600 truncate">
-              <span class="text-amber-600">📁</span>
+              <svg class="w-4 h-4 shrink-0 inline-block" viewBox="0 0 20 20" fill="none">
+                <path d="M2 4.75C2 3.784 2.784 3 3.75 3h4.386c.464 0 .91.184 1.238.512l1.614 1.613c.164.164.387.256.619.256h4.643c.966 0 1.75.784 1.75 1.75v1.619H2V4.75z" fill="#d97706"/>
+                <path d="M2 7.5h16v7.75c0 .966-.784 1.75-1.75 1.75H3.75c-.966 0-1.75-.784-1.75-1.75V7.5z" fill="#f59e0b"/>
+              </svg>
               <span class="text-slate-800 font-bold">根目录 / 全部文件</span>
               <span class="text-slate-400 font-mono">({{ displayTree().length }} 项)</span>
               <span *ngIf="treeSearchQuery().trim()" class="ml-2 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-200 flex items-center gap-1">
@@ -333,7 +340,10 @@
                 type="button"
                 (click)="toggleAll()"
                 class="text-[11px] font-medium text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 px-2.5 py-1 rounded-lg transition flex items-center space-x-1.5 cursor-pointer shadow-2xs">
-                <span>📁</span>
+                <svg class="w-3.5 h-3.5 shrink-0 inline-block" viewBox="0 0 20 20" fill="none">
+                  <path d="M2 4.75C2 3.784 2.784 3 3.75 3h4.386c.464 0 .91.184 1.238.512l1.614 1.613c.164.164.387.256.619.256h4.643c.966 0 1.75.784 1.75 1.75v1.619H2V4.75z" fill="#d97706"/>
+                  <path d="M2 7.5h16v7.75c0 .966-.784 1.75-1.75 1.75H3.75c-.966 0-1.75-.784-1.75-1.75V7.5z" fill="#f59e0b"/>
+                </svg>
                 <span>{{ allExpanded() ? '全部折叠' : '全部展开' }}</span>
               </button>
             </div>
@@ -374,8 +384,22 @@
                     <span class="w-4 text-[10px] text-slate-400 group-hover:text-blue-600 transition-transform duration-150 inline-block text-center font-mono">
                       {{ isPathExpanded(parentPath ? (parentPath + '/' + node.name) : node.name) ? '▼' : '▶' }}
                     </span>
-                    <span class="text-base text-amber-500">
-                      {{ isPathExpanded(parentPath ? (parentPath + '/' + node.name) : node.name) ? '📂' : '📁' }}
+                    <!-- 高质感双色调黄金文件夹图标 (跨设备全平台100%统一，彻底解决苹果端显示为灰暗emoji的问题) -->
+                    <span class="inline-flex items-center shrink-0">
+                      <!-- 展开状态：打开的金黄文件夹 -->
+                      <svg *ngIf="isPathExpanded(parentPath ? (parentPath + '/' + node.name) : node.name)"
+                           class="w-4.5 h-4.5 shrink-0" viewBox="0 0 20 20" fill="none">
+                        <path d="M2 4.75C2 3.784 2.784 3 3.75 3h4.386c.464 0 .91.184 1.238.512l1.614 1.613c.164.164.387.256.619.256h4.643c.966 0 1.75.784 1.75 1.75v2.381H2V4.75z" fill="#d97706"/>
+                        <path d="M1.5 9h17l-1.8 6.5A1.5 1.5 0 0115.25 17H3.75a1.5 1.5 0 01-1.45-1.5L1.5 9z" fill="#fbbf24"/>
+                        <path d="M2.5 10h15l-1.4 5.2a1 1 0 01-.96.8H3.86a1 1 0 01-.96-.8L2.5 10z" fill="#f59e0b"/>
+                      </svg>
+                      <!-- 折叠状态：闭合的标准暖金黄色文件夹 -->
+                      <svg *ngIf="!isPathExpanded(parentPath ? (parentPath + '/' + node.name) : node.name)"
+                           class="w-4.5 h-4.5 shrink-0" viewBox="0 0 20 20" fill="none">
+                        <path d="M2 4.75C2 3.784 2.784 3 3.75 3h4.386c.464 0 .91.184 1.238.512l1.614 1.613c.164.164.387.256.619.256h4.643c.966 0 1.75.784 1.75 1.75v1.619H2V4.75z" fill="#d97706"/>
+                        <path d="M2 7.5h16v7.75c0 .966-.784 1.75-1.75 1.75H3.75c-.966 0-1.75-.784-1.75-1.75V7.5z" fill="#f59e0b"/>
+                        <path d="M3 8.5h14v1H3v-1z" fill="#fef3c7" fill-opacity="0.5"/>
+                      </svg>
                     </span>
                     <span class="font-bold text-slate-800 group-hover:text-blue-700 truncate text-xs sm:text-sm">
                       {{ node.name }}
