@@ -1,7 +1,8 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { filter } from 'rxjs';
 import { PortalService, type NavMenuDto, type HotSearchItem } from '../../core/services/portal.service';
 import { ChannelDto, ResourceItemDto } from '../../services/resource.service';
 import { MemberService } from '../../services/member.service';
@@ -33,6 +34,13 @@ export class PortalLayoutComponent implements OnInit {
   isSearchingSuggestions = signal<boolean>(false);
   hotSearches = signal<HotSearchItem[]>([]);
   private searchDebounceTimer: any;
+
+  // 当前路由与是否为首页（首页时顶部隐藏小搜索框，避免与中间大搜索框打架）
+  currentUrl = signal<string>('/');
+  isHomePage = computed(() => {
+    const u = this.currentUrl();
+    return u === '/' || u.startsWith('/?') || u === '';
+  });
 
   // 会员体系与卡密状态
   memberService = inject(MemberService);
@@ -136,6 +144,12 @@ export class PortalLayoutComponent implements OnInit {
   requestSubmitSuccess = signal<boolean>(false);
 
   ngOnInit() {
+    // 0. 监听路由变化实时更新当前路由路径
+    this.currentUrl.set(this.router.url);
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
+      this.currentUrl.set(e.urlAfterRedirects || e.url);
+    });
+
     // 1. 获取在线频道
     this.portalService.getChannels().subscribe(list => {
       this.channels.set(list);

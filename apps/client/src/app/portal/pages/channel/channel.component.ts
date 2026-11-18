@@ -49,49 +49,63 @@ export class ChannelComponent implements OnInit {
     private router: Router
   ) {}
 
-  // 专区元数据映射
+  // 专区元数据映射 (客观真实，说人话，不吹虚高词)
   channelMeta: Record<string, { title: string; desc: string; icon: string; badge: string }> = {
     all: {
-      title: '全国中小学名校真题密卷与考点题库',
-      desc: '精选海淀、黄冈、启东等全国名校期中期末试卷，高考一二模与中考冲刺真题。',
+      title: '中小学试卷、教辅与课本资料整理分享',
+      desc: '收录全国中小学期中期末试卷、微课视频与中高考真题资料。',
       icon: '📚',
-      badge: '全网真题汇总'
+      badge: '资料汇总'
     },
     primary: {
       title: '小学专区 (一年级至六年级期中期末真题)',
-      desc: '小学 1-6 年级语文、数学、英语全科期中期末试卷，奥数思维启蒙与单元测试。',
+      desc: '收录小学 1-6 年级语文、数学、英语期中期末试卷与练习题。',
       icon: '🎒',
       badge: '1-6年级同步'
     },
     junior: {
-      title: '初中专区 (中考真题/名校模拟卷/微课)',
-      desc: '初一、初二、初三年级九门核心科目期中期末真题、中考一二模密卷。',
+      title: '初中专区 (中考真题与模拟卷)',
+      desc: '收录初一、初二、初三年级各科目期末练习卷与中考模拟真题。',
       icon: '📘',
-      badge: '中考冲刺备考'
+      badge: '中考备考'
     },
     senior: {
-      title: '高中专区 (高考真题/名校一二三模)',
-      desc: '高一至高三全科期末真题、高考各省模拟考与状元笔记提分秘籍。',
+      title: '高中专区 (高考真题与各省模拟卷)',
+      desc: '收录高一至高三全科期末真题、高考各省历年模拟真题与复习资料。',
       icon: '🎓',
-      badge: '高考九省联考'
+      badge: '高考备考'
     },
     cert: {
-      title: '教师资格证专区 (国考真题/冲刺考点)',
-      desc: '综合素质(科一)、教育知识(科二)、学科知识(科三)历年真题与面试教案模板。',
+      title: '教师资格证专区 (历年真题与备考资料)',
+      desc: '收录综合素质(科一)、教育知识(科二)、学科知识(科三)历年真题。',
       icon: '📜',
-      badge: '教资通关特训'
+      badge: '教资备考'
     },
     exam: {
-      title: '考公考研专区 (国省考行测申论/统考真题)',
-      desc: '国家公务员考试、多省联考行测高频技巧、申论热点范文与考研政治英语历年真题。',
+      title: '公考与事业单位专区 (国考省考真题)',
+      desc: '收录公务员国考、各省联考行测与申论真题、事业单位考试备考资料。',
       icon: '🏛️',
-      badge: '体制内上岸题库'
+      badge: '公考资料'
     }
   };
 
   get currentMeta() {
     return this.channelMeta[this.channelSlug()] || this.channelMeta['all'];
   }
+
+  // 是否为 K12 中小学学段 (若为公考、教资，则不展示学期分册等不相干选项)
+  isK12Stage = computed(() => {
+    const s = this.stageParam().toLowerCase();
+    return !['cert', 'exam'].includes(s) && !s.includes('教师') && !s.includes('公考');
+  });
+
+  // 动态年级/分类标题 (非中小学时更符合常理)
+  gradeSectionTitle = computed(() => {
+    const s = this.stageParam().toLowerCase();
+    if (s === 'cert' || s.includes('教师')) return '考试科目:';
+    if (s === 'exam' || s.includes('公考')) return '考试分类:';
+    return '年级阶段:';
+  });
 
   // 1. 学段选项 (支持数据库分组与兜底配置)
   stages = computed<{ slug: string; name: string; icon: string }[]>(() => {

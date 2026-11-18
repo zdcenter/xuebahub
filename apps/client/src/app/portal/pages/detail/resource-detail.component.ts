@@ -10,6 +10,7 @@ import { MemberService } from '../../../services/member.service';
 import { generateQRCodeSvg } from '../../../utils/qrcode.util';
 import { WechatGuideModalComponent } from '../../components/wechat-guide-modal/wechat-guide-modal.component';
 import { PosterGeneratorService, PosterOptions, PosterTheme } from '../../../services/poster-generator.service';
+import { getStageTheme, StageThemeInfo } from '../../../utils/stage-theme.util';
 
 @Component({
   selector: 'app-resource-detail',
@@ -268,15 +269,17 @@ export class ResourceDetailComponent implements OnInit {
     }
   }
 
+  // 5大考学阶段专属精装教材立体书皮渐变色系 (蓝=小学/小升初, 绿=初中/中考, 紫=高中/高考, 橙=教资, 红=公考)
+  get stageTheme(): StageThemeInfo {
+    return getStageTheme(this.resource() || undefined);
+  }
+
+  get stageShortLabel(): string {
+    return this.stageTheme.shortLabel;
+  }
+
   get subjectBgColor(): string {
-    const sub = this.resource()?.subject || '';
-    if (sub.includes('语')) return 'from-amber-600 via-orange-600 to-amber-700';
-    if (sub.includes('数')) return 'from-blue-600 via-sky-600 to-cyan-700';
-    if (sub.includes('英')) return 'from-emerald-600 via-teal-600 to-emerald-700';
-    if (sub.includes('物理') || sub.includes('科学')) return 'from-purple-600 via-indigo-600 to-violet-700';
-    if (sub.includes('化') || sub.includes('生')) return 'from-teal-600 via-emerald-600 to-cyan-700';
-    if (sub.includes('政') || sub.includes('史') || sub.includes('地')) return 'from-rose-600 via-orange-600 to-amber-700';
-    return 'from-blue-600 to-indigo-700';
+    return this.stageTheme.gradientClass;
   }
 
   openTutorialModal() {

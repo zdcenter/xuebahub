@@ -55,8 +55,8 @@
 
         <!-- 3. 右侧区域：搜索框 + 会员与账号 (精炼高雅) -->
         <div class="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          <!-- 胶囊搜索框与智能实时联想浮窗 -->
-          <div class="relative hidden sm:block w-36 lg:w-48 xl:w-56 transition-all focus-within:w-48 lg:focus-within:w-60">
+          <!-- 胶囊搜索框与智能实时联想浮窗 (仅在非首页/内页展示，避免首页与天幕大搜索框并存打架) -->
+          <div *ngIf="!isHomePage()" class="relative hidden sm:block w-36 lg:w-48 xl:w-56 transition-all focus-within:w-48 lg:focus-within:w-60">
             <form (ngSubmit)="onSearchSubmit()" class="relative w-full">
               <input type="text"
                      [(ngModel)]="searchQuery"
@@ -241,7 +241,7 @@
           <img src="/logo.svg" alt="学霸网" class="w-8 h-8 opacity-80" />
           <div>
             <h4 class="font-extrabold text-slate-800 text-sm">学霸网 (xuebaw.com)</h4>
-            <p class="text-[11px] text-slate-400 mt-0.5">全国中小学期中期末名校真题密卷与统编正版电子教材云端智库</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">中小学同步试卷、教辅资料与课本整理分享</p>
           </div>
         </div>
         <div class="flex items-center gap-4 text-xs font-medium">
@@ -266,30 +266,37 @@
           </a>
         </p>
         <div class="flex items-center gap-3">
-          <span>建议使用夸克网盘客户端转存极速下载</span>
+          <span>免密一键转存到个人网盘</span>
           <span>·</span>
-          <span>A4 原版无损极清打印</span>
+          <span>手机/电脑随时在线查看与打印</span>
         </div>
       </div>
     </div>
   </footer>
 
-  <!-- 右下角悬浮快捷中心 -->
-  <div class="fixed right-4 bottom-6 z-30 flex flex-col gap-2.5 items-end">
-    <!-- 找卷求助 -->
+  <!-- 右下角悬浮快捷中心 (桌面端优雅展示，移动端仅保留微型悬浮按钮，绝不遮挡卡片与分页) -->
+  <div class="fixed right-3 sm:right-4 bottom-16 sm:bottom-6 z-30 flex flex-col gap-2 items-end">
+    <!-- 桌面端按钮 -->
     <button (click)="showRequestModal.set(true)"
             type="button"
-            class="px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-white text-slate-700 hover:text-blue-600 text-xs font-bold shadow-lg border border-slate-200/80 backdrop-blur-md transition-all hover:scale-105 flex items-center gap-1.5 cursor-pointer">
+            class="hidden sm:inline-flex px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-white text-slate-700 hover:text-emerald-700 text-xs font-bold shadow-lg border border-slate-200/80 backdrop-blur-md transition-all hover:scale-105 items-center gap-1.5 cursor-pointer">
       <span>📝</span>
       <span>找卷求助</span>
     </button>
 
-    <!-- 推荐本站 / 班级群裂变 -->
     <button (click)="showRecommendModal.set(true)"
             type="button"
-            class="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold shadow-lg shadow-emerald-600/20 backdrop-blur-md transition-all hover:scale-105 flex items-center gap-1.5 cursor-pointer">
+            class="hidden sm:inline-flex px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold shadow-lg shadow-emerald-600/20 backdrop-blur-md transition-all hover:scale-105 items-center gap-1.5 cursor-pointer">
       <span>🎁</span>
-      <span>推荐本站给好友</span>
+      <span>推荐本站</span>
+    </button>
+
+    <!-- 移动端：仅保留一个极简微型圆形浮标，不挡视线与点击 -->
+    <button (click)="showRecommendModal.set(true)"
+            type="button"
+            class="sm:hidden w-9 h-9 rounded-full bg-emerald-600/90 text-white shadow-lg flex items-center justify-center text-sm active:scale-90 transition backdrop-blur-xs border border-white/30 cursor-pointer"
+            title="推荐本站给好友">
+      <span>🎁</span>
     </button>
   </div>
 

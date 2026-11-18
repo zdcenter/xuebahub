@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ResourceItemDto, ResourceLinkDto } from '../../../services/resource.service';
+import { getStageTheme } from '../../../utils/stage-theme.util';
 
 @Component({
   selector: 'app-book-card',
@@ -22,11 +23,6 @@ export class BookCardComponent {
   }
 
   get subjectBgColor(): string {
-    const sub = this.resource.subject || '';
-    if (sub.includes('语')) return 'from-amber-600 via-orange-600 to-amber-700';
-    if (sub.includes('数')) return 'from-blue-600 via-sky-600 to-cyan-700';
-    if (sub.includes('英')) return 'from-emerald-600 via-teal-600 to-emerald-700';
-    if (sub.includes('物理') || sub.includes('科学')) return 'from-purple-600 via-indigo-600 to-violet-700';
-    return 'from-blue-600 to-indigo-700';
+    return getStageTheme(this.resource).gradientClass;
   }
 }

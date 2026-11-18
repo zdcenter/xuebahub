@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ResourceItemDto, ResourceLinkDto } from '../../../services/resource.service';
 import { generateQRCodeSvg } from '../../../utils/qrcode.util';
+import { getStageTheme, StageThemeInfo } from '../../../utils/stage-theme.util';
 
 @Component({
   selector: 'app-resource-card',
@@ -55,16 +56,14 @@ export class ResourceCardComponent {
     return this.sanitizer.bypassSecurityTrustHtml(svgStr);
   }
 
-  // 学段中文字符串清洗
+  // 获取该资源对应的 5 大专属阶段视觉主题（色彩与文案）
+  get stageTheme(): StageThemeInfo {
+    return getStageTheme(this.resource);
+  }
+
+  // 学段标签
   get stageLabel(): string {
-    const s = (this.resource.stage || '').toLowerCase().trim();
-    if (s === 'primary' || s === '小学') return '小学';
-    if (s === 'junior' || s === '初中') return '初中';
-    if (s === 'senior' || s === '高中') return '高中';
-    if (s === 'kindergarten' || s === '幼小衔接' || s === '学前') return '学前幼小';
-    if (s === 'cert' || s === '教师资格证') return '教师资格证';
-    if (s === 'exam' || s === '考公考研') return '公考考研';
-    return this.resource.stage || '';
+    return this.stageTheme.shortLabel;
   }
 
   // 年级精简标签 (消除 "通用 (1-6年级通用)" 这类过长文本)
@@ -150,16 +149,9 @@ export class ResourceCardComponent {
     };
   }
 
-  // 与详情页 100% 统一的学科精装教材渐变色系
+  // 5大考学阶段专属精装教材立体书皮渐变色系 (蓝=小学/小升初, 绿=初中/中考, 紫=高中/高考, 橙=教资, 红=公考)
   get subjectBgColor(): string {
-    const sub = (this.resource.subject || '').trim();
-    if (sub.includes('语')) return 'from-amber-600 via-orange-600 to-amber-700';
-    if (sub.includes('数')) return 'from-blue-600 via-sky-600 to-cyan-700';
-    if (sub.includes('英')) return 'from-emerald-600 via-teal-600 to-emerald-700';
-    if (sub.includes('物理') || sub.includes('科学')) return 'from-purple-600 via-indigo-600 to-violet-700';
-    if (sub.includes('化') || sub.includes('生')) return 'from-teal-600 via-emerald-600 to-cyan-700';
-    if (sub.includes('政') || sub.includes('史') || sub.includes('地')) return 'from-rose-600 via-orange-600 to-amber-700';
-    return 'from-blue-600 via-indigo-600 to-blue-700';
+    return this.stageTheme.gradientClass;
   }
 
   // 格式化转存人数
