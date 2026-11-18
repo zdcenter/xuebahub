@@ -14,10 +14,10 @@
 
       <div class="relative z-10 flex items-center justify-between">
         <span class="text-[10px] tracking-wider font-extrabold uppercase bg-white/20 backdrop-blur-md px-2 py-0.5 rounded border border-white/30 text-white shadow-2xs">
-          义务教育教科书
+          {{ resource.stage || '名校' }}精选
         </span>
         <span class="text-[10px] font-bold text-amber-200 flex items-center gap-0.5">
-          <span>⭐</span> 统编正版
+          <span>⭐</span> 学霸网收录
         </span>
       </div>
 
@@ -29,13 +29,13 @@
           {{ resource.grade }} {{ resource.stage }}
         </div>
         <div class="mt-1 text-[11px] text-white/80 font-medium">
-          {{ resource.edition || '人教版 (教育部统编)' }}
+          {{ resource.edition || '同步教材/讲义' }}
         </div>
       </div>
 
       <div class="relative z-10 flex items-center justify-between text-[10px] text-white/80 border-t border-white/20 pt-2">
-        <span>人民教育出版社</span>
-        <span>高清双层 PDF</span>
+        <span>{{ resource.file_type || '电子资料' }}</span>
+        <span>{{ resource.file_size || '免密直存' }}</span>
       </div>
     </div>
 

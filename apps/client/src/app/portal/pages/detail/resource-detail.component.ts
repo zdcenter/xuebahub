@@ -9,6 +9,7 @@ import { ResourceItemDto, ResourceLinkDto } from '../../../services/resource.ser
 import { MemberService } from '../../../services/member.service';
 import { generateQRCodeSvg } from '../../../utils/qrcode.util';
 import { WechatGuideModalComponent } from '../../components/wechat-guide-modal/wechat-guide-modal.component';
+import { PosterGeneratorService, PosterOptions, PosterTheme } from '../../../services/poster-generator.service';
 
 @Component({
   selector: 'app-resource-detail',
@@ -160,10 +161,14 @@ export class ResourceDetailComponent implements OnInit {
   activeQrModal = signal<{ url: string; driveType: string; extractCode: string } | null>(null);
   showTutorialModal = signal<boolean>(false);
 
-  // 推荐/分享给好友与社群状态
+  // 推荐/分享给好友与社群状态 (支持纯前端实时 Canvas 海报生成，零 R2 零云端依赖)
+  posterService = inject(PosterGeneratorService);
   showShareModal = signal<boolean>(false);
-  activeShareTab = signal<'parent' | 'moments' | 'direct'>('parent');
+  activeShareTab = signal<'poster' | 'parent' | 'moments' | 'direct'>('poster');
   shareCopySuccess = signal<boolean>(false);
+  posterDataUrl = signal<string>('');
+  isPosterRendering = signal<boolean>(false);
+  selectedPosterTheme = signal<PosterTheme>('academic');
 
   // 转存量呈现 (以数据库真实统计为准)
   saveCount = computed(() => {
@@ -189,12 +194,12 @@ export class ResourceDetailComponent implements OnInit {
     const tab = this.activeShareTab();
 
     if (tab === 'parent') {
-      return `【学习资料推荐】《${title}》\n包含高清双层正版教材/真题及配套资源，支持A4纸无损打印，直接转存到网盘即可永久免费保存：\n👉 ${url}`;
+      return `【学霸网资料推荐】《${title}》\n精选同步教辅与备考复习资源，直接转存到网盘即可免解压随时查阅下载：\n👉 ${url}`;
     }
     if (tab === 'moments') {
-      return `📚 强烈推荐这份整理超全的精选学习资料《${title}》！正版高清完整合集，期中期末复习备考必备，免解压极速转存：\n🔗 ${url}`;
+      return `📚 分享一份整理超全的备考学习资料《${title}》！期中期末复习备考精选，网盘免密极速转存：\n🔗 ${url}`;
     }
-    return `老铁，你要的《${title}》高清正版完整包找到了！网盘极速转存地址：${url} \n建议先保存到自己网盘再下载，防失效~`;
+    return `你要的《${title}》精选资料包在此！网盘免密极速转存地址：${url} \n建议先保存到自己网盘再查看或下载，防失效~`;
   });
 
   private qrCache = new Map<string, SafeHtml>();
@@ -282,18 +287,99 @@ export class ResourceDetailComponent implements OnInit {
     this.showTutorialModal.set(false);
   }
 
-  openShareModal(tab: 'parent' | 'moments' | 'direct' = 'parent') {
+  openShareModal(tab: 'poster' | 'parent' | 'moments' | 'direct' = 'poster') {
     this.activeShareTab.set(tab);
     this.showShareModal.set(true);
     this.shareCopySuccess.set(false);
+    if (tab === 'poster') {
+      this.generatePoster();
+    }
   }
 
   closeShareModal() {
     this.showShareModal.set(false);
   }
 
-  setShareTab(tab: 'parent' | 'moments' | 'direct') {
+  setShareTab(tab: 'poster' | 'parent' | 'moments' | 'direct') {
     this.activeShareTab.set(tab);
+    if (tab === 'poster' && !this.posterDataUrl()) {
+      this.generatePoster();
+    }
+  }
+
+  // 纯客户端实时生成分享海报 (零 R2 零云端依赖，毫秒级出图，带专属直达二维码)
+  generatePoster() {
+    const res = this.resource();
+    if (!res || typeof window === 'undefined') return;
+
+    this.isPosterRendering.set(true);
+
+    try {
+      // 提取网盘目录树前 4 项真实文件展示
+      const fileItems: { name: string; icon: string; size?: string }[] = [];
+      const tree = this.displayTree();
+      if (tree && tree.length > 0) {
+        for (const item of tree.slice(0, 4)) {
+          fileItems.push({
+            name: item.name,
+            icon: item.is_dir ? '📁' : '📄',
+            size: item.size
+          });
+        }
+      }
+
+      // 主题自适应学科色彩
+      let theme: PosterTheme = this.selectedPosterTheme();
+      const sub = res.subject || '';
+      if (!this.selectedPosterTheme()) {
+        if (sub.includes('语')) theme = 'xiaohongshu';
+        else if (sub.includes('英')) theme = 'emerald';
+        else theme = 'academic';
+        this.selectedPosterTheme.set(theme);
+      }
+
+      const opts: PosterOptions = {
+        ratio: 'exam', // 750x1000 黄金试卷知识卡片比例
+        theme: theme,
+        title: res.title || '精选学习资料',
+        subtitle: res.description ? res.description.replace(/^[:：\s\-_]+/, '').slice(0, 70) : '精选名校期中期末试卷及考点解析，网盘免密极速转存！',
+        grade: res.grade || res.stage || '',
+        subject: res.subject || '全科',
+        edition: res.edition || '精选同步教材/讲义',
+        file_size: res.file_size || '免密直存',
+        targetUrl: this.currentUrl, // 包含 xuebaw.com 的精准详情页 URL
+        brandName: '学霸网',
+        brandSlogan: 'XUEBAW.COM · 全国名校题库与同步备考智汇',
+        fileItems: fileItems.length > 0 ? fileItems : undefined
+      };
+
+      const canvas = this.posterService.generatePosterCanvas(opts);
+      const dataUrl = canvas.toDataURL('image/png');
+      this.posterDataUrl.set(dataUrl);
+      this.isPosterRendering.set(false);
+    } catch (err) {
+      console.error('Failed to generate real-time poster', err);
+      this.isPosterRendering.set(false);
+    }
+  }
+
+  // 切换海报配色主题 (实时换肤)
+  changePosterTheme(theme: PosterTheme) {
+    this.selectedPosterTheme.set(theme);
+    this.generatePoster();
+  }
+
+  // 下载海报图片 (PC端一键保存)
+  downloadPoster() {
+    const dataUrl = this.posterDataUrl();
+    if (!dataUrl || typeof document === 'undefined') return;
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    const cleanTitle = (this.resource()?.title || '资料海报').replace(/[\/\\:*?"<>|]/g, '_').slice(0, 25);
+    a.download = `学霸网_${cleanTitle}_分享海报.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   copyShareText() {
@@ -526,9 +612,19 @@ export class ResourceDetailComponent implements OnInit {
             this.allExpanded.set(false);
           }
         }
+        // 若参数指定 share=poster 则自动唤起海报生成弹窗
+        if (this.route.snapshot.queryParams['share'] === 'poster') {
+          setTimeout(() => this.openShareModal('poster'), 100);
+        }
+
         this.isLoading.set(false);
       },
       error: () => {
+        // 若参数指定 share=poster 则自动唤起海报生成弹窗
+        if (this.route.snapshot.queryParams['share'] === 'poster') {
+          setTimeout(() => this.openShareModal('poster'), 100);
+        }
+
         this.isLoading.set(false);
       }
     });

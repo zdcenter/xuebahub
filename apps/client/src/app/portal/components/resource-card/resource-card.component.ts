@@ -150,6 +150,18 @@ export class ResourceCardComponent {
     };
   }
 
+  // 与详情页 100% 统一的学科精装教材渐变色系
+  get subjectBgColor(): string {
+    const sub = (this.resource.subject || '').trim();
+    if (sub.includes('语')) return 'from-amber-600 via-orange-600 to-amber-700';
+    if (sub.includes('数')) return 'from-blue-600 via-sky-600 to-cyan-700';
+    if (sub.includes('英')) return 'from-emerald-600 via-teal-600 to-emerald-700';
+    if (sub.includes('物理') || sub.includes('科学')) return 'from-purple-600 via-indigo-600 to-violet-700';
+    if (sub.includes('化') || sub.includes('生')) return 'from-teal-600 via-emerald-600 to-cyan-700';
+    if (sub.includes('政') || sub.includes('史') || sub.includes('地')) return 'from-rose-600 via-orange-600 to-amber-700';
+    return 'from-blue-600 via-indigo-600 to-blue-700';
+  }
+
   // 格式化转存人数
   get formattedSaveCount(): string {
     const count = this.resource.save_count || 0;
