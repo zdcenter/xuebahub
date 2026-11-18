@@ -7,8 +7,7 @@ const __dirname = path.dirname(__filename);
 const publicDir = path.resolve(__dirname, '../public');
 const sitemapPath = path.join(publicDir, 'sitemap.xml');
 
-const siteUrl = 'https://xuebaw.com';
-const apiBase = process.env['API_BASE'] || 'http://127.0.0.1:4001';
+const siteUrl = 'https://www.xuebaw.com';
 const now = new Date().toISOString().split('T')[0];
 
 const staticPages = [
@@ -23,15 +22,25 @@ const staticPages = [
 
 async function generateSitemap() {
   let resources = [];
-  try {
-    const res = await fetch(`${apiBase}/api/v1/public/resources?limit=1000`, { signal: AbortSignal.timeout(3000) });
-    if (res.ok) {
-      const json = await res.json();
-      if (Array.isArray(json?.data?.items)) {
-        resources = json.data.items;
+  const endpoints = [
+    process.env['API_BASE'] || 'http://127.0.0.1:4001',
+    'https://api.xuebaw.com:8443'
+  ];
+
+  for (const base of endpoints) {
+    try {
+      const res = await fetch(`${base}/api/v1/public/resources?limit=1000`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json?.data?.items) && json.data.items.length > 0) {
+          resources = json.data.items;
+          break;
+        }
       }
-    }
-  } catch (err) {
+    } catch (err) {}
+  }
+
+  if (resources.length === 0) {
     console.log('[Sitemap] API not reachable at build time, generating base sitemap.');
   }
 

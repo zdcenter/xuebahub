@@ -1,122 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://xuebaw.com/</loc>
+    <loc>https://www.xuebaw.com/</loc>
     <lastmod>2026-11-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/book</loc>
+    <loc>https://www.xuebaw.com/book</loc>
     <lastmod>2026-11-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/primary</loc>
+    <loc>https://www.xuebaw.com/primary</loc>
     <lastmod>2026-11-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/junior</loc>
+    <loc>https://www.xuebaw.com/junior</loc>
     <lastmod>2026-11-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/senior</loc>
+    <loc>https://www.xuebaw.com/senior</loc>
     <lastmod>2026-11-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/cert</loc>
+    <loc>https://www.xuebaw.com/cert</loc>
     <lastmod>2026-11-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/exam</loc>
+    <loc>https://www.xuebaw.com/exam</loc>
     <lastmod>2026-11-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/resource/res-1794962120015250659</loc>
+    <loc>https://www.xuebaw.com/resource/res-1794965172171171368</loc>
     <lastmod>2026-11-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/resource/res-1792641024207783599</loc>
-    <lastmod>2026-10-22</lastmod>
+    <loc>https://www.xuebaw.com/resource/res-1791551237744515542</loc>
+    <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/resource/res-1792640310194764295</loc>
-    <lastmod>2026-10-22</lastmod>
+    <loc>https://www.xuebaw.com/resource/res-1791550628033096241</loc>
+    <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/resource/res-1792638655108090109</loc>
-    <lastmod>2026-10-22</lastmod>
+    <loc>https://www.xuebaw.com/resource/res-1791550427577532124</loc>
+    <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/resource/res-1792161960415085371</loc>
-    <lastmod>2026-10-16</lastmod>
+    <loc>https://www.xuebaw.com/resource/res-1794991264732739956-346d0350</loc>
+    <lastmod>2026-11-18</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://xuebaw.com/resource/res-1791874253570146077</loc>
-    <lastmod>2026-10-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://xuebaw.com/resource/res-1791794740725867123</loc>
-    <lastmod>2026-10-12</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://xuebaw.com/resource/res-1791551237744515542</loc>
-    <lastmod>2026-10-12</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://xuebaw.com/resource/res-1791550628033096241</loc>
-    <lastmod>2026-10-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://xuebaw.com/resource/res-1791550427577532124</loc>
-    <lastmod>2026-10-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://xuebaw.com/resource/res-1792641901068258999</loc>
-    <lastmod>2026-11-16</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://xuebaw.com/resource/res-1791889998994587006</loc>
-    <lastmod>2026-10-21</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://xuebaw.com/resource/res-1791507725670461672</loc>
-    <lastmod>2026-10-09</lastmod>
+    <loc>https://www.xuebaw.com/resource/res-1791507725670461672</loc>
+    <lastmod>2026-11-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

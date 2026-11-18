@@ -1,0 +1,64 @@
+{
+  "rewrites": [
+    {
+      "source": "/resource/:id",
+      "destination": "/resource/:id/index.html"
+    },
+    {
+      "source": "/resource/:id/",
+      "destination": "/resource/:id/index.html"
+    },
+    {
+      "source": "/book",
+      "destination": "/book/index.html"
+    },
+    {
+      "source": "/book/",
+      "destination": "/book/index.html"
+    },
+    {
+      "source": "/primary",
+      "destination": "/primary/index.html"
+    },
+    {
+      "source": "/primary/",
+      "destination": "/primary/index.html"
+    },
+    {
+      "source": "/junior",
+      "destination": "/junior/index.html"
+    },
+    {
+      "source": "/junior/",
+      "destination": "/junior/index.html"
+    },
+    {
+      "source": "/senior",
+      "destination": "/senior/index.html"
+    },
+    {
+      "source": "/senior/",
+      "destination": "/senior/index.html"
+    },
+    {
+      "source": "/cert",
+      "destination": "/cert/index.html"
+    },
+    {
+      "source": "/cert/",
+      "destination": "/cert/index.html"
+    },
+    {
+      "source": "/exam",
+      "destination": "/exam/index.html"
+    },
+    {
+      "source": "/exam/",
+      "destination": "/exam/index.html"
+    },
+    {
+      "source": "/*",
+      "destination": "/index.csr.html"
+    }
+  ]
+}
