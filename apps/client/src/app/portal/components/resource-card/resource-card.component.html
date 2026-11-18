@@ -4,6 +4,15 @@
 <article *ngIf="viewMode === 'grid'"
          class="group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-emerald-400 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden">
   
+  <!-- 复制成功悬浮气泡提示 (居中醒目反馈) -->
+  <div *ngIf="copied"
+       class="absolute top-2.5 left-1/2 -translate-x-1/2 z-40 px-3 py-1 bg-slate-900/95 text-white rounded-full text-[11px] font-bold shadow-xl backdrop-blur-md flex items-center gap-1.5 whitespace-nowrap animate-fade-in border border-slate-700">
+    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+    </svg>
+    <span>链接已复制，快发给好友或微信群吧！</span>
+  </div>
+
   <!-- 上半部：拟物 3:4 试卷/教辅封面 + 浮动胶囊 -->
   <div class="relative p-2.5 sm:p-3 bg-gradient-to-b from-slate-50/80 via-slate-50/30 to-white">
     <!-- 3:4 比例封面容器 -->
@@ -172,8 +181,17 @@
 <!-- 2. 列表视图模式 (List Compact View: 精炼水平卡片 + 分享/转存) -->
 <!-- ══════════════════════════════════════════════════════════════ -->
 <article *ngIf="viewMode === 'list'"
-         class="group bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-emerald-400 hover:-translate-y-0.5 transition-all duration-200 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+         class="group relative bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-emerald-400 hover:-translate-y-0.5 transition-all duration-200 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
   
+  <!-- 复制成功气泡提示 -->
+  <div *ngIf="copied"
+       class="absolute top-2 right-4 z-40 px-3 py-1 bg-slate-900/95 text-white rounded-full text-xs font-bold shadow-xl backdrop-blur-md flex items-center gap-1.5 whitespace-nowrap animate-fade-in border border-slate-700">
+    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+    </svg>
+    <span>资料链接与说明已复制到剪贴板！</span>
+  </div>
+
   <!-- 左侧：微缩拟物/真实封面 + 核心信息 -->
   <div class="flex items-start gap-3.5 flex-1 min-w-0">
     <!-- 3:4 比例精致微缩图 -->

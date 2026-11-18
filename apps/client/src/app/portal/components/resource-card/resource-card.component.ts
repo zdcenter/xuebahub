@@ -159,7 +159,13 @@ export class ResourceCardComponent {
     return count.toString();
   }
 
-  // 分享功能处理 (支持原生系统分享与智能剪贴板复制)
+  // 判断是否为移动端环境（手机/平板）
+  get isMobile(): boolean {
+    if (typeof navigator === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
+  }
+
+  // 分享功能处理 (PC端专注极速复制链接，移动端优先系统原生分享)
   async onShare(event: Event) {
     event.stopPropagation();
     event.preventDefault();
@@ -167,34 +173,40 @@ export class ResourceCardComponent {
     const title = this.resource.title;
     const desc = this.cleanDescription || '名校精选真题密卷，A4高清原版可打印，免费一键转存！';
     const url = this.detailUrl;
-    const shareText = `【学霸网资料分享】《${title}》\n${desc}\n⚡免密极速转存链接：${url}`;
+    const shareText = `【学霸网资料】《${title}》\n${desc}\n⚡免密极速转存链接：${url}`;
 
-    // 优先唤起移动端或微信原生系统分享面板
-    if (typeof navigator !== 'undefined' && (navigator as any).share) {
+    // 1. 移动端 (手机/iPad)：优先唤起系统原生分享面板 (微信/QQ/备忘录)
+    if (this.isMobile && typeof navigator !== 'undefined' && (navigator as any).share) {
       try {
         await (navigator as any).share({
           title: `学霸网: ${title}`,
           text: desc,
           url: url
         });
-        this.triggerCopiedState();
+        // 移动端调起系统分享后保持原有状态，不覆盖为“已复制”
         return;
-      } catch (err) {
-        // 用户取消或拒绝直接跳入剪贴板兜底
+      } catch (err: any) {
+        // 用户主动取消系统分享时直接退出，不误触发复制状态
+        if (err && (err.name === 'AbortError' || err.code === 20)) {
+          return;
+        }
       }
     }
 
-    // 剪贴板复制
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      try {
-        await navigator.clipboard.writeText(shareText);
-        this.triggerCopiedState();
-        return;
-      } catch (err) {}
-    }
+    // 2. PC 端或不支持原生系统分享的环境：直接同步执行剪贴板极速复制
+    this.copyToClipboard(shareText);
+  }
 
-    // 传统输入框复制兜底
-    this.fallbackCopy(shareText);
+  private copyToClipboard(text: string) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.triggerCopiedState();
+      }).catch(() => {
+        this.fallbackCopy(text);
+      });
+      return;
+    }
+    this.fallbackCopy(text);
   }
 
   private triggerCopiedState() {
@@ -211,13 +223,15 @@ export class ResourceCardComponent {
     textarea.value = text;
     textarea.style.position = 'fixed';
     textarea.style.opacity = '0';
+    textarea.style.pointerEvents = 'none';
     document.body.appendChild(textarea);
+    textarea.focus();
     textarea.select();
     try {
       document.execCommand('copy');
       this.triggerCopiedState();
     } catch (e) {
-      console.error('Copy failed', e);
+      console.error('Fallback copy failed', e);
     }
     document.body.removeChild(textarea);
   }

@@ -2097,6 +2097,10 @@ body {
   background-color: rgb(15 23 42 / 0.9);
 }
 
+.bg-slate-900\/95 {
+  background-color: rgb(15 23 42 / 0.95);
+}
+
 .bg-slate-950\/25 {
   background-color: rgb(2 6 23 / 0.25);
 }
