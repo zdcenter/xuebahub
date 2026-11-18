@@ -357,9 +357,12 @@ export class ChannelComponent implements OnInit {
 
   updateSeo() {
     const meta = this.currentMeta;
+    const ch = this.channelSlug();
+    const path = (!ch || ch === 'all') ? '' : `/${ch}`;
     this.seoService.update({
       title: meta.title,
-      description: meta.desc
+      description: meta.desc,
+      canonicalUrl: `https://www.xuebaw.com${path}`
     });
   }
 

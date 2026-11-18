@@ -183,7 +183,8 @@ export class BookShelfComponent implements OnInit {
   ngOnInit() {
     this.seoService.update({
       title: '全国统编电子教材与课本数字书架',
-      description: '学霸网电子教材专区提供全国小学、初中、高中全学科正版高清电子课本PDF下载与在线阅读，涵盖统编人教版、北师大版、苏教版等全套最新审定版课本。'
+      description: '学霸网电子教材专区提供全国小学、初中、高中全学科正版高清电子课本PDF下载与在线阅读，涵盖统编人教版、北师大版、苏教版等全套最新审定版课本。',
+      canonicalUrl: 'https://www.xuebaw.com/book'
     });
 
     this.portalService.getCategoriesGrouped().subscribe(grp => {

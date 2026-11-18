@@ -553,7 +553,8 @@ export class ResourceDetailComponent implements OnInit {
           this.seoService.update({
             title: `${resourceItem.title} - 高清网盘下载与转存`,
             description: resourceItem.description || `${resourceItem.title}，正版高清PDF/视频课件，支持A4无损打印与极速转存。内含 ${totalFiles} 个精品教学资料与试卷。`,
-            keywords
+            keywords,
+            canonicalUrl: `https://www.xuebaw.com/resource/${resourceItem.slug || resourceItem.id}`
           });
 
           // 注入 Schema.org 结构化数据 (LearningResource / Book + BreadcrumbList)

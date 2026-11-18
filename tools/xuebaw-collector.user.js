@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.4.0
-// @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别；右侧贴边滑出抽屉工作台（原文零遮挡）；紧凑三行排版、智能提取码匹配与目标频道划转！
+// @version      1.5.0
+// @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别；全新五层DOM向前回溯算法精准配对标题与网盘；支持一键点选网页拾取标题；右侧贴边滑出抽屉工作台（原文零遮挡）！
 // @author       学霸网开发团队
 // @match        *://*/*
 // @exclude      *://localhost:*/*
@@ -304,6 +304,68 @@
         border-color: #2563eb !important;
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
       }
+      .xb-btn-pick-title {
+        background: #f1f5f9 !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 4px !important;
+        padding: 0 6px !important;
+        height: 26px !important;
+        line-height: 24px !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        color: #475569 !important;
+        cursor: pointer !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        transition: all 0.15s ease !important;
+        user-select: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 2px !important;
+        box-sizing: border-box !important;
+      }
+      .xb-btn-pick-title:hover {
+        background: #e0f2fe !important;
+        color: #0284c7 !important;
+        border-color: #38bdf8 !important;
+      }
+      .xb-btn-pick-title.is-active {
+        background: #fef08a !important;
+        color: #854d0e !important;
+        border-color: #eab308 !important;
+        font-weight: 800 !important;
+        box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.3) !important;
+      }
+
+      /* 拾取模式顶部悬浮指示条 */
+      #xb-picker-indicator {
+        position: fixed !important;
+        top: 16px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        background: #0f172a !important;
+        color: #f8fafc !important;
+        padding: 8px 18px !important;
+        border-radius: 9999px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
+        z-index: 9999999999 !important;
+        border: 1px solid #38bdf8 !important;
+        pointer-events: none !important;
+        animation: xbBounceIn 0.3s ease-out !important;
+      }
+      @keyframes xbBounceIn {
+        from { opacity: 0; transform: translate(-50%, -10px); }
+        to { opacity: 1; transform: translate(-50%, 0); }
+      }
+      /* 拾取模式下鼠标滑过左侧页面的高亮描边 */
+      .xb-picker-hover-outline {
+        outline: 2px dashed #2563eb !important;
+        outline-offset: 2px !important;
+        background-color: rgba(37, 99, 235, 0.08) !important;
+        cursor: crosshair !important;
+      }
 
       /* 【行 2：网盘地址独立一行 (完整展示，不截断)】 */
       .xb-item-url-row {
@@ -449,6 +511,35 @@
     });
   }
 
+  // 清洗资源标题，剔除前缀标签、无意义修饰词、噪点序号与杂质
+  function cleanResourceTitle(raw) {
+    if (!raw) return '';
+    let t = String(raw).trim();
+
+    // 剔除前后常见无意义提示性前缀
+    t = t.replace(/^(?:【?(?:资源名称|资料名称|课程名称|文件名称|资料简介|资源标题|资料标题|文件清单|课程介绍|下载地址|网盘地址|网盘链接|转存地址|资源分享|资料分享|夸克网盘|百度网盘|UC网盘|阿里云盘|迅雷网盘|123网盘|永久有效|点击下载|点此下载|高速直链)】?[:：\s]*)+/gi, '');
+    
+    // 剔除末尾无意义后缀，如 [复制链接]、(完整版)、[高清无水印] 等杂项
+    t = t.replace(/(?:\[|\()(?:复制链接|点此下载|立即下载|高速下载|高速转存|网盘下载|夸克网盘|百度网盘|提取码|密码|永久有效|密码见文末)(?:\]|\))/gi, '');
+
+    // 如果文本中包含明确的书名号《...》，且书名号内长度适中，优先提炼核心书名
+    const bookMatch = t.match(/《([^》]{3,80})》/);
+    if (bookMatch && bookMatch[1]) {
+      const bookName = bookMatch[1].trim();
+      if (bookName.length >= 4) {
+        t = bookName;
+      }
+    }
+
+    // 去掉开头的纯序号列表标记，如 "01. "、"1、"、"一、"、"（1）"、"【01】" 等（保留年份如 2024、高三等）
+    t = t.replace(/^(?:(?:\d{1,3}|[一二三四五六七八九十]{1,3})[、\.\-\s]+|(?:（|\()(?:\d{1,3}|[一二三四五六七八九十]{1,3})(?:）|\))|【\d{1,3}】)/, '');
+
+    // 去掉残余的首尾标点与空格
+    t = t.replace(/^[\s:：\-_|/·]+|[\s:：\-_|/·]+$/g, '').trim();
+
+    return t;
+  }
+
   // 判断是否为“点此访问”、“点击下载”等无意义通用锚文本
   function isGenericLinkText(text) {
     if (!text) return true;
@@ -458,65 +549,110 @@
       '点此访问', '点击访问', '点击下载', '立即下载', '点击这里', '点击查看', '点我下载', '点击获取', '立即查看',
       '夸克网盘', '夸克链接', '夸克下载', '百度网盘', '百度链接', '百度云', '下载地址', '立即转存', '高速下载',
       '直达链接', '网盘下载', '网盘链接', '夸克', '百度', '下载', '链接', '访问', '直链', '地址', '查看',
-      'click here', 'download', 'link', 'pan', 'quark', 'baidu'
+      '转存', '获取', '提取码', '密码', '资源下载', '全套下载', '官方下载', '提取', '保存到网盘', '免费下载',
+      'click here', 'download', 'link', 'pan', 'quark', 'baidu', 'view'
     ];
     return genericWords.some(w => t === w || t === `【${w}】` || t === `[${w}]` || t === `(${w})` || t.startsWith(w));
   }
 
-  // 智能寻找 a 标签对应的真实资源标题
+  // 智能寻找 a 标签对应的真实资源标题 (五层递进+向前回溯算法)
   function resolveRealTitleForAnchor(aElement, fallbackIndex) {
+    // 第 1 层：a 标签本身的锚文本
     const rawLinkText = aElement.innerText.trim();
     if (rawLinkText && rawLinkText.length >= 4 && !isGenericLinkText(rawLinkText) && !rawLinkText.startsWith('http')) {
-      return rawLinkText;
+      const cleaned = cleanResourceTitle(rawLinkText);
+      if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
     }
 
-    const attrTitle = aElement.getAttribute('title') || aElement.getAttribute('aria-label');
+    // 第 2 层：a 标签本身的 title / aria-label / download 属性
+    const attrTitle = aElement.getAttribute('title') || aElement.getAttribute('aria-label') || aElement.getAttribute('download') || aElement.getAttribute('data-title');
     if (attrTitle && attrTitle.trim().length >= 4 && !isGenericLinkText(attrTitle)) {
-      return attrTitle.trim();
+      const cleaned = cleanResourceTitle(attrTitle);
+      if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
     }
 
+    // 第 3 层：同行紧邻的前向兄弟文本节点 (例如: "<p>初中数学公式大全.pdf <a href="...">夸克下载</a></p>")
+    let prevNode = aElement.previousSibling;
+    while (prevNode) {
+      const text = (prevNode.nodeType === 3 ? prevNode.nodeValue : (prevNode.innerText || '')).trim();
+      if (text.length >= 4 && !text.startsWith('http') && !isGenericLinkText(text)) {
+        const cleaned = cleanResourceTitle(text);
+        if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
+      }
+      prevNode = prevNode.previousSibling;
+    }
+
+    // 第 4 层：检查是否处于表格行 <tr> 中 (例如：<td>高三语文文言文汇总</td><td><a href="...">下载</a></td>)
     const tr = aElement.closest('tr');
     if (tr) {
-      const tds = Array.from(tr.querySelectorAll('td, th'));
-      for (const td of tds) {
-        if (td.contains(aElement)) continue;
-        const tdText = td.innerText.trim();
-        if (tdText.length >= 4 && !tdText.startsWith('http') && !isGenericLinkText(tdText)) {
-          return tdText.split('\n')[0].trim();
+      const cells = Array.from(tr.querySelectorAll('td, th'));
+      for (const cell of cells) {
+        if (cell.contains(aElement)) continue;
+        const cellText = cell.innerText.trim();
+        if (cellText.length >= 3 && !cellText.startsWith('http') && !isGenericLinkText(cellText)) {
+          const cleaned = cleanResourceTitle(cellText.split('\n')[0]);
+          if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
         }
       }
     }
 
-    const container = aElement.closest('li, .item, .card, .resource, .post, article, dd, dt, p');
+    // 第 5 层：检查是否处于独立卡片/列表项容器 (li, .card, .item, .resource, dl, dd)
+    const container = aElement.closest('li, .item, .card, .resource, .post-item, dl, dd, article');
     if (container) {
-      const heading = container.querySelector('h1, h2, h3, h4, h5, h6, strong, b, .title, .name');
-      if (heading && !heading.contains(aElement)) {
+      const heading = container.querySelector('h1, h2, h3, h4, h5, h6, strong, b, [class*="title"], [class*="name"]');
+      if (heading && !heading.contains(aElement) && !aElement.contains(heading)) {
         const headingText = heading.innerText.trim();
-        if (headingText.length >= 4 && !isGenericLinkText(headingText)) {
-          return headingText;
+        if (headingText.length >= 3 && !isGenericLinkText(headingText) && !headingText.startsWith('http')) {
+          const cleaned = cleanResourceTitle(headingText);
+          if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
         }
       }
-
-      let cText = container.innerText || '';
-      cText = cText.replace(/https?:\/\/\S+/g, '')
-        .replace(/(?:点此访问|点击访问|点击下载|立即下载|夸克网盘|百度网盘|提取码|密码|pwd|code)[:：\s]*/gi, '')
-        .trim();
-      const lines = cText.split('\n').map(l => l.trim()).filter(l => l.length >= 4 && !isGenericLinkText(l));
-      if (lines.length > 0) {
-        return lines[0];
-      }
     }
 
-    let prev = aElement.previousElementSibling;
-    while (prev) {
-      const prevText = prev.innerText ? prev.innerText.trim() : '';
-      if (prevText.length >= 4 && !isGenericLinkText(prevText) && !prevText.startsWith('http')) {
-        return prevText;
+    // 第 6 层：【核心突破】DOM 向上向前多层回溯，寻找兄弟节点中的最近前置标题 (彻底解决 <h3>标题</h3> + <p>下载链接</p> 结构)
+    let curr = aElement;
+    let depth = 0;
+    while (curr && curr !== document.body && depth < 6) {
+      depth++;
+      let prev = curr.previousElementSibling;
+      while (prev) {
+        // 如果遇到了包含另一个网盘链接的元素，说明已经越界到了上一个资源，立即停止向前回溯！
+        if (prev.querySelector && prev.querySelector('a[href*="quark.cn/s/"], a[href*="baidu.com/"], a[href*="uc.cn/s/"], a[href*="alipan.com/s/"], a[href*="123pan.com/s/"], a[href*="123684.com/s/"], a[href*="xunlei.com/s/"], a[href*="189.cn/"]')) {
+          break;
+        }
+
+        // 检查前置兄弟节点本身或内部是否是 h1~h6, strong, b 或 title 类
+        const heading = (prev.matches && prev.matches('h1, h2, h3, h4, h5, h6, strong, b, [class*="title"], [class*="name"]'))
+          ? prev
+          : (prev.querySelector ? prev.querySelector('h1, h2, h3, h4, h5, h6, strong, b, [class*="title"], [class*="name"]') : null);
+
+        if (heading) {
+          const hText = heading.innerText.trim();
+          if (hText.length >= 3 && !hText.startsWith('http') && !isGenericLinkText(hText)) {
+            const cleaned = cleanResourceTitle(hText);
+            if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
+          }
+        }
+
+        // 如果前置兄弟是一个普通段落，取其最后一行非空白文本
+        const pText = (prev.innerText || '').trim();
+        if (pText.length >= 3 && !pText.startsWith('http') && !isGenericLinkText(pText)) {
+          const pLines = pText.split('\n').map(l => l.trim()).filter(Boolean);
+          for (let i = pLines.length - 1; i >= 0; i--) {
+            if (pLines[i].length >= 3 && !pLines[i].startsWith('http') && !isGenericLinkText(pLines[i])) {
+              const cleaned = cleanResourceTitle(pLines[i]);
+              if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
+            }
+          }
+        }
+
+        prev = prev.previousElementSibling;
       }
-      prev = prev.previousElementSibling;
+      curr = curr.parentElement;
     }
 
-    const docTitle = document.title ? document.title.replace(/[-_\|].*$/, '').trim() : '精选学习网盘资料';
+    // 第 7 层：兜底策略，采用网页标题 + 序号
+    const docTitle = document.title ? cleanResourceTitle(document.title.replace(/[-_\|].*$/, '')) : '精选学习网盘资料';
     return `${docTitle} (资源 ${fallbackIndex + 1})`;
   }
 
@@ -598,19 +734,36 @@
               } catch {}
             }
 
-            let title = line.replace(cleanUrl, '')
-              .replace(/(?:夸克|百度|UC|阿里|迅雷|网盘|链接|下载|地址|提取码|密码|pwd|code|点此访问|点击下载)[:：\s]*/gi, '')
-              .replace(/[《【]([^》】]{4,80})[》】]/, '$1')
-              .trim();
-
-            if (!title || title.length < 3 || isGenericLinkText(title)) {
-              if (lineIndex > 0 && lines[lineIndex - 1].trim().length >= 3 && !lines[lineIndex - 1].includes('http')) {
-                title = lines[lineIndex - 1].trim().replace(/[《【]([^》】]{4,80})[》】]/, '$1');
+            // 纯文本行标题匹配：
+            // 1. 同行在 URL 前方的文本：如 "01. 高中数学知识清单.pdf https://pan.quark.cn/s/... 提取码 1234"
+            let title = '';
+            const urlIdx = line.indexOf(cleanUrl);
+            if (urlIdx > 0) {
+              const beforeUrl = line.substring(0, urlIdx).trim();
+              if (beforeUrl.length >= 3 && !isGenericLinkText(beforeUrl)) {
+                title = cleanResourceTitle(beforeUrl);
               }
             }
 
+            // 2. 如果同行前方为空，向上回溯 1~6 行文本寻找标题
             if (!title || title.length < 3 || isGenericLinkText(title)) {
-              const docTitle = document.title ? document.title.replace(/[-_\|].*$/, '').trim() : '精选真题教辅资料';
+              for (let k = lineIndex - 1; k >= Math.max(0, lineIndex - 6); k--) {
+                const prevLine = lines[k].trim();
+                // 遇到空行、包含其他 URL、或纯提取码行，跳过继续往前找
+                if (!prevLine || prevLine.includes('http://') || prevLine.includes('https://')) continue;
+                if (/^(?:提取码|密码|pwd|code|访问码|解压密码)[:：\s]*[a-zA-Z0-9]{4,8}$/i.test(prevLine)) continue;
+                if (isGenericLinkText(prevLine)) continue;
+
+                if (prevLine.length >= 3) {
+                  title = cleanResourceTitle(prevLine);
+                  break;
+                }
+              }
+            }
+
+            // 3. 兜底
+            if (!title || title.length < 3 || isGenericLinkText(title)) {
+              const docTitle = document.title ? cleanResourceTitle(document.title.replace(/[-_\|].*$/, '')) : '精选真题教辅资料';
               title = `${docTitle} (资源 ${items.length + 1})`;
             }
 
@@ -627,6 +780,22 @@
             });
           }
         });
+      }
+    });
+
+    // 智能去重与同名多网盘消歧义
+    // 如果存在多个完全相同的标题（如同一资源既有夸克又有百度），为标题自动打上网盘标签以示区分
+    const titleCountMap = new Map();
+    items.forEach(it => {
+      titleCountMap.set(it.title, (titleCountMap.get(it.title) || 0) + 1);
+    });
+
+    items.forEach(it => {
+      if (titleCountMap.get(it.title) > 1) {
+        const cleanLabel = it.driveLabel.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
+        if (!it.title.includes(cleanLabel)) {
+          it.title = `${it.title} (${cleanLabel}版)`;
+        }
       }
     });
 
@@ -663,10 +832,11 @@
         <div class="xb-item-card ${item.selected ? 'is-selected' : ''}" data-index="${idx}">
           <input type="checkbox" class="xb-checkbox" ${item.selected ? 'checked' : ''} data-index="${idx}" />
           <div class="xb-item-main">
-            <!-- 行 1：标题独立一行 -->
+            <!-- 行 1：标题独立一行 (支持手动修改与一键点选页面拾取) -->
             <div class="xb-item-title-row">
               <span class="xb-drive-tag ${item.driveType}">${item.driveLabel}</span>
               <input type="text" class="xb-item-title-input" value="${escapeHtml(item.title)}" data-index="${idx}" placeholder="资料标题 (可直接编辑)" />
+              <button type="button" class="xb-btn-pick-title" data-index="${idx}" title="点击进入拾取模式：在左侧网页中点击任意文字直接设为本资源标题">🎯 拾取</button>
             </div>
 
             <!-- 行 2：网盘地址独立一行 (完整显示不截断) -->
@@ -776,14 +946,88 @@
       });
     }
 
-    container.querySelector('#xb-btn-close').addEventListener('click', () => container.remove());
-    container.querySelector('#xb-btn-cancel').addEventListener('click', () => container.remove());
-    container.querySelector('#xb-btn-config').addEventListener('click', () => {
+    // 标题拾取模式状态管理
+    let activePickerIdx = null;
+    let pickerBanner = null;
+
+    function stopTitlePicker() {
+      if (activePickerIdx === null) return;
+      document.querySelectorAll('.xb-picker-hover-outline').forEach(el => el.classList.remove('xb-picker-hover-outline'));
+      container.querySelectorAll('.xb-btn-pick-title').forEach(b => b.classList.remove('is-active'));
+      if (pickerBanner) {
+        pickerBanner.remove();
+        pickerBanner = null;
+      }
+      document.removeEventListener('mouseover', onPickerMouseOver, true);
+      document.removeEventListener('mouseout', onPickerMouseOut, true);
+      document.removeEventListener('click', onPickerClick, true);
+      activePickerIdx = null;
+    }
+
+    function onPickerMouseOver(e) {
+      if (!e.target || e.target.closest('#xuebaw-modal-container') || e.target.closest('#xuebaw-collector-bubble')) return;
+      e.target.classList.add('xb-picker-hover-outline');
+    }
+
+    function onPickerMouseOut(e) {
+      if (e.target) e.target.classList.remove('xb-picker-hover-outline');
+    }
+
+    function onPickerClick(e) {
+      if (!e.target || e.target.closest('#xuebaw-modal-container') || e.target.closest('#xuebaw-collector-bubble')) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const raw = e.target.innerText || e.target.textContent || '';
+      const pickedTitle = cleanResourceTitle(raw.trim());
+      if (pickedTitle && activePickerIdx !== null) {
+        items[activePickerIdx].title = pickedTitle;
+        const titleInput = container.querySelector(`.xb-item-title-input[data-index="${activePickerIdx}"]`);
+        if (titleInput) {
+          titleInput.value = pickedTitle;
+          titleInput.style.borderColor = '#10b981';
+          setTimeout(() => { if (titleInput) titleInput.style.borderColor = ''; }, 1200);
+        }
+      }
+      stopTitlePicker();
+    }
+
+    function startTitlePicker(idx) {
+      if (activePickerIdx === idx) {
+        stopTitlePicker();
+        return;
+      }
+      stopTitlePicker();
+      activePickerIdx = idx;
+
+      const btn = container.querySelector(`.xb-btn-pick-title[data-index="${idx}"]`);
+      if (btn) btn.classList.add('is-active');
+
+      pickerBanner = document.createElement('div');
+      pickerBanner.id = 'xb-picker-indicator';
+      pickerBanner.innerHTML = `🎯 <strong>拾取模式已激活</strong>：请在左侧网页中点击任意文字作为该资源的标题（按 Esc 或再次点击拾取退出）`;
+      document.body.appendChild(pickerBanner);
+
+      document.addEventListener('mouseover', onPickerMouseOver, true);
+      document.addEventListener('mouseout', onPickerMouseOut, true);
+      document.addEventListener('click', onPickerClick, true);
+    }
+
+    function closeDrawer() {
+      stopTitlePicker();
       container.remove();
+      document.removeEventListener('keydown', onKeyEsc);
+    }
+
+    container.querySelector('#xb-btn-close').addEventListener('click', closeDrawer);
+    container.querySelector('#xb-btn-cancel').addEventListener('click', closeDrawer);
+    container.querySelector('#xb-btn-config').addEventListener('click', () => {
+      closeDrawer();
       openSettingsModal();
     });
 
     container.querySelector('#xb-btn-rescan').addEventListener('click', () => {
+      stopTitlePicker();
       triggerCollect();
     });
 
@@ -824,6 +1068,15 @@
         });
       });
 
+      // 绑定页面标题拾取按钮
+      container.querySelectorAll('.xb-btn-pick-title').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idx = parseInt(btn.getAttribute('data-index'), 10);
+          startTitlePicker(idx);
+        });
+      });
+
       const submitBtn = container.querySelector('#xb-btn-submit');
       submitBtn.addEventListener('click', () => {
         const selectedItems = items.filter(it => it.selected);
@@ -847,7 +1100,7 @@
             updateSelectionUI();
           } else {
             alert(`✅ 批量录入成功！已将 ${selectedItems.length} 条资料同步至学霸网后台待审草稿池。`);
-            container.remove();
+            closeDrawer();
           }
         });
       });
@@ -855,8 +1108,11 @@
 
     const onKeyEsc = (e) => {
       if (e.key === 'Escape') {
-        container.remove();
-        document.removeEventListener('keydown', onKeyEsc);
+        if (activePickerIdx !== null) {
+          stopTitlePicker();
+        } else {
+          closeDrawer();
+        }
       }
     };
     document.addEventListener('keydown', onKeyEsc);
