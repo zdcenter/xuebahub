@@ -1,60 +1,60 @@
 {
   "rewrites": [
     {
-      "source": "/resource/([^/.]+)/",
-      "destination": "/resource/$1/index.html"
+      "source": "/resource/:id/",
+      "destination": "/resource/:id.html"
     },
     {
-      "source": "/resource/([^/.]+)",
-      "destination": "/resource/$1/index.html"
+      "source": "/resource/:id",
+      "destination": "/resource/:id.html"
     },
     {
       "source": "/book/",
-      "destination": "/book/index.html"
+      "destination": "/book.html"
     },
     {
       "source": "/book",
-      "destination": "/book/index.html"
+      "destination": "/book.html"
     },
     {
       "source": "/primary/",
-      "destination": "/primary/index.html"
+      "destination": "/primary.html"
     },
     {
       "source": "/primary",
-      "destination": "/primary/index.html"
+      "destination": "/primary.html"
     },
     {
       "source": "/junior/",
-      "destination": "/junior/index.html"
+      "destination": "/junior.html"
     },
     {
       "source": "/junior",
-      "destination": "/junior/index.html"
+      "destination": "/junior.html"
     },
     {
       "source": "/senior/",
-      "destination": "/senior/index.html"
+      "destination": "/senior.html"
     },
     {
       "source": "/senior",
-      "destination": "/senior/index.html"
+      "destination": "/senior.html"
     },
     {
       "source": "/cert/",
-      "destination": "/cert/index.html"
+      "destination": "/cert.html"
     },
     {
       "source": "/cert",
-      "destination": "/cert/index.html"
+      "destination": "/cert.html"
     },
     {
       "source": "/exam/",
-      "destination": "/exam/index.html"
+      "destination": "/exam.html"
     },
     {
       "source": "/exam",
-      "destination": "/exam/index.html"
+      "destination": "/exam.html"
     },
     {
       "source": "/*",
