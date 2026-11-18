@@ -991,6 +991,10 @@ body {
   height: 2.25rem;
 }
 
+.h-\[18px\] {
+  height: 18px;
+}
+
 .h-\[350px\] {
   height: 350px;
 }
@@ -1117,6 +1121,10 @@ body {
 
 .w-9 {
   width: 2.25rem;
+}
+
+.w-\[18px\] {
+  width: 18px;
 }
 
 .w-\[700px\] {
