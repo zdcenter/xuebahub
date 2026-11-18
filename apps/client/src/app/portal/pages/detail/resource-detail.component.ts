@@ -165,13 +165,11 @@ export class ResourceDetailComponent implements OnInit {
   activeShareTab = signal<'parent' | 'moments' | 'direct'>('parent');
   shareCopySuccess = signal<boolean>(false);
 
-  // 转存量智能呈现 (若数据库已统计则优先展示，否则基于热度智能推算，确保不为0)
+  // 转存量呈现 (以数据库真实统计为准)
   saveCount = computed(() => {
     const res = this.resource();
-    if (!res) return 18;
-    if (res.save_count && res.save_count > 0) return res.save_count;
-    const views = res.view_count || 24;
-    return Math.max(12, Math.floor(views * 0.75));
+    if (!res) return 0;
+    return res.save_count || 0;
   });
 
   // 当前资料页完整 URL

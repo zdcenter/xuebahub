@@ -80,10 +80,10 @@
           <span>💾</span> 大小：<strong class="text-slate-700 font-semibold">{{ resource.file_size || '12.8 MB' }}</strong>
         </span>
         <span class="hidden sm:inline-flex items-center gap-1">
-          <span>👁️</span> {{ resource.view_count || 1280 }} 次查阅
+          <span>👁️</span> {{ resource.view_count || 0 }} 次查阅
         </span>
         <span class="text-emerald-700 font-bold flex items-center gap-1">
-          <span>⚡</span> {{ resource.save_count || 390 }} 人已转存
+          <span>⚡</span> {{ resource.save_count || 0 }} 人已转存
         </span>
         <span *ngIf="hasBaidu" class="hidden md:inline-flex px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded text-[11px]">
           📦 包含百度备用

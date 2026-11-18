@@ -112,7 +112,7 @@
                   <span class="text-slate-400 shrink-0">浏览热度:</span>
                   <span class="font-medium text-slate-800 font-mono flex items-center gap-1">
                     <span>🔥</span>
-                    <span>{{ (resource()?.view_count || 24) | number }} 次</span>
+                    <span>{{ (resource()?.view_count || 0) | number }} 次</span>
                   </span>
                 </div>
                 <div class="flex items-center gap-2">
