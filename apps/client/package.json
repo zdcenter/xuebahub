@@ -6,7 +6,7 @@
     "tailwind": "tailwindcss -i ./src/styles.css -o ./src/styles.generated.css",
     "prebuild": "node scripts/generate-version.js && node scripts/generate-sitemap.mjs && tailwindcss -i ./src/styles.css -o ./src/styles.generated.css",
     "start": "node scripts/generate-version.js && node scripts/generate-sitemap.mjs && tailwindcss -i ./src/styles.css -o ./src/styles.generated.css && ng serve",
-    "build": "node scripts/generate-version.js && node scripts/generate-sitemap.mjs && tailwindcss -i ./src/styles.css -o ./src/styles.generated.css && ng build",
+    "build": "node scripts/generate-version.js && node scripts/generate-sitemap.mjs && tailwindcss -i ./src/styles.css -o ./src/styles.generated.css && ng build && node scripts/postbuild-routes.mjs",
     "watch": "node scripts/generate-version.js && ng build --watch --configuration development",
     "test": "ng test"
   },

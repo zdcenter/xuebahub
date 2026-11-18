@@ -1,12 +1,12 @@
 {
   "rewrites": [
     {
-      "source": "/resource/:id",
-      "destination": "/resource/:id/index.html"
+      "source": "/resource/*/",
+      "destination": "/resource/:splat/index.html"
     },
     {
-      "source": "/resource/:id/",
-      "destination": "/resource/:id/index.html"
+      "source": "/resource/*",
+      "destination": "/resource/:splat/index.html"
     },
     {
       "source": "/book",
@@ -58,7 +58,7 @@
     },
     {
       "source": "/*",
-      "destination": "/index.csr.html"
+      "destination": "/index.html"
     }
   ]
 }
