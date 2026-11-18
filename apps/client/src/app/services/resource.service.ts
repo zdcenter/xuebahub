@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, isDevMode } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, of, catchError } from 'rxjs';
 
@@ -147,6 +147,11 @@ export class ResourceService {
       const host = window.location.hostname;
       if (host === 'localhost' || host === '127.0.0.1') {
         return `http://${host}:4001`;
+      }
+    } else {
+      // 服务端 SSR / 本地编译检测
+      if (isDevMode()) {
+        return 'http://127.0.0.1:4001';
       }
     }
     // 3. 部署在 Cloudflare Pages 或公网时的远程 API 服务端地址
