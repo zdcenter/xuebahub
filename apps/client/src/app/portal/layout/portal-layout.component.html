@@ -509,4 +509,97 @@
       </div>
     </div>
   </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 3. PWA 渐进式 Web 应用：移动端 / 桌面端「添加到主屏幕」浮动轻胶囊 -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div *ngIf="showPwaInstallBanner()"
+       class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-[420px] z-50 animate-fadeIn select-none">
+    <div class="bg-slate-900/95 text-white rounded-3xl p-3.5 sm:p-4 shadow-2xl border border-slate-700/80 backdrop-blur-md flex items-center justify-between gap-3">
+      
+      <!-- 左侧：应用图标 + 标题说明 -->
+      <div class="flex items-center gap-3 min-w-0">
+        <img src="/icons/icon-192x192.png" alt="学霸网 Logo" class="w-11 h-11 rounded-2xl shadow-md shrink-0 border border-white/20" />
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <h4 class="font-extrabold text-white text-xs sm:text-sm tracking-tight truncate">学霸网轻应用</h4>
+            <span class="text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-1.5 py-0.2 rounded-full shrink-0">免下载</span>
+          </div>
+          <p class="text-[11px] text-slate-300 truncate mt-0.5">
+            {{ isIos() ? '添加到主屏幕，像 App 一样秒开查卷' : '添加到桌面 · 免输网址 · 一键秒开' }}
+          </p>
+        </div>
+      </div>
+
+      <!-- 右侧：行动按钮 + 关闭叉号 -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button (click)="installPwa()"
+                type="button"
+                class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer whitespace-nowrap">
+          {{ isIos() ? '如何添加' : '添加到桌面' }}
+        </button>
+        <button (click)="dismissPwaBanner()"
+                type="button"
+                class="w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center justify-center text-xs cursor-pointer"
+                title="暂不需要">
+          ✕
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 4. iOS Safari 专用：添加到主屏幕步骤引导弹窗 (优雅手绘图文指引) -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div *ngIf="showIosGuide()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fadeIn">
+    <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-200">
+      <!-- 头部 -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-5 text-white text-center relative">
+        <button type="button" (click)="showIosGuide.set(false)" class="absolute right-4 top-4 text-white/70 hover:text-white text-xl cursor-pointer">✕</button>
+        <img src="/icons/icon-192x192.png" alt="学霸网" class="w-14 h-14 mx-auto rounded-2xl shadow-lg border-2 border-white/20 mb-3" />
+        <h3 class="text-base font-extrabold text-white">将「学霸网」添加到 iPhone 桌面</h3>
+        <p class="text-xs text-slate-300 mt-1">随时像独立 App 一样全屏查阅真题与课本</p>
+      </div>
+
+      <!-- 步骤指引 -->
+      <div class="p-5 space-y-4 text-xs text-slate-700">
+        <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+          <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-extrabold flex items-center justify-center shrink-0 text-xs">1</span>
+          <div>
+            <span class="font-bold text-slate-900">点击 Safari 底部栏的「分享」按钮</span>
+            <p class="text-slate-400 text-[11px] mt-0.5 flex items-center gap-1">
+              <span>图标形状为带向上箭头的方块</span>
+              <span class="p-1 bg-white rounded border border-slate-200 text-sm">📤</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+          <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-extrabold flex items-center justify-center shrink-0 text-xs">2</span>
+          <div>
+            <span class="font-bold text-slate-900">向上轻滑菜单，选择「添加到主屏幕」</span>
+            <p class="text-slate-400 text-[11px] mt-0.5 flex items-center gap-1">
+              <span>图标形状为带加号的小方块</span>
+              <span class="p-1 bg-white rounded border border-slate-200 text-sm">➕</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+          <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-extrabold flex items-center justify-center shrink-0 text-xs">3</span>
+          <div>
+            <span class="font-bold text-slate-900">点击右上角的「添加」完成</span>
+            <p class="text-slate-400 text-[11px] mt-0.5">返回手机桌面，即可看到专属学霸网 App 图标！</p>
+          </div>
+        </div>
+
+        <button (click)="showIosGuide.set(false)"
+                type="button"
+                class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-2xl shadow-sm transition text-center cursor-pointer mt-2">
+          我知道了
+        </button>
+      </div>
+    </div>
+  </div>
 </div>

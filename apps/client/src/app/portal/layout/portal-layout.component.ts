@@ -164,6 +164,9 @@ export class PortalLayoutComponent implements OnInit {
 
     // 3. 拉取当前用户/访客每日额度与会员状态
     this.memberService.fetchQuotaStatus().subscribe();
+
+    // 4. 初始化 PWA 渐进式 Web 应用智能安装引导
+    this.initPwa();
   }
 
   // 会员认证与卡密动作
@@ -376,5 +379,69 @@ export class PortalLayoutComponent implements OnInit {
         this.isSubmittingRequest.set(false);
       }
     });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // PWA 渐进式 Web 应用：添加到桌面与启动引导
+  // ══════════════════════════════════════════════════════════════
+  showPwaInstallBanner = signal<boolean>(false);
+  isIos = signal<boolean>(false);
+  showIosGuide = signal<boolean>(false);
+  private deferredPrompt: any = null;
+
+  initPwa() {
+    if (typeof window === 'undefined') return;
+
+    // 检查是否已处于 PWA Standalone 独立应用模式
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    if (isStandalone) {
+      return; // 用户已经在独立 App 中，不展示横幅
+    }
+
+    // 检查用户是否在最近 5 天内主动关闭过提示
+    const dismissedAt = localStorage.getItem('pwa_prompt_dismissed_at');
+    if (dismissedAt && Date.now() - parseInt(dismissedAt, 10) < 5 * 24 * 3600 * 1000) {
+      return;
+    }
+
+    // 1. Android / Chrome / Edge 等标准 beforeinstallprompt 事件监听
+    window.addEventListener('beforeinstallprompt', (e: Event) => {
+      e.preventDefault();
+      this.deferredPrompt = e;
+      // 延迟 3 秒温和展示，不打扰首屏访问
+      setTimeout(() => this.showPwaInstallBanner.set(true), 3000);
+    });
+
+    // 2. iOS Safari 专用温和引导检测
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIosDevice = /iphone|ipad|ipod/.test(ua) && !('MSStream' in window);
+    const isSafari = /safari/.test(ua) && !/chrome|crios|fxios/.test(ua);
+    if (isIosDevice && isSafari) {
+      this.isIos.set(true);
+      // iOS 用户访问 5 秒后温和展示
+      setTimeout(() => this.showPwaInstallBanner.set(true), 5000);
+    }
+  }
+
+  installPwa() {
+    if (this.deferredPrompt) {
+      this.deferredPrompt.prompt();
+      this.deferredPrompt.userChoice.then((choice: any) => {
+        if (choice.outcome === 'accepted') {
+          console.log('[PWA] 用户接受安装学霸网轻应用');
+        }
+        this.deferredPrompt = null;
+        this.showPwaInstallBanner.set(false);
+      });
+    } else if (this.isIos()) {
+      this.showIosGuide.set(true);
+    }
+  }
+
+  dismissPwaBanner() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pwa_prompt_dismissed_at', Date.now().toString());
+    }
+    this.showPwaInstallBanner.set(false);
   }
 }
