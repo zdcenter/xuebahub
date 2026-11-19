@@ -4564,3 +4564,21 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+@media (min-width: 1536px) {
+  .\32xl\:w-\[340px\] {
+    width: 340px;
+  }
+
+  .\32xl\:max-w-\[1600px\] {
+    max-width: 1600px;
+  }
+
+  .\32xl\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .\32xl\:grid-cols-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}

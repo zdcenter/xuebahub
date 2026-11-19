@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-slate-50/60 pb-16">
   <!-- 顶部 Banner 英雄区：数字图书馆氛围 -->
   <div class="bg-gradient-to-r from-emerald-800 via-teal-700 to-slate-900 text-white relative overflow-hidden border-b border-emerald-900/30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative z-10">
+    <div class="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative z-10">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold mb-3 backdrop-blur-md">
@@ -19,7 +19,7 @@
   </div>
 
   <!-- 五维步进联动极简筛选器容器 -->
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-20">
+  <div class="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-20">
     <div class="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200/90 p-4 sm:p-6 space-y-3.5 backdrop-blur-md">
       
       <!-- 维度 1: 学段 (Stage) -->
@@ -132,7 +132,7 @@
   </div>
 
   <!-- 数字书架主列表展示区 -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+  <main class="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-8">
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-2">
         <span class="text-xl">📚</span>
@@ -149,7 +149,7 @@
     </div>
 
     <!-- 课本卡片网格 -->
-    <div *ngIf="books().length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+    <div *ngIf="books().length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-6">
       <app-book-card *ngFor="let b of books()" [resource]="b"></app-book-card>
     </div>
 
