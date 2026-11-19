@@ -159,6 +159,10 @@ export class ResourceDetailComponent implements OnInit {
   relatedResources = signal<ResourceItemDto[]>([]);
   isRelatedLoading = signal<boolean>(false);
 
+  // PC 端右侧常驻热门转存飙升榜 (TOP 8)
+  hotRankList = signal<ResourceItemDto[]>([]);
+  isRankLoading = signal<boolean>(false);
+
   // 交互状态
   copiedLink = signal<string | null>(null);
   expandedDirs = signal<Set<number>>(new Set());
@@ -519,6 +523,7 @@ export class ResourceDetailComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.loadHotRankList();
     this.route.params.subscribe(params => {
       const idOrSlug = params['id'];
       if (idOrSlug) {
@@ -655,6 +660,29 @@ export class ResourceDetailComponent implements OnInit {
       error: () => {
         this.relatedResources.set([]);
         this.isRelatedLoading.set(false);
+      }
+    });
+  }
+
+  // 加载全站热门转存飙升榜 (TOP 8)
+  loadHotRankList() {
+    this.isRankLoading.set(true);
+    this.portalService.getResources({
+      channel: 'edu',
+      sort: 'popular',
+      page: 1,
+      limit: 15
+    }).subscribe({
+      next: (res) => {
+        const sorted = (res.items || []).sort((a, b) => (b.save_count || 0) - (a.save_count || 0));
+        const currentSlug = this.resource()?.slug || '';
+        const filtered = sorted.filter(item => item.slug !== currentSlug && item.id !== currentSlug);
+        this.hotRankList.set(filtered.slice(0, 8));
+        this.isRankLoading.set(false);
+      },
+      error: () => {
+        this.hotRankList.set([]);
+        this.isRankLoading.set(false);
       }
     });
   }

@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-slate-50/60 pb-28 sm:pb-20 pt-6">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
     <!-- 面包屑导航 -->
     <nav class="flex items-center space-x-2 text-xs text-slate-500">
@@ -10,8 +10,16 @@
       <span class="text-slate-800 font-medium truncate max-w-sm">{{ resource()?.title }}</span>
     </nav>
 
-    <!-- 主体内容卡片 -->
-    <div *ngIf="resource()" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+    <!-- PC 宽屏黄金双列布局：左侧详情与推荐 (75%) + 右侧热门转存飙升榜 (25%，手机/平板自动隐藏) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+      
+      <!-- ══════════════════════════════════════════════ -->
+      <!-- 左侧主体详情与同类推荐 (手机/平板占100%，电脑占75%) -->
+      <!-- ══════════════════════════════════════════════ -->
+      <div class="lg:col-span-8 xl:col-span-9 space-y-8 min-w-0">
+
+        <!-- 主体内容卡片 -->
+        <div *ngIf="resource()" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
 
       <!-- 顶部标题与参考图经典布局 (标题在上，左侧封面，右上淡蓝属性卡片，右下红字标题+直出二维码+两颗绿色按钮) -->
       <div class="p-5 sm:p-7 lg:p-8 space-y-6">
@@ -566,6 +574,99 @@
           </div>
         </a>
       </div>
+    </div>
+
+      </div>
+
+      <!-- ══════════════════════════════════════════════ -->
+      <!-- 右侧桌面端侧边栏 (PC 宽屏常驻，平板与手机端自动隐藏) -->
+      <!-- ══════════════════════════════════════════════ -->
+      <aside class="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-5 sticky top-6">
+        
+        <!-- 🏆 模块 1: 热门转存飙升榜 (TOP 8) -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-academic p-5 space-y-3.5">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🔥</span>
+              <h3 class="font-black text-slate-900 text-sm">热门转存飙升榜</h3>
+            </div>
+            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              大家都在存
+            </span>
+          </div>
+
+          <div class="space-y-2">
+            <a *ngFor="let item of hotRankList(); let idx = index"
+               [routerLink]="['/resource', item.slug || item.id]"
+               class="group flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-50/90 transition cursor-pointer">
+              <!-- 排名徽章 (前 3 名金银铜高光) -->
+              <span class="w-5 h-5 rounded-lg flex items-center justify-center text-xs shrink-0 font-mono mt-0.5 shadow-2xs"
+                    [ngClass]="{
+                      'bg-amber-400 text-amber-950 font-black shadow-amber-300/50': idx === 0,
+                      'bg-slate-300 text-slate-800 font-bold': idx === 1,
+                      'bg-amber-600/30 text-amber-900 font-bold': idx === 2,
+                      'bg-slate-100 text-slate-500 font-medium': idx > 2
+                    }">
+                {{ idx + 1 }}
+              </span>
+
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition line-clamp-1 leading-snug"
+                     [title]="item.title">
+                  {{ item.title }}
+                </div>
+                <div class="flex items-center gap-1.5 text-[10px] text-slate-400 mt-1">
+                  <span *ngIf="item.subject" class="font-medium text-slate-600">{{ item.subject }}</span>
+                  <span *ngIf="item.grade">{{ item.grade }}</span>
+                  <span class="ml-auto font-mono text-emerald-700 font-semibold flex items-center gap-0.5 shrink-0">
+                    <span>⚡</span>
+                    <span>{{ item.save_count || 100 }} 次转存</span>
+                  </span>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- 🚀 模块 2: 学霸备考直通车 -->
+        <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-5 space-y-3.5 shadow-academic">
+          <div class="flex items-center gap-2">
+            <span class="text-base">🎯</span>
+            <h4 class="font-extrabold text-white text-xs">学霸备考直通车</h4>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <a routerLink="/primary" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center gap-2 cursor-pointer">
+              <span>🎒</span>
+              <span>小学专区</span>
+            </a>
+            <a routerLink="/junior" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center gap-2 cursor-pointer">
+              <span>📘</span>
+              <span>初中中考</span>
+            </a>
+            <a routerLink="/senior" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center gap-2 cursor-pointer">
+              <span>🎓</span>
+              <span>高中高考</span>
+            </a>
+            <a routerLink="/book" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center gap-2 cursor-pointer">
+              <span>📖</span>
+              <span>高清课本</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- 💡 模块 3: 转存小贴士 -->
+        <div class="bg-blue-50/60 rounded-3xl border border-blue-100 p-4 text-xs text-slate-600 space-y-1.5">
+          <div class="font-bold text-slate-800 flex items-center gap-1.5">
+            <span class="text-blue-600">💡</span>
+            <span>转存小贴士</span>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-relaxed">
+            建议将喜欢的真题资料一键转存至您的个人网盘，避免后续分享链接失效，手机电脑随时免下载查阅或直接打印。
+          </p>
+        </div>
+
+      </aside>
+
     </div>
 
     <!-- 📱 手机扫码转存高精全屏弹窗 (100% 毫秒级秒扫、提取码展示与一键直达) -->

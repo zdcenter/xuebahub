@@ -441,168 +441,72 @@
       </div>
     </div>
 
-    <!-- 左右两列黄金布局：左侧主资源列表 (75%) + 右侧热闹排行榜 (25%) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start mt-6">
+    <!-- 资料展示主体：开阔大气自适应 4 列网格 (卡片舒展，与上方筛选栏完美对齐) -->
+    <div class="mt-6 space-y-6">
       
-      <!-- ══════════════════════════════════════════════ -->
-      <!-- 左侧主资源列表 -->
-      <!-- ══════════════════════════════════════════════ -->
-      <div class="lg:col-span-8 xl:col-span-9 space-y-6">
-        
-        <!-- 加载中骨架屏 -->
-        <div *ngIf="isLoading()"
-             [class]="viewMode() === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-4' : 'space-y-3'">
-          <div *ngFor="let _ of [1,2,3,4,5,6]"
-               class="bg-white rounded-2xl border border-slate-200/80 p-3 sm:p-4 animate-pulse space-y-3">
-            <div class="w-full aspect-[3/4] bg-slate-100 rounded-xl"></div>
-            <div class="h-4 bg-slate-200 rounded w-3/4"></div>
-            <div class="h-3 bg-slate-100 rounded w-1/2"></div>
-          </div>
+      <!-- 加载中骨架屏 -->
+      <div *ngIf="isLoading()"
+           [class]="viewMode() === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5' : 'space-y-3'">
+        <div *ngFor="let _ of [1,2,3,4,5,6,7,8]"
+             class="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-3 sm:p-4 animate-pulse space-y-3">
+          <div class="w-full aspect-[3/4] bg-slate-100 rounded-xl"></div>
+          <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+          <div class="h-3 bg-slate-100 rounded w-1/2"></div>
         </div>
-
-        <!-- 资料卡片主体渲染 (根据当前选中的排序 displayResources 响应式渲染) -->
-        <div *ngIf="!isLoading() && displayResources().length > 0"
-             [class]="viewMode() === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-4' : 'space-y-3'">
-          <app-resource-card *ngFor="let res of displayResources()"
-                             [resource]="res"
-                             [viewMode]="viewMode()">
-          </app-resource-card>
-        </div>
-
-        <!-- 空数据缺省态 -->
-        <div *ngIf="!isLoading() && displayResources().length === 0"
-             class="py-16 text-center bg-white rounded-3xl border border-slate-200/90 shadow-academic p-8">
-          <div class="text-4xl mb-3">🔍</div>
-          <h3 class="text-base font-extrabold text-slate-800">暂未找到完全匹配的真题资源</h3>
-          <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-            您可以尝试缩减筛选条件，或在顶部搜索框输入更简短的关键词进行全局搜索。
-          </p>
-          <div class="mt-5">
-            <button (click)="resetAllFilters()"
-                    class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition cursor-pointer">
-              重置所有筛选条件
-            </button>
-          </div>
-        </div>
-
-        <!-- 现代化对称分页控件 -->
-        <nav *ngIf="totalPages() > 1" class="mt-10 sm:mt-12 flex justify-center items-center gap-1.5 sm:gap-2 select-none">
-          <!-- 上一页 -->
-          <button (click)="onPageChange(page() - 1)"
-                  [disabled]="page() === 1"
-                  class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs">
-            上一页
-          </button>
-
-          <!-- 动态页码 -->
-          <ng-container *ngFor="let p of visiblePages()">
-            <span *ngIf="p === -1" class="px-2 text-xs text-slate-400">…</span>
-            <button *ngIf="p !== -1"
-                    (click)="onPageChange(p)"
-                    [class]="page() === p ? 'bg-slate-900 text-white font-extrabold shadow-sm' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'"
-                    class="min-w-9 h-9 px-2 text-xs sm:text-sm font-semibold rounded-xl transition cursor-pointer">
-              {{ p }}
-            </button>
-          </ng-container>
-
-          <!-- 下一页 -->
-          <button (click)="onPageChange(page() + 1)"
-                  [disabled]="page() === totalPages()"
-                  class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs">
-            下一页
-          </button>
-        </nav>
-
       </div>
 
-      <!-- ══════════════════════════════════════════════ -->
-      <!-- 右侧桌面端侧边栏 (营造热闹氛围与高转化锚点) -->
-      <!-- ══════════════════════════════════════════════ -->
-      <aside class="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-5 sticky top-6">
-        
-        <!-- 🏆 模块 1: 热门转存飙升榜 (TOP 8) -->
-        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-academic p-5 space-y-3.5">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div class="flex items-center gap-2">
-              <span class="text-base">🔥</span>
-              <h3 class="font-black text-slate-900 text-sm">热门转存飙升榜</h3>
-            </div>
-            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              大家都在存
-            </span>
-          </div>
+      <!-- 资料卡片主体渲染 (根据当前选中的排序 displayResources 响应式渲染，开阔 4 列满宽) -->
+      <div *ngIf="!isLoading() && displayResources().length > 0"
+           [class]="viewMode() === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5' : 'space-y-3'">
+        <app-resource-card *ngFor="let res of displayResources()"
+                           [resource]="res"
+                           [viewMode]="viewMode()">
+        </app-resource-card>
+      </div>
 
-          <div class="space-y-2">
-            <a *ngFor="let item of hotRankList(); let idx = index"
-               [routerLink]="['/resource', item.slug || item.id]"
-               class="group flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-50/90 transition cursor-pointer">
-              <!-- 排名徽章 (前 3 名金银铜高光) -->
-              <span class="w-5 h-5 rounded-lg flex items-center justify-center text-xs shrink-0 font-mono mt-0.5 shadow-2xs"
-                    [ngClass]="{
-                      'bg-amber-400 text-amber-950 font-black shadow-amber-300/50': idx === 0,
-                      'bg-slate-300 text-slate-800 font-bold': idx === 1,
-                      'bg-amber-600/30 text-amber-900 font-bold': idx === 2,
-                      'bg-slate-100 text-slate-500 font-medium': idx > 2
-                    }">
-                {{ idx + 1 }}
-              </span>
-
-              <div class="min-w-0 flex-1">
-                <div class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition line-clamp-1 leading-snug"
-                     [title]="item.title">
-                  {{ item.title }}
-                </div>
-                <div class="flex items-center gap-1.5 text-[10px] text-slate-400 mt-1">
-                  <span *ngIf="item.subject" class="font-medium text-slate-600">{{ item.subject }}</span>
-                  <span *ngIf="item.grade">{{ item.grade }}</span>
-                  <span class="ml-auto font-mono text-emerald-700 font-semibold flex items-center gap-0.5 shrink-0">
-                    <span>⚡</span>
-                    <span>{{ item.save_count || 100 }} 次转存</span>
-                  </span>
-                </div>
-              </div>
-            </a>
-          </div>
+      <!-- 空数据缺省态 -->
+      <div *ngIf="!isLoading() && displayResources().length === 0"
+           class="py-16 text-center bg-white rounded-3xl border border-slate-200/90 shadow-academic p-8">
+        <div class="text-4xl mb-3">🔍</div>
+        <h3 class="text-base font-extrabold text-slate-800">暂未找到完全匹配的真题资源</h3>
+        <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+          您可以尝试缩减筛选条件，或在顶部搜索框输入更简短的关键词进行全局搜索。
+        </p>
+        <div class="mt-5">
+          <button (click)="resetAllFilters()"
+                  class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition cursor-pointer">
+            重置所有筛选条件
+          </button>
         </div>
+      </div>
 
-        <!-- 🚀 模块 2: 学霸备考直通车 -->
-        <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-5 space-y-3.5 shadow-academic">
-          <div class="flex items-center gap-2">
-            <span class="text-base">🎯</span>
-            <h4 class="font-extrabold text-white text-xs">学霸备考直通车</h4>
-          </div>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <a routerLink="/primary" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center gap-2 cursor-pointer">
-              <span>🎒</span>
-              <span>小学专区</span>
-            </a>
-            <a routerLink="/junior" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center gap-2 cursor-pointer">
-              <span>📘</span>
-              <span>初中中考</span>
-            </a>
-            <a routerLink="/senior" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center gap-2 cursor-pointer">
-              <span>🎓</span>
-              <span>高中高考</span>
-            </a>
-            <a routerLink="/book" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition flex items-center gap-2 cursor-pointer">
-              <span>📖</span>
-              <span>高清课本</span>
-            </a>
-          </div>
-        </div>
+      <!-- 现代化对称分页控件 -->
+      <nav *ngIf="totalPages() > 1" class="mt-10 sm:mt-12 flex justify-center items-center gap-1.5 sm:gap-2 select-none">
+        <!-- 上一页 -->
+        <button (click)="onPageChange(page() - 1)"
+                [disabled]="page() === 1"
+                class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs">
+          上一页
+        </button>
 
-        <!-- 💡 模块 3: 转存小贴士 -->
-        <div class="bg-blue-50/60 rounded-3xl border border-blue-100 p-4 text-xs text-slate-600 space-y-1.5">
-          <div class="font-bold text-slate-800 flex items-center gap-1.5">
-            <span class="text-blue-600">💡</span>
-            <span>转存小贴士</span>
-          </div>
-          <p class="text-[11px] text-slate-500 leading-relaxed">
-            建议将喜欢的真题资料一键转存至您的个人网盘，避免后续分享链接失效，手机电脑随时免下载查阅或直接打印。
-          </p>
-        </div>
+        <!-- 动态页码 -->
+        <ng-container *ngFor="let p of visiblePages()">
+          <span *ngIf="p === -1" class="px-2 text-xs text-slate-400">…</span>
+          <button *ngIf="p !== -1"
+                  (click)="onPageChange(p)"
+                  [class]="page() === p ? 'bg-slate-900 text-white font-extrabold shadow-sm' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'"
+                  class="min-w-9 h-9 px-2 text-xs sm:text-sm font-semibold rounded-xl transition cursor-pointer">
+            {{ p }}
+          </button>
+        </ng-container>
 
-      </aside>
+        <!-- 下一页 -->
+        <button (click)="onPageChange(page() + 1)"
+                [disabled]="page() === totalPages()"
+                class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs">
+          下一页
+        </button>
+      </nav>
 
     </div>
   </main>
