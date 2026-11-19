@@ -25,6 +25,9 @@ export class ChannelComponent implements OnInit {
   page = signal<number>(1);
   pageSize = signal<number>(20);
 
+  // 排序模式 ('popular': 转存最多/最受欢迎, 'latest': 最新收录, 'views': 最多浏览)
+  sortBy = signal<'popular' | 'latest' | 'views'>('popular');
+
   // 现代视图模式 (grid / list)
   viewMode = signal<'grid' | 'list'>('grid');
   // PC端高级筛选展开折叠
@@ -39,6 +42,26 @@ export class ChannelComponent implements OnInit {
   isLoading = signal<boolean>(false);
   hotSearches = signal<HotSearchItem[]>([]);
   categoriesGroup = signal<Record<string, CategoryDto[]>>({});
+
+  // 首页右侧常驻：全站/频道热门转存飙升榜 (TOP 8)
+  hotRankList = signal<ResourceItemDto[]>([]);
+  isRankLoading = signal<boolean>(false);
+
+  // 根据当前 sortBy 响应式排序的主资源列表
+  displayResources = computed(() => {
+    const list = [...this.resources()];
+    const sort = this.sortBy();
+    if (sort === 'popular') {
+      return list.sort((a, b) => (b.save_count || 0) - (a.save_count || 0));
+    }
+    if (sort === 'views') {
+      return list.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
+    }
+    if (sort === 'latest') {
+      return list.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
+    }
+    return list;
+  });
 
   Math = Math;
 
@@ -293,6 +316,7 @@ export class ChannelComponent implements OnInit {
 
     this.portalService.getHotSearches().subscribe(h => this.hotSearches.set(h));
     this.portalService.getCategoriesGrouped().subscribe(grp => this.categoriesGroup.set(grp));
+    this.loadHotRankList();
 
     this.route.data.subscribe(data => {
       const slug = data['channel'] || 'all';
@@ -438,6 +462,7 @@ export class ChannelComponent implements OnInit {
       subject: this.subjectParam() || undefined,
       edition: this.editionParam() || undefined,
       q: this.queryParam() || undefined,
+      sort: this.sortBy(),
       page: this.page(),
       limit: this.pageSize()
     }).subscribe({
@@ -450,6 +475,34 @@ export class ChannelComponent implements OnInit {
         this.resources.set([]);
         this.totalCount.set(0);
         this.isLoading.set(false);
+      }
+    });
+  }
+
+  // 切换排序方式
+  setSortBy(sort: 'popular' | 'latest' | 'views') {
+    if (this.sortBy() === sort) return;
+    this.sortBy.set(sort);
+    this.loadResources();
+  }
+
+  // 加载全站热门转存榜 (TOP 8)
+  loadHotRankList() {
+    this.isRankLoading.set(true);
+    this.portalService.getResources({
+      channel: 'edu',
+      sort: 'popular',
+      page: 1,
+      limit: 15
+    }).subscribe({
+      next: (res) => {
+        const sorted = (res.items || []).sort((a, b) => (b.save_count || 0) - (a.save_count || 0));
+        this.hotRankList.set(sorted.slice(0, 8));
+        this.isRankLoading.set(false);
+      },
+      error: () => {
+        this.hotRankList.set([]);
+        this.isRankLoading.set(false);
       }
     });
   }

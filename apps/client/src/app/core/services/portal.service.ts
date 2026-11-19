@@ -14,6 +14,7 @@ export interface PublicResourceQuery {
   school?: string;
   region?: string;
   q?: string;
+  sort?: string;
   page?: number;
   limit?: number;
   offset?: number;
@@ -81,6 +82,7 @@ export class PortalService {
     if (query.school) params = params.set('school', query.school);
     if (query.region) params = params.set('region', query.region);
     if (query.q) params = params.set('q', query.q);
+    if (query.sort) params = params.set('sort', query.sort);
     if (query.page) params = params.set('page', query.page.toString());
     if (query.limit) params = params.set('limit', query.limit.toString());
     if (query.offset) params = params.set('offset', query.offset.toString());
@@ -120,6 +122,17 @@ export class PortalService {
         };
       }),
       catchError(() => of(null))
+    );
+  }
+
+  // 4.1 获取同科目/同学段精选关联推荐资源
+  getRelatedResources(idOrSlug: string): Observable<ResourceItemDto[]> {
+    if (!idOrSlug) return of([]);
+    return this.http.get<{ code: number; data: ResourceItemDto[] }>(
+      `${this.baseUrl}/api/v1/public/resources/${encodeURIComponent(idOrSlug)}/related`
+    ).pipe(
+      map(res => (res && Array.isArray(res.data)) ? res.data : []),
+      catchError(() => of([]))
     );
   }
 

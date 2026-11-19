@@ -48,6 +48,8 @@ export interface ResourceItemDto {
   preview_images?: string[];
   file_tree?: any[];
   links?: ResourceLinkDto[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ResourceListResponse {

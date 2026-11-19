@@ -155,6 +155,10 @@ export class ResourceDetailComponent implements OnInit {
   links = signal<ResourceLinkDto[]>([]);
   isLoading = signal<boolean>(true);
 
+  // 同科目/同学段关联精选资料推荐 (提升留存与转化大杀器)
+  relatedResources = signal<ResourceItemDto[]>([]);
+  isRelatedLoading = signal<boolean>(false);
+
   // 交互状态
   copiedLink = signal<string | null>(null);
   expandedDirs = signal<Set<number>>(new Set());
@@ -615,6 +619,9 @@ export class ResourceDetailComponent implements OnInit {
             this.expandedPaths.set(new Set(firstLevelPaths));
             this.allExpanded.set(false);
           }
+
+          // 加载同科目/同学段精选推荐资料 (打造连环转存闭环)
+          this.loadRelatedResources(resourceItem.slug || resourceItem.id || idOrSlug);
         }
         // 若参数指定 share=poster 则自动唤起海报生成弹窗
         if (this.route.snapshot.queryParams['share'] === 'poster') {
@@ -630,6 +637,24 @@ export class ResourceDetailComponent implements OnInit {
         }
 
         this.isLoading.set(false);
+      }
+    });
+  }
+
+  // 加载同类推荐资料
+  loadRelatedResources(idOrSlug: string) {
+    this.isRelatedLoading.set(true);
+    this.portalService.getRelatedResources(idOrSlug).subscribe({
+      next: (list) => {
+        // 排除自身 ID/slug
+        const currentSlug = this.resource()?.slug || idOrSlug;
+        const filtered = (list || []).filter(item => item.slug !== currentSlug && item.id !== currentSlug);
+        this.relatedResources.set(filtered.slice(0, 8));
+        this.isRelatedLoading.set(false);
+      },
+      error: () => {
+        this.relatedResources.set([]);
+        this.isRelatedLoading.set(false);
       }
     });
   }
