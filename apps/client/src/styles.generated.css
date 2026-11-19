@@ -1211,6 +1211,10 @@ body {
   max-width: 140px;
 }
 
+.max-w-\[1536px\] {
+  max-width: 1536px;
+}
+
 .max-w-\[290px\] {
   max-width: 290px;
 }
@@ -4264,10 +4268,6 @@ body {
     gap: 1rem;
   }
 
-  .sm\:gap-5 {
-    gap: 1.25rem;
-  }
-
   .sm\:gap-6 {
     gap: 1.5rem;
   }
@@ -4548,6 +4548,10 @@ body {
     grid-column: span 9 / span 9;
   }
 
+  .xl\:block {
+    display: block;
+  }
+
   .xl\:inline-block {
     display: inline-block;
   }
@@ -4556,7 +4560,15 @@ body {
     width: 14rem;
   }
 
+  .xl\:w-80 {
+    width: 20rem;
+  }
+
   .xl\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .xl\:flex-row {
+    flex-direction: row;
   }
 }
