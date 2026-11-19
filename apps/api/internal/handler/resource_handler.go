@@ -176,7 +176,21 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 
 	var items []model.Resource
 	offset := (page - 1) * pageSize
-	if err := query.Order("is_recommended DESC, created_at DESC").
+
+	var orderClause string
+	sortParam := c.Query("sort")
+	switch sortParam {
+	case "popular":
+		orderClause = "save_count DESC, view_count DESC, created_at DESC"
+	case "views":
+		orderClause = "view_count DESC, created_at DESC"
+	case "latest":
+		orderClause = "created_at DESC"
+	default:
+		orderClause = "is_recommended DESC, created_at DESC"
+	}
+
+	if err := query.Order(orderClause).
 		Offset(offset).Limit(pageSize).Find(&items).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"code":    500,

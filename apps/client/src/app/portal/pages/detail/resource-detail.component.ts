@@ -674,7 +674,7 @@ export class ResourceDetailComponent implements OnInit {
       limit: 15
     }).subscribe({
       next: (res) => {
-        const sorted = (res.items || []).sort((a, b) => (b.save_count || 0) - (a.save_count || 0));
+        const sorted = (res.items || []).sort((a, b) => ((b.save_count || 0) - (a.save_count || 0)) || ((b.view_count || 0) - (a.view_count || 0)));
         const currentSlug = this.resource()?.slug || '';
         const filtered = sorted.filter(item => item.slug !== currentSlug && item.id !== currentSlug);
         this.hotRankList.set(filtered.slice(0, 8));

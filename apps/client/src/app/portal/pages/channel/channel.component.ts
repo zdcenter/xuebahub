@@ -52,7 +52,7 @@ export class ChannelComponent implements OnInit {
     const list = [...this.resources()];
     const sort = this.sortBy();
     if (sort === 'popular') {
-      return list.sort((a, b) => (b.save_count || 0) - (a.save_count || 0));
+      return list.sort((a, b) => ((b.save_count || 0) - (a.save_count || 0)) || ((b.view_count || 0) - (a.view_count || 0)));
     }
     if (sort === 'views') {
       return list.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
@@ -496,7 +496,7 @@ export class ChannelComponent implements OnInit {
       limit: 15
     }).subscribe({
       next: (res) => {
-        const sorted = (res.items || []).sort((a, b) => (b.save_count || 0) - (a.save_count || 0));
+        const sorted = (res.items || []).sort((a, b) => ((b.save_count || 0) - (a.save_count || 0)) || ((b.view_count || 0) - (a.view_count || 0)));
         this.hotRankList.set(sorted.slice(0, 8));
         this.isRankLoading.set(false);
       },
