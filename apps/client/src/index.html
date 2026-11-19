@@ -206,10 +206,14 @@
       100% { left: 100%; width: 30%; }
     }
   </style>
+  <!-- 搜索引擎爬虫/无JS环境：直接隐藏闪屏，直接透传完整预渲染内容 -->
+  <noscript>
+    <style>#pwa-native-splash { display: none !important; }</style>
+  </noscript>
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased selection:bg-blue-600 selection:text-white">
-  <!-- 0ms 原生级学霸网闪屏：立于 app-root 之外，消灭白屏与加载闪烁 -->
-  <div id="pwa-native-splash" class="pwa-native-splash">
+  <!-- 0ms 原生级学霸网闪屏：立于 app-root 之外，消灭白屏与加载闪烁 (aria-hidden 确保爬虫无障碍忽略) -->
+  <div id="pwa-native-splash" class="pwa-native-splash" aria-hidden="true" role="presentation">
     <div class="pwa-splash-box">
       <!-- 品牌 Logo 与光晕 -->
       <div class="pwa-splash-logo-wrap">
