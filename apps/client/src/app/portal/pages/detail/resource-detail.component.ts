@@ -708,6 +708,66 @@ export class ResourceDetailComponent implements OnInit {
   showWechatGuide = signal<boolean>(false);
   wechatGuideTargetLink = signal<ResourceLinkDto | null>(null);
 
+  // 单文件点击“转存即看”友好引导弹窗状态 (高转化率触点)
+  selectedFileForPreview = signal<{
+    name: string;
+    size?: string;
+    ext?: string;
+    icon: string;
+    badgeClass: string;
+    typeTitle: string;
+    tipDesc: string;
+  } | null>(null);
+
+  onFileNodeClick(node: any) {
+    if (node.is_dir) return;
+    const ext = (node.ext || '').toUpperCase();
+    let typeTitle = '学习资料文件';
+    let tipDesc = '该文件已完整收录在网盘合集中。一键转存至您的网盘后，即可在线查阅或高速下载。';
+
+    if (['MP4', 'MKV', 'AVI', 'MOV', 'FLV', 'TS'].includes(ext)) {
+      typeTitle = '视频教程课件';
+      tipDesc = '该视频课程已收录在完整合集包内。一键转存到网盘后，手机与电脑均支持免下载直接原画播放、倍速学习，不占手机内存！';
+    } else if (['PDF'].includes(ext)) {
+      typeTitle = 'PDF电子讲义 / 试卷';
+      tipDesc = '高清讲义与真题试卷已整理就绪。转存至网盘后支持免下载即开即读、高清矢量缩放，随时随地查阅复习并支持打印！';
+    } else if (['DOC', 'DOCX', 'TXT', 'WPS'].includes(ext)) {
+      typeTitle = 'Word文档 / 备课教案';
+      tipDesc = '试卷及精编教案已收录。保存到网盘后随时随地调取，电脑端支持直接下载与二次编辑排版使用。';
+    } else if (['PPT', 'PPTX'].includes(ext)) {
+      typeTitle = 'PPT演示课件';
+      tipDesc = '同步教学幻灯片课件已包含在合集内。转存到网盘后手机、平板可快速浏览演示，电脑端下载即用。';
+    } else if (['XLS', 'XLSX', 'CSV'].includes(ext)) {
+      typeTitle = '表格数据 / 知识点清单';
+      tipDesc = '数据统计与清单表格已打包。转存后可在线查看或下载至本地查看完整公式与明细排版。';
+    } else if (['ZIP', 'RAR', '7Z', 'TAR'].includes(ext)) {
+      typeTitle = '完整归档压缩包';
+      tipDesc = '大容量综合资料包已整理归档。转存到网盘后支持在线免解压快速浏览各分卷，告别繁琐的下载与解压！';
+    } else if (['MP3', 'WAV', 'FLAC', 'AAC', 'M4A'].includes(ext)) {
+      typeTitle = '听力音频 / 原声听读';
+      tipDesc = '标准音频文件已就绪。转存到网盘后支持息屏磨耳朵、单曲循环与分段复读，随时随地高效学习。';
+    }
+
+    this.selectedFileForPreview.set({
+      name: node.name,
+      size: node.size,
+      ext: node.ext,
+      icon: this.getFileIcon(node.ext || '', false),
+      badgeClass: this.getFileBadgeClass(node.ext || ''),
+      typeTitle,
+      tipDesc
+    });
+  }
+
+  closeFilePreviewModal() {
+    this.selectedFileForPreview.set(null);
+  }
+
+  onSaveFileDirectly(link: ResourceLinkDto, event: MouseEvent) {
+    this.closeFilePreviewModal();
+    this.onDownloadClick(link, event);
+  }
+
   // 试卷与封面高清全屏画廊 (Lightbox)
   isLightboxOpen = signal<boolean>(false);
   lightboxIndex = signal<number>(0);

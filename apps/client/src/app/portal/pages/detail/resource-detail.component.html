@@ -432,12 +432,13 @@
                 </div>
               </div>
 
-              <!-- 文件项 (叶子节点) -->
+              <!-- 文件项 (叶子节点，支持点击弹出高转化转存即看引导) -->
               <div *ngIf="!node.is_dir"
-                   class="flex items-center justify-between py-2 pr-3.5 hover:bg-slate-50/90 transition group/file"
+                   (click)="onFileNodeClick(node)"
+                   class="flex items-center justify-between py-2.5 pr-3.5 hover:bg-blue-50/60 cursor-pointer transition select-none group/file"
                    [style.paddingLeft.px]="28 + level * 18">
                 <div class="flex items-center space-x-2 min-w-0 flex-1">
-                  <span class="text-sm shrink-0">{{ getFileIcon(node.ext || '', false) }}</span>
+                  <span class="text-sm shrink-0 group-hover/file:scale-110 transition-transform duration-150">{{ getFileIcon(node.ext || '', false) }}</span>
                   <span class="font-medium text-slate-700 group-hover/file:text-blue-600 truncate text-xs" [title]="node.name">
                     {{ node.name }}
                   </span>
@@ -447,11 +448,18 @@
                   </span>
                 </div>
 
-                <div class="w-36 sm:w-44 text-right pr-2 shrink-0">
+                <div class="flex items-center space-x-2.5 sm:space-x-3 text-right pr-2 shrink-0">
                   <span *ngIf="node.size" class="text-[11px] font-mono text-slate-400 group-hover/file:text-slate-600 whitespace-nowrap">
                     {{ node.size }}
                   </span>
                   <span *ngIf="!node.size" class="text-[10px] text-slate-300">-</span>
+                  <!-- 友好操作引导胶囊标签 -->
+                  <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-medium text-blue-600 bg-blue-50/80 group-hover/file:bg-blue-600 group-hover/file:text-white px-2 py-0.5 rounded-lg border border-blue-200/80 group-hover/file:border-transparent transition-all shadow-2xs">
+                    <span>转存查看</span>
+                    <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                    </svg>
+                  </span>
                 </div>
               </div>
 
@@ -917,6 +925,129 @@
               [class]="idx === lightboxIndex() ? 'border-emerald-400 shadow-md scale-105' : 'border-slate-700 opacity-60 hover:opacity-100'">
         <img [src]="img" class="w-full h-full object-cover" />
       </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- 📁 单文件点击“转存即看”友好引导弹窗 (提升转存转化率大杀器) -->
+<div *ngIf="selectedFileForPreview() as file" 
+     class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200"
+     (click)="closeFilePreviewModal()">
+  <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 transition-all scale-100"
+       (click)="$event.stopPropagation()">
+    
+    <!-- 弹窗顶栏 -->
+    <div class="relative bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 text-white">
+      <button type="button" 
+              (click)="closeFilePreviewModal()" 
+              class="absolute right-4 top-4 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center text-sm transition cursor-pointer">
+        ✕
+      </button>
+      <div class="flex items-center gap-3">
+        <span class="text-2xl p-2.5 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+          {{ file.icon }}
+        </span>
+        <div class="min-w-0 pr-6">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+              {{ file.typeTitle }}
+            </span>
+            <span *ngIf="file.ext" class="text-[10px] font-mono text-slate-300 uppercase tracking-wider">
+              .{{ file.ext }}
+            </span>
+          </div>
+          <h4 class="text-sm font-bold text-white truncate mt-1.5" [title]="file.name">
+            {{ file.name }}
+          </h4>
+        </div>
+      </div>
+    </div>
+
+    <!-- 弹窗内容主体 -->
+    <div class="p-5 sm:p-6 space-y-4">
+      
+      <!-- 文件属性状态条 -->
+      <div class="flex items-center justify-between text-xs bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-2.5">
+        <div class="text-slate-500">
+          <span>文件大小：</span>
+          <strong class="text-slate-800 font-mono">{{ file.size || '完整合集包内包含' }}</strong>
+        </div>
+        <div class="text-emerald-700 font-medium flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>网盘现货 · 完整可用</span>
+        </div>
+      </div>
+
+      <!-- 转化利益点提示说明区 (因地制宜动态文案) -->
+      <div class="p-4 bg-gradient-to-br from-amber-50/80 via-blue-50/50 to-slate-50 rounded-2xl border border-blue-100/80 text-xs text-slate-700 space-y-2">
+        <div class="flex items-start gap-2.5">
+          <span class="text-amber-500 text-base shrink-0 mt-0.5">💡</span>
+          <div class="space-y-1">
+            <div class="font-bold text-slate-900 text-xs sm:text-sm">如何查看或下载此文件？</div>
+            <p class="text-slate-600 leading-relaxed text-[11px] sm:text-xs">
+              {{ file.tipDesc }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 转存操作按钮区 (高转化 CTA) -->
+      <div class="space-y-2.5 pt-1">
+        <!-- 主网盘大按钮 (夸克或第一主推网盘) -->
+        <ng-container *ngIf="primaryLink as pLink">
+          <button
+            type="button"
+            (click)="onSaveFileDirectly(pLink, $event)"
+            class="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition cursor-pointer">
+            <span>{{ getDriveLabel(pLink.drive_type).icon }}</span>
+            <span>一键保存至{{ getDriveLabel(pLink.drive_type).name }}，立即查看</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+            </svg>
+          </button>
+        </ng-container>
+
+        <!-- 备用网盘按钮列表 (如有百度网盘等) -->
+        <ng-container *ngIf="otherLinks.length > 0">
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button
+              *ngFor="let sLink of otherLinks"
+              type="button"
+              (click)="onSaveFileDirectly(sLink, $event)"
+              class="flex-1 py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs">
+              <span>{{ getDriveLabel(sLink.drive_type).icon }}</span>
+              <span>备用：{{ getDriveLabel(sLink.drive_type).name }}转存</span>
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- 若暂未配置链接的兜底 -->
+        <div *ngIf="!primaryLink" class="text-center">
+          <button
+            type="button"
+            (click)="closeFilePreviewModal()"
+            class="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer">
+            资源链接准备中，请稍候再试
+          </button>
+        </div>
+      </div>
+
+      <!-- 底部安全与保障背书 -->
+      <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+        <span class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-emerald-500 inline" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+          </svg>
+          <span>官方高速通道 · 转存后永久归属您的网盘</span>
+        </span>
+        <button type="button" 
+                (click)="closeFilePreviewModal()" 
+                class="text-slate-500 hover:text-slate-800 transition cursor-pointer">
+          稍后再看
+        </button>
+      </div>
+
     </div>
 
   </div>
