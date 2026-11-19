@@ -89,380 +89,287 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════ -->
-  <!-- 2. 现代筛选导航系统 (针对移动端与桌面端分别极致调优) -->
+  <!-- 2. 现代门户主内容区 (统一 max-w-7xl 版心：左侧筛选与列表 + 右侧榜单一体贯穿) -->
   <!-- ══════════════════════════════════════════════════════════════ -->
-  <div class="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-20" id="resource-list-anchor">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-20 pb-12" id="resource-list-anchor">
     
-    <!-- 移动端专享：横向流畅滑动学段 Tab + 紧凑抽屉筛选栏 -->
-    <div class="block lg:hidden bg-white rounded-2xl shadow-academic border border-slate-200/90 p-3 space-y-2.5">
-      <!-- 学段横向无滚条滑块 -->
-      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar scroll-smooth">
-        <button (click)="setFilter('stage', 'all')"
-                [class]="stageParam() === 'all' ? 'bg-slate-900 text-white font-extrabold shadow-sm' : 'bg-slate-100 text-slate-600'"
-                class="px-3.5 py-1.5 rounded-xl shrink-0 transition">
-          全部学段
-        </button>
-        <button *ngFor="let st of stages()"
-                (click)="setFilter('stage', st.slug)"
-                [class]="stageParam() === st.slug ? 'bg-slate-900 text-white font-extrabold shadow-sm' : 'bg-slate-100 text-slate-600'"
-                class="px-3.5 py-1.5 rounded-xl shrink-0 transition flex items-center gap-1">
-          <span>{{ st.icon || '📚' }}</span>
-          <span>{{ st.name }}</span>
-        </button>
-      </div>
-
-      <!-- 快速年级横向滑块 -->
-      <div class="flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
-        <button (click)="setFilter('grade', '')"
-                [class]="!gradeParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-50 text-slate-600 border border-slate-200/60'"
-                class="px-2.5 py-1 rounded-lg shrink-0 transition">
-          全部年级
-        </button>
-        <button *ngFor="let g of availableGrades()"
-                (click)="setFilter('grade', g.name)"
-                [class]="gradeParam() === g.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-50 text-slate-600 border border-slate-200/60'"
-                class="px-2.5 py-1 rounded-lg shrink-0 transition">
-          {{ g.name }}
-        </button>
-      </div>
-
-      <!-- 移动端操作栏：抽屉开关 + 视图模式切换 -->
-      <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-        <button (click)="openMobileDrawer()"
-                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-          </svg>
-          <span>多维高级筛选</span>
-          <span *ngIf="activeFilterCount() > 0" class="px-1.5 py-0.2 bg-emerald-600 text-white rounded-full text-[10px]">
-            {{ activeFilterCount() }}
-          </span>
-        </button>
-
-        <!-- 视图切换 (Grid vs List) -->
-        <div class="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80">
-          <button (click)="setViewMode('grid')"
-                  [class]="viewMode() === 'grid' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500'"
-                  class="p-1.5 rounded-lg transition"
-                  title="网格视图">
-            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-            </svg>
-          </button>
-          <button (click)="setViewMode('list')"
-                  [class]="viewMode() === 'list' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500'"
-                  class="p-1.5 rounded-lg transition"
-                  title="列表视图">
-            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 桌面端专用：清晰层次分段筛选面板 -->
-    <div class="hidden lg:block bg-white/95 rounded-3xl shadow-academic border border-slate-200/90 p-5 space-y-4 backdrop-blur-md">
-      
-      <!-- 维度 1: 学段专区 (Segmented Control 风格) -->
-      <div class="flex items-center text-xs gap-3">
-        <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
-          <span>🎓</span> 学段分类:
-        </span>
-        <div class="flex-1 flex flex-wrap gap-1.5">
-          <button (click)="setFilter('stage', 'all')"
-                  [class]="stageParam() === 'all' ? 'bg-slate-900 text-white shadow-sm font-extrabold' : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600'"
-                  class="px-3.5 py-1.5 rounded-xl transition cursor-pointer">
-            全部学段
-          </button>
-          <button *ngFor="let st of stages()"
-                  (click)="setFilter('stage', st.slug)"
-                  [class]="stageParam() === st.slug ? 'bg-slate-900 text-white shadow-sm font-extrabold' : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600'"
-                  class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
-            <span>{{ st.icon || '📚' }}</span>
-            <span>{{ st.name }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 维度 2: 年级适用 / 分类模块 (自适应联动，非中小学时不叫年级) -->
-      <div class="flex items-center text-xs gap-3 border-t border-slate-100 pt-3">
-        <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
-          <span>🎒</span> {{ gradeSectionTitle() }}
-        </span>
-        <div class="flex-1 flex flex-wrap gap-1.5">
-          <button (click)="setFilter('grade', '')"
-                  [class]="!gradeParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                  class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-            全部
-          </button>
-          <button *ngFor="let g of availableGrades()"
-                  (click)="setFilter('grade', g.name)"
-                  [class]="gradeParam() === g.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                  class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-            {{ g.name }}
-          </button>
-        </div>
-      </div>
-
-      <!-- 维度 3: 教学科目 (自适应联动) -->
-      <div class="flex items-center text-xs gap-3 border-t border-slate-100 pt-3">
-        <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
-          <span>📖</span> 考试科目:
-        </span>
-        <div class="flex-1 flex flex-wrap gap-1.5">
-          <button (click)="setFilter('subject', '')"
-                  [class]="!subjectParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                  class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-            全部科目
-          </button>
-          <button *ngFor="let s of availableSubjects()"
-                  (click)="setFilter('subject', s.name)"
-                  [class]="subjectParam() === s.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                  class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
-            <span>{{ s.icon }}</span>
-            <span>{{ s.name }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 维度 4 & 5: 教材版本与学期分册 (仅在中小学阶段且展开时展示) -->
-      <div *ngIf="isK12Stage() && desktopFilterExpanded()" class="space-y-3 pt-3 border-t border-slate-100">
-        <!-- 版本 -->
-        <div class="flex items-center text-xs gap-3">
-          <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
-            <span>📚</span> 教材版本:
-          </span>
-          <div class="flex-1 flex flex-wrap gap-1.5">
-            <button (click)="setFilter('edition', '')"
-                    [class]="!editionParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                    class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-              全部版本
-            </button>
-            <button *ngFor="let e of availableEditions()"
-                    (click)="setFilter('edition', e.name)"
-                    [class]="editionParam() === e.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                    class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
-              <span>{{ e.icon || '📚' }}</span>
-              <span>{{ e.name }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 学期 -->
-        <div class="flex items-center text-xs gap-3 pt-2">
-          <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
-            <span>📅</span> 学期分册:
-          </span>
-          <div class="flex-1 flex flex-wrap gap-1.5">
-            <button (click)="setFilter('term', '')"
-                    [class]="!termParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                    class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-              全部学期
-            </button>
-            <button *ngFor="let t of availableTerms"
-                    (click)="setFilter('term', t.name)"
-                    [class]="termParam() === t.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                    class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-              {{ t.name }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 底栏：展开/收起按钮 + 激活条件提示 -->
-      <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-        <button *ngIf="isK12Stage()"
-                (click)="toggleDesktopFilter()"
-                class="flex items-center gap-1 font-bold text-slate-600 hover:text-emerald-700 transition cursor-pointer">
-          <span>{{ desktopFilterExpanded() ? '收起版本与学期筛选 ▲' : '更多高级筛选 (教材版本 · 学期分册) ▼' }}</span>
-        </button>
-        <span *ngIf="!isK12Stage()"></span>
-
-        <div *ngIf="hasActiveFilters()" class="flex items-center gap-2">
-          <span class="text-slate-400">已激活筛选</span>
-          <button (click)="resetAllFilters()"
-                  class="text-xs text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer">
-            ✕ 清除全部条件
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════════ -->
-  <!-- 3. 移动端全量筛选抽屉 (Bottom Sheet Drawer) -->
-  <!-- ══════════════════════════════════════════════════════════════ -->
-  <div *ngIf="mobileDrawerOpen()"
-       class="fixed inset-0 z-50 flex flex-col justify-end lg:hidden animate-fade-in">
-    <!-- 半透明背景遮罩 -->
-    <div (click)="closeMobileDrawer()" class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"></div>
-    
-    <!-- 抽屉本体面板 -->
-    <div class="relative bg-white rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl z-10 overflow-hidden">
-      <!-- 顶部拖拽手柄与标题 -->
-      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-base font-extrabold text-slate-900">多维条件精确筛选</span>
-          <span *ngIf="activeFilterCount() > 0" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">
-            已选 {{ activeFilterCount() }} 项
-          </span>
-        </div>
-        <button (click)="closeMobileDrawer()" class="p-1 rounded-full text-slate-400 hover:text-slate-600">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- 抽屉可滚动区域 -->
-      <div class="p-4 space-y-4 overflow-y-auto text-xs flex-1">
-        <!-- 学科 -->
-        <div>
-          <div class="font-extrabold text-slate-800 mb-2">考试科目:</div>
-          <div class="flex flex-wrap gap-1.5">
-            <button (click)="setFilter('subject', '')"
-                    [class]="!subjectParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
-                    class="px-2.5 py-1.5 rounded-lg">全部</button>
-            <button *ngFor="let s of availableSubjects()"
-                    (click)="setFilter('subject', s.name)"
-                    [class]="subjectParam() === s.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
-                    class="px-2.5 py-1.5 rounded-lg flex items-center gap-1">
-              <span>{{ s.icon }}</span><span>{{ s.name }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 版本 (仅中小学阶段展示) -->
-        <div *ngIf="isK12Stage()">
-          <div class="font-extrabold text-slate-800 mb-2">教材版本:</div>
-          <div class="flex flex-wrap gap-1.5">
-            <button (click)="setFilter('edition', '')"
-                    [class]="!editionParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
-                    class="px-2.5 py-1.5 rounded-lg">全部</button>
-            <button *ngFor="let e of availableEditions()"
-                    (click)="setFilter('edition', e.name)"
-                    [class]="editionParam() === e.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
-                    class="px-2.5 py-1.5 rounded-lg">{{ e.name }}</button>
-          </div>
-        </div>
-
-        <!-- 学期 (仅中小学阶段展示) -->
-        <div *ngIf="isK12Stage()">
-          <div class="font-extrabold text-slate-800 mb-2">学期分册:</div>
-          <div class="flex flex-wrap gap-1.5">
-            <button (click)="setFilter('term', '')"
-                    [class]="!termParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
-                    class="px-2.5 py-1.5 rounded-lg">全部</button>
-            <button *ngFor="let t of availableTerms"
-                    (click)="setFilter('term', t.name)"
-                    [class]="termParam() === t.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
-                    class="px-2.5 py-1.5 rounded-lg">{{ t.name }}</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 抽屉底部操作栏 -->
-      <div class="p-3 border-t border-slate-100 bg-slate-50 flex items-center gap-3">
-        <button (click)="resetAllFilters(); closeMobileDrawer()"
-                class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-center">
-          重置全部
-        </button>
-        <button (click)="closeMobileDrawer()"
-                class="flex-2 py-2.5 rounded-xl bg-emerald-600 text-white font-extrabold text-center shadow-md">
-          完成并查看结果 ({{ totalCount() }})
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════════ -->
-  <!-- 4. 资源展示区 (宽屏开阔布局：左侧4列舒展卡片 + 最右侧热门转存飙升榜) -->
-  <!-- ══════════════════════════════════════════════════════════════ -->
-  <main class="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-    
-    <!-- 状态指示、多维排序与视图切换综合工具条 -->
-    <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200/70">
-      <div class="flex items-center gap-2">
-        <h2 class="text-sm sm:text-base font-extrabold text-slate-800 flex items-center gap-1.5">
-          <span>📚</span>
-          <span>精选真题资料</span>
-        </h2>
-        <span class="text-xs text-slate-400 font-mono">
-          共 <strong class="text-emerald-700 font-bold">{{ totalCount() }}</strong> 份资源
-        </span>
-        <span *ngIf="queryParam()" class="text-xs bg-amber-50 text-amber-800 border border-amber-200/80 px-2 py-0.5 rounded-md font-semibold">
-          搜索: "{{ queryParam() }}"
-        </span>
-      </div>
-
-      <div class="flex items-center gap-2.5">
-        <!-- 核心排序分段控制器 (转存最多 / 最新收录 / 最多浏览) -->
-        <div class="flex items-center bg-white p-1 rounded-xl border border-slate-200/90 shadow-2xs text-xs font-semibold">
-          <button (click)="setSortBy('popular')"
-                  [class]="sortBy() === 'popular' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
-                  class="flex items-center gap-1 px-3 py-1 rounded-lg transition cursor-pointer">
-            <span>🔥</span>
-            <span>转存最多</span>
-          </button>
-          <button (click)="setSortBy('latest')"
-                  [class]="sortBy() === 'latest' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
-                  class="flex items-center gap-1 px-3 py-1 rounded-lg transition cursor-pointer">
-            <span>⏱️</span>
-            <span>最新发布</span>
-          </button>
-          <button (click)="setSortBy('views')"
-                  [class]="sortBy() === 'views' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
-                  class="flex items-center gap-1 px-3 py-1 rounded-lg transition cursor-pointer">
-            <span>👀</span>
-            <span>最多浏览</span>
-          </button>
-        </div>
-
-        <!-- PC 端网格/列表视图切换开关 -->
-        <div class="hidden sm:flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
-          <button (click)="setViewMode('grid')"
-                  [class]="viewMode() === 'grid' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'"
-                  class="p-1 rounded-lg transition cursor-pointer"
-                  title="网格视图">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-            </svg>
-          </button>
-          <button (click)="setViewMode('list')"
-                  [class]="viewMode() === 'list' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'"
-                  class="p-1 rounded-lg transition cursor-pointer"
-                  title="列表视图">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 宽屏两列自适应结构：左侧 4 列卡片完全舒展 + 最右侧独立热门转存飙升榜 (手机/平板自动纯净单列) -->
-    <div class="flex flex-col xl:flex-row gap-6 lg:gap-8 items-start mt-6">
+    <div class="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
       
       <!-- ══════════════════════════════════════════════ -->
-      <!-- 左侧主资源列表 (宽屏充裕空间，排 4 列完整卡片，绝不挤压) -->
+      <!-- 左侧主体：筛选大白卡 + 排序工具条 + 卡片列表 + 分页 -->
       <!-- ══════════════════════════════════════════════ -->
       <div class="flex-1 min-w-0 w-full space-y-6">
         
+        <!-- 移动端专享：横向流畅滑动学段 Tab + 紧凑抽屉筛选栏 -->
+        <div class="block lg:hidden bg-white rounded-2xl shadow-academic border border-slate-200/90 p-3 space-y-2.5">
+          <!-- 学段横向无滚条滑块 -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar scroll-smooth">
+            <button (click)="setFilter('stage', 'all')"
+                    [class]="stageParam() === 'all' ? 'bg-slate-900 text-white font-extrabold shadow-sm' : 'bg-slate-100 text-slate-600'"
+                    class="px-3.5 py-1.5 rounded-xl shrink-0 transition">
+              全部学段
+            </button>
+            <button *ngFor="let st of stages()"
+                    (click)="setFilter('stage', st.slug)"
+                    [class]="stageParam() === st.slug ? 'bg-slate-900 text-white font-extrabold shadow-sm' : 'bg-slate-100 text-slate-600'"
+                    class="px-3.5 py-1.5 rounded-xl shrink-0 transition flex items-center gap-1">
+              <span>{{ st.icon || '📚' }}</span>
+              <span>{{ st.name }}</span>
+            </button>
+          </div>
+
+          <!-- 快速年级横向滑块 -->
+          <div class="flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
+            <button (click)="setFilter('grade', '')"
+                    [class]="!gradeParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-50 text-slate-600 border border-slate-200/60'"
+                    class="px-2.5 py-1 rounded-lg shrink-0 transition">
+              全部年级
+            </button>
+            <button *ngFor="let g of availableGrades()"
+                    (click)="setFilter('grade', g.name)"
+                    [class]="gradeParam() === g.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-50 text-slate-600 border border-slate-200/60'"
+                    class="px-2.5 py-1 rounded-lg shrink-0 transition">
+              {{ g.name }}
+            </button>
+          </div>
+
+          <!-- 移动端操作栏：抽屉开关 + 视图模式切换 -->
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+            <button (click)="openMobileDrawer()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+              </svg>
+              <span>多维高级筛选</span>
+              <span *ngIf="activeFilterCount() > 0" class="px-1.5 py-0.2 bg-emerald-600 text-white rounded-full text-[10px]">
+                {{ activeFilterCount() }}
+              </span>
+            </button>
+
+            <!-- 视图切换 (Grid vs List) -->
+            <div class="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80">
+              <button (click)="setViewMode('grid')"
+                      [class]="viewMode() === 'grid' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500'"
+                      class="p-1.5 rounded-lg transition"
+                      title="网格视图">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
+              </button>
+              <button (click)="setViewMode('list')"
+                      [class]="viewMode() === 'list' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500'"
+                      class="p-1.5 rounded-lg transition"
+                      title="列表视图">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 桌面端专用：清晰层次分段筛选面板 (学段/年级/科目/版本/学期) -->
+        <div class="hidden lg:block bg-white/95 rounded-3xl shadow-academic border border-slate-200/90 p-5 space-y-4 backdrop-blur-md">
+          
+          <!-- 维度 1: 学段专区 (Segmented Control 风格) -->
+          <div class="flex items-center text-xs gap-3">
+            <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
+              <span>🎓</span> 学段分类:
+            </span>
+            <div class="flex-1 flex flex-wrap gap-1.5">
+              <button (click)="setFilter('stage', 'all')"
+                      [class]="stageParam() === 'all' ? 'bg-slate-900 text-white shadow-sm font-extrabold' : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600'"
+                      class="px-3.5 py-1.5 rounded-xl transition cursor-pointer">
+                全部学段
+              </button>
+              <button *ngFor="let st of stages()"
+                      (click)="setFilter('stage', st.slug)"
+                      [class]="stageParam() === st.slug ? 'bg-slate-900 text-white shadow-sm font-extrabold' : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600'"
+                      class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                <span>{{ st.icon || '📚' }}</span>
+                <span>{{ st.name }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 维度 2: 年级适用 / 分类模块 -->
+          <div class="flex items-center text-xs gap-3 border-t border-slate-100 pt-3">
+            <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
+              <span>🎒</span> {{ gradeSectionTitle() }}
+            </span>
+            <div class="flex-1 flex flex-wrap gap-1.5">
+              <button (click)="setFilter('grade', '')"
+                      [class]="!gradeParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                      class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+                全部
+              </button>
+              <button *ngFor="let g of availableGrades()"
+                      (click)="setFilter('grade', g.name)"
+                      [class]="gradeParam() === g.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                      class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+                {{ g.name }}
+              </button>
+            </div>
+          </div>
+
+          <!-- 维度 3: 教学科目 -->
+          <div class="flex items-center text-xs gap-3 border-t border-slate-100 pt-3">
+            <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
+              <span>📖</span> 考试科目:
+            </span>
+            <div class="flex-1 flex flex-wrap gap-1.5">
+              <button (click)="setFilter('subject', '')"
+                      [class]="!subjectParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                      class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+                全部科目
+              </button>
+              <button *ngFor="let s of availableSubjects()"
+                      (click)="setFilter('subject', s.name)"
+                      [class]="subjectParam() === s.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                      class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
+                <span>{{ s.icon }}</span>
+                <span>{{ s.name }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 维度 4 & 5: 教材版本与学期分册 (展开时) -->
+          <div *ngIf="isK12Stage() && desktopFilterExpanded()" class="space-y-3 pt-3 border-t border-slate-100">
+            <!-- 版本 -->
+            <div class="flex items-center text-xs gap-3">
+              <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
+                <span>📚</span> 教材版本:
+              </span>
+              <div class="flex-1 flex flex-wrap gap-1.5">
+                <button (click)="setFilter('edition', '')"
+                        [class]="!editionParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                        class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+                  全部版本
+                </button>
+                <button *ngFor="let e of availableEditions()"
+                        (click)="setFilter('edition', e.name)"
+                        [class]="editionParam() === e.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                        class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
+                  <span>{{ e.icon || '📚' }}</span>
+                  <span>{{ e.name }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 学期 -->
+            <div class="flex items-center text-xs gap-3 pt-2">
+              <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
+                <span>📅</span> 学期分册:
+              </span>
+              <div class="flex-1 flex flex-wrap gap-1.5">
+                <button (click)="setFilter('term', '')"
+                        [class]="!termParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                        class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+                  全部学期
+                </button>
+                <button *ngFor="let t of availableTerms"
+                        (click)="setFilter('term', t.name)"
+                        [class]="termParam() === t.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                        class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+                  {{ t.name }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底栏：展开/收起按钮 + 激活条件提示 -->
+          <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+            <button *ngIf="isK12Stage()"
+                    (click)="toggleDesktopFilter()"
+                    class="flex items-center gap-1 font-bold text-slate-600 hover:text-emerald-700 transition cursor-pointer">
+              <span>{{ desktopFilterExpanded() ? '收起版本与学期筛选 ▲' : '更多高级筛选 (教材版本 · 学期分册) ▼' }}</span>
+            </button>
+            <span *ngIf="!isK12Stage()"></span>
+
+            <div *ngIf="hasActiveFilters()" class="flex items-center gap-2">
+              <span class="text-slate-400">已激活筛选</span>
+              <button (click)="resetAllFilters()"
+                      class="text-xs text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer">
+                ✕ 清除全部条件
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 状态指示、多维排序与视图切换工具条 -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/70 pt-2">
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm sm:text-base font-extrabold text-slate-800 flex items-center gap-1.5">
+              <span>📚</span>
+              <span>精选真题资料</span>
+            </h2>
+            <span class="text-xs text-slate-400 font-mono">
+              共 <strong class="text-emerald-700 font-bold">{{ totalCount() }}</strong> 份资源
+            </span>
+            <span *ngIf="queryParam()" class="text-xs bg-amber-50 text-amber-800 border border-amber-200/80 px-2 py-0.5 rounded-md font-semibold">
+              搜索: "{{ queryParam() }}"
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2.5">
+            <!-- 核心排序分段控制器 (转存最多 / 最新收录 / 最多浏览) -->
+            <div class="flex items-center bg-white p-1 rounded-xl border border-slate-200/90 shadow-2xs text-xs font-semibold">
+              <button (click)="setSortBy('popular')"
+                      [class]="sortBy() === 'popular' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
+                      class="flex items-center gap-1 px-3 py-1 rounded-lg transition cursor-pointer">
+                <span>🔥</span>
+                <span>转存最多</span>
+              </button>
+              <button (click)="setSortBy('latest')"
+                      [class]="sortBy() === 'latest' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
+                      class="flex items-center gap-1 px-3 py-1 rounded-lg transition cursor-pointer">
+                <span>⏱️</span>
+                <span>最新发布</span>
+              </button>
+              <button (click)="setSortBy('views')"
+                      [class]="sortBy() === 'views' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
+                      class="flex items-center gap-1 px-3 py-1 rounded-lg transition cursor-pointer">
+                <span>👀</span>
+                <span>最多浏览</span>
+              </button>
+            </div>
+
+            <!-- PC 端网格/列表视图切换开关 -->
+            <div class="hidden sm:flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+              <button (click)="setViewMode('grid')"
+                      [class]="viewMode() === 'grid' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'"
+                      class="p-1 rounded-lg transition cursor-pointer"
+                      title="网格视图">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
+              </button>
+              <button (click)="setViewMode('list')"
+                      [class]="viewMode() === 'list' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'"
+                      class="p-1 rounded-lg transition cursor-pointer"
+                      title="列表视图">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- 加载中骨架屏 -->
         <div *ngIf="isLoading()"
-             [class]="viewMode() === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4' : 'space-y-3'">
-          <div *ngFor="let _ of [1,2,3,4,5,6,7,8]"
-               class="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-3 sm:p-4 animate-pulse space-y-3">
+             [class]="viewMode() === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3.5 sm:gap-4' : 'space-y-3'">
+          <div *ngFor="let _ of [1,2,3,4,5,6]"
+               class="bg-white rounded-2xl border border-slate-200/80 p-3 sm:p-4 animate-pulse space-y-3">
             <div class="w-full aspect-[3/4] bg-slate-100 rounded-xl"></div>
             <div class="h-4 bg-slate-200 rounded w-3/4"></div>
             <div class="h-3 bg-slate-100 rounded w-1/2"></div>
           </div>
         </div>
 
-        <!-- 资料卡片主体渲染 (根据当前选中的排序 displayResources 响应式渲染，开阔 4 列满宽) -->
+        <!-- 资料卡片主体渲染 (根据当前选中的排序 displayResources 响应式渲染，开阔 3 列满宽) -->
         <div *ngIf="!isLoading() && displayResources().length > 0"
-             [class]="viewMode() === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4' : 'space-y-3'">
+             [class]="viewMode() === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3.5 sm:gap-4' : 'space-y-3'">
           <app-resource-card *ngFor="let res of displayResources()"
                              [resource]="res"
                              [viewMode]="viewMode()">
@@ -516,9 +423,9 @@
       </div>
 
       <!-- ══════════════════════════════════════════════ -->
-      <!-- 最右侧独立侧边栏 (在 PC 宽屏 >= 1280px 下展示在最右侧，手机/平板自动隐藏) -->
+      <!-- 右侧桌面端侧边栏 (从筛选栏右侧一直自然贯穿至底部，手机与平板自动隐藏) -->
       <!-- ══════════════════════════════════════════════ -->
-      <aside class="hidden xl:block w-72 xl:w-80 shrink-0 space-y-5 sticky top-6">
+      <aside class="hidden lg:block w-72 xl:w-80 shrink-0 space-y-5 sticky top-6">
         
         <!-- 🏆 模块 1: 热门转存飙升榜 (TOP 8) -->
         <div class="bg-white rounded-3xl border border-slate-200/90 shadow-academic p-5 space-y-3.5">
@@ -606,4 +513,90 @@
 
     </div>
   </main>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 3. 移动端全量筛选抽屉 (Bottom Sheet Drawer) -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div *ngIf="mobileDrawerOpen()"
+       class="fixed inset-0 z-50 flex flex-col justify-end lg:hidden animate-fade-in">
+    <!-- 半透明背景遮罩 -->
+    <div (click)="closeMobileDrawer()" class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"></div>
+    
+    <!-- 抽屉本体面板 -->
+    <div class="relative bg-white rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl z-10 overflow-hidden">
+      <!-- 顶部拖拽手柄与标题 -->
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-base font-extrabold text-slate-900">多维条件精确筛选</span>
+          <span *ngIf="activeFilterCount() > 0" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">
+            已选 {{ activeFilterCount() }} 项
+          </span>
+        </div>
+        <button (click)="closeMobileDrawer()" class="p-1 rounded-full text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 抽屉可滚动区域 -->
+      <div class="p-4 space-y-4 overflow-y-auto text-xs flex-1">
+        <!-- 学科 -->
+        <div>
+          <div class="font-extrabold text-slate-800 mb-2">考试科目:</div>
+          <div class="flex flex-wrap gap-1.5">
+            <button (click)="setFilter('subject', '')"
+                    [class]="!subjectParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
+                    class="px-2.5 py-1.5 rounded-lg">全部</button>
+            <button *ngFor="let s of availableSubjects()"
+                    (click)="setFilter('subject', s.name)"
+                    [class]="subjectParam() === s.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
+                    class="px-2.5 py-1.5 rounded-lg flex items-center gap-1">
+              <span>{{ s.icon }}</span><span>{{ s.name }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 版本 (仅中小学阶段展示) -->
+        <div *ngIf="isK12Stage()">
+          <div class="font-extrabold text-slate-800 mb-2">教材版本:</div>
+          <div class="flex flex-wrap gap-1.5">
+            <button (click)="setFilter('edition', '')"
+                    [class]="!editionParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
+                    class="px-2.5 py-1.5 rounded-lg">全部</button>
+            <button *ngFor="let e of availableEditions()"
+                    (click)="setFilter('edition', e.name)"
+                    [class]="editionParam() === e.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
+                    class="px-2.5 py-1.5 rounded-lg">{{ e.name }}</button>
+          </div>
+        </div>
+
+        <!-- 学期 (仅中小学阶段展示) -->
+        <div *ngIf="isK12Stage()">
+          <div class="font-extrabold text-slate-800 mb-2">学期分册:</div>
+          <div class="flex flex-wrap gap-1.5">
+            <button (click)="setFilter('term', '')"
+                    [class]="!termParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
+                    class="px-2.5 py-1.5 rounded-lg">全部</button>
+            <button *ngFor="let t of availableTerms"
+                    (click)="setFilter('term', t.name)"
+                    [class]="termParam() === t.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
+                    class="px-2.5 py-1.5 rounded-lg">{{ t.name }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 抽屉底部操作栏 -->
+      <div class="p-3 border-t border-slate-100 bg-slate-50 flex items-center gap-3">
+        <button (click)="resetAllFilters(); closeMobileDrawer()"
+                class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-center">
+          重置全部
+        </button>
+        <button (click)="closeMobileDrawer()"
+                class="flex-2 py-2.5 rounded-xl bg-emerald-600 text-white font-extrabold text-center shadow-md">
+          完成并查看结果 ({{ totalCount() }})
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
