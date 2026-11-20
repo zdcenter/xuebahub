@@ -383,11 +383,100 @@ export class ChannelComponent implements OnInit {
     const meta = this.currentMeta;
     const ch = this.channelSlug();
     const path = (!ch || ch === 'all') ? '' : `/${ch}`;
+
+    // 动态多维关键词聚合
+    const channelKeywordsMap: Record<string, string> = {
+      all: '中小学试卷, 期末复习资料, 历年真题, 统编教材电子课本, 夸克网盘转存, A4打印版试卷, 名校密卷',
+      primary: '小学试卷, 小学期中期末考试卷, 小学语文数学英语, 1-6年级真题, 单元练习卷, 夸克免密直存',
+      junior: '初中试卷, 中考真题, 初一初二初三期末卷, 中考模拟卷, 中考满分作文, 高清PDF打印',
+      senior: '高中试卷, 高考真题, 高三一模二模, 历年高考卷, 高中全科复习讲义, 夸克网盘',
+      cert: '教师资格证真题, 综合素质真题, 教育教学知识与能力, 教资笔试历年真题, 面试备考',
+      exam: '公务员考试真题, 国考行测申论真题, 省考历年真题, 事业单位公共基础知识'
+    };
+
     this.seoService.update({
       title: meta.title,
       description: meta.desc,
+      keywords: channelKeywordsMap[ch] || channelKeywordsMap['all'],
       canonicalUrl: `https://www.xuebaw.com${path}`
     });
+
+    if (!ch || ch === 'all') {
+      this.seoService.setJsonLd({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'WebSite',
+            '@id': 'https://www.xuebaw.com/#website',
+            'url': 'https://www.xuebaw.com',
+            'name': '学霸网 - 中小学试卷与教辅资料库',
+            'description': meta.desc,
+            'potentialAction': {
+              '@type': 'SearchAction',
+              'target': 'https://www.xuebaw.com/?q={search_term_string}',
+              'query-input': 'required name=search_term_string'
+            }
+          },
+          {
+            '@type': 'FAQPage',
+            'mainEntity': [
+              {
+                '@type': 'Question',
+                'name': '学霸网的试卷和教辅资料如何免费下载？',
+                'acceptedAnswer': {
+                  '@type': 'Answer',
+                  'text': '学霸网所有教辅试卷均支持一键免密转存至夸克网盘或百度网盘，手机、电脑、平板均可随时在线查阅并支持A4高清无损打印。'
+                }
+              },
+              {
+                '@type': 'Question',
+                'name': '学霸网涵盖哪些学段与学科的资料？',
+                'acceptedAnswer': {
+                  '@type': 'Answer',
+                  'text': '涵盖幼小衔接、小学1-6年级、初中七八九年级中考、高中高考各学科（语文、数学、英语、物理、化学、生物、历史、地理、道德与法治），以及教师资格证、考公考研核心资料与人教版等主流电子教材。'
+                }
+              }
+            ]
+          }
+        ]
+      });
+    } else {
+      this.seoService.setJsonLd({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'CollectionPage',
+            '@id': `https://www.xuebaw.com${path}`,
+            'name': meta.title,
+            'description': meta.desc,
+            'url': `https://www.xuebaw.com${path}`
+          },
+          {
+            '@type': 'BreadcrumbList',
+            'itemListElement': [
+              {
+                '@type': 'ListItem',
+                'position': 1,
+                'name': '首页',
+                'item': 'https://www.xuebaw.com'
+              },
+              {
+                '@type': 'ListItem',
+                'position': 2,
+                'name': meta.title.split('(')[0].trim(),
+                'item': `https://www.xuebaw.com${path}`
+              }
+            ]
+          }
+        ]
+      });
+    }
+  }
+
+  openRequestHelp() {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('open-request-modal'));
+    }
   }
 
   setFilter(dimension: 'stage' | 'grade' | 'term' | 'subject' | 'edition', value: string) {

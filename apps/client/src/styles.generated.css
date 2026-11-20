@@ -2738,9 +2738,9 @@ body {
   padding-bottom: 2.5rem;
 }
 
-.py-16 {
-  padding-top: 4rem;
-  padding-bottom: 4rem;
+.py-12 {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
 }
 
 .py-2 {
@@ -3620,6 +3620,12 @@ body {
 
 .shadow-academic-hover {
   box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.1), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
+}
+
+/* 移动端安全区域距离 (iOS Home Indicator) */
+
+.safe-bottom {
+  padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));
 }
 
 .selection\:bg-blue-600 *::-moz-selection {

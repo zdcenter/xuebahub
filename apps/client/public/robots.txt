@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /r/
 
-Sitemap: https://xuebaw.com/sitemap.xml
+Sitemap: https://www.xuebaw.com/sitemap.xml

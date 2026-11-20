@@ -2,10 +2,14 @@
   <div class="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
     <!-- 面包屑导航 -->
-    <nav class="flex items-center space-x-2 text-xs text-slate-500">
+    <nav class="flex items-center space-x-2 text-xs text-slate-500 flex-wrap">
       <a routerLink="/" class="hover:text-blue-600 transition">全站首页</a>
       <span>/</span>
       <a [routerLink]="stageHref" class="hover:text-blue-600 transition">{{ stageLabel }}</a>
+      <ng-container *ngIf="resource()?.subject">
+        <span>/</span>
+        <a [routerLink]="stageHref" [queryParams]="{ subject: resource()?.subject }" class="hover:text-blue-600 transition">{{ resource()?.subject }}专栏</a>
+      </ng-container>
       <span>/</span>
       <span class="text-slate-800 font-medium truncate max-w-sm">{{ resource()?.title }}</span>
     </nav>

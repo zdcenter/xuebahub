@@ -546,28 +546,76 @@ export class ResourceDetailComponent implements OnInit {
 
           // 提取长尾 SEO 关键词与生成富媒体 Schema.org
           const subfileKeywords = this.extractSubfileKeywords(tree, 10);
+          const editionText = resourceItem.edition ? `【${resourceItem.edition}】` : '';
+          const gradeSubject = [resourceItem.grade, resourceItem.subject].filter(Boolean).join('');
+          const seoTitle = `${resourceItem.title}${editionText} - ${gradeSubject ? gradeSubject + ' ' : ''}高清PDF下载与网盘转存 - 学霸网`;
+
           const keywords = [
             resourceItem.title,
             this.stageLabel,
             resourceItem.subject,
             resourceItem.grade,
             resourceItem.edition,
+            gradeSubject,
             ...subfileKeywords,
+            '试卷真题',
+            '含答案详解',
             '高清PDF下载',
             'A4无损打印',
-            '夸克网盘转存',
-            '百度网盘'
+            '夸克网盘免密直存',
+            '百度网盘',
+            '电子课本教材'
           ].filter(Boolean).join(', ');
 
+          const fileDesc = totalFiles > 0 ? `内含 ${totalFiles} 个真题与教学资料文件` : '全套高清资料整理';
+          const seoDesc = resourceItem.description || `${resourceItem.title}${editionText}，正版高清PDF/视频课件，支持A4无损打印与极速转存。${fileDesc}，含详细解析与答案，免费一键转存至个人网盘。`;
+
           this.seoService.update({
-            title: `${resourceItem.title} - 高清网盘下载与转存`,
-            description: resourceItem.description || `${resourceItem.title}，正版高清PDF/视频课件，支持A4无损打印与极速转存。内含 ${totalFiles} 个精品教学资料与试卷。`,
+            title: seoTitle,
+            description: seoDesc,
             keywords,
             canonicalUrl: `https://www.xuebaw.com/resource/${resourceItem.slug || resourceItem.id}`
           });
 
           // 注入 Schema.org 结构化数据 (LearningResource / Book + BreadcrumbList)
           const isBook = resourceItem.stage === 'book' || resourceItem.channel === 'book';
+          const breadcrumbItems: any[] = [
+            {
+              '@type': 'ListItem',
+              'position': 1,
+              'name': '首页',
+              'item': 'https://www.xuebaw.com'
+            },
+            {
+              '@type': 'ListItem',
+              'position': 2,
+              'name': this.stageLabel,
+              'item': `https://www.xuebaw.com${this.stageHref}`
+            }
+          ];
+
+          if (resourceItem.subject) {
+            breadcrumbItems.push({
+              '@type': 'ListItem',
+              'position': 3,
+              'name': `${resourceItem.subject}专栏`,
+              'item': `https://www.xuebaw.com${this.stageHref}?subject=${encodeURIComponent(resourceItem.subject)}`
+            });
+            breadcrumbItems.push({
+              '@type': 'ListItem',
+              'position': 4,
+              'name': resourceItem.title,
+              'item': this.currentUrl
+            });
+          } else {
+            breadcrumbItems.push({
+              '@type': 'ListItem',
+              'position': 3,
+              'name': resourceItem.title,
+              'item': this.currentUrl
+            });
+          }
+
           this.seoService.setJsonLd({
             '@context': 'https://schema.org',
             '@graph': [
@@ -575,9 +623,10 @@ export class ResourceDetailComponent implements OnInit {
                 '@type': isBook ? 'Book' : 'LearningResource',
                 '@id': this.currentUrl,
                 'name': resourceItem.title,
-                'description': resourceItem.description || resourceItem.title,
+                'description': seoDesc,
                 'inLanguage': 'zh-CN',
-                'educationalLevel': this.stageLabel,
+                'educationalLevel': [this.stageLabel, resourceItem.grade].filter(Boolean).join(' ') || this.stageLabel,
+                'learningResourceType': resourceItem.format || '试卷/课件',
                 'datePublished': resourceItem.created_at || '2026-01-01',
                 'provider': {
                   '@type': 'Organization',
@@ -587,26 +636,7 @@ export class ResourceDetailComponent implements OnInit {
               },
               {
                 '@type': 'BreadcrumbList',
-                'itemListElement': [
-                  {
-                    '@type': 'ListItem',
-                    'position': 1,
-                    'name': '首页',
-                    'item': 'https://www.xuebaw.com'
-                  },
-                  {
-                    '@type': 'ListItem',
-                    'position': 2,
-                    'name': this.stageLabel,
-                    'item': `https://www.xuebaw.com${this.stageHref}`
-                  },
-                  {
-                    '@type': 'ListItem',
-                    'position': 3,
-                    'name': resourceItem.title,
-                    'item': this.currentUrl
-                  }
-                ]
+                'itemListElement': breadcrumbItems
               }
             ]
           });

@@ -378,17 +378,41 @@
 
         <!-- 空数据缺省态 -->
         <div *ngIf="!isLoading() && displayResources().length === 0"
-             class="py-16 text-center bg-white rounded-3xl border border-slate-200/90 shadow-academic p-8">
-          <div class="text-4xl mb-3">🔍</div>
-          <h3 class="text-base font-extrabold text-slate-800">暂未找到完全匹配的真题资源</h3>
-          <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-            您可以尝试缩减筛选条件，或在顶部搜索框输入更简短的关键词进行全局搜索。
-          </p>
-          <div class="mt-5">
-            <button (click)="resetAllFilters()"
-                    class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition cursor-pointer">
-              重置所有筛选条件
-            </button>
+             class="space-y-6">
+          <div class="py-12 text-center bg-white rounded-3xl border border-slate-200/90 shadow-academic p-8">
+            <div class="text-4xl mb-3">🔍</div>
+            <h3 class="text-base font-extrabold text-slate-800">暂未找到完全匹配的真题资源</h3>
+            <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+              您可以尝试缩减筛选条件，或者点击下方提交找卷需求，站长将加急整理补齐！
+            </p>
+            <div class="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <button (click)="resetAllFilters()"
+                      class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition cursor-pointer">
+                重置所有筛选条件
+              </button>
+              <button (click)="openRequestHelp()"
+                      class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition cursor-pointer flex items-center gap-1.5">
+                <span>📝</span>
+                <span>找卷求助登记</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 智能回退推荐：当筛选无果时，展示热门转存前4项真题 -->
+          <div *ngIf="hotRankList().length > 0" class="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🔥</span>
+                <span class="text-sm font-extrabold text-slate-800">为您推荐热度最高的真题资料</span>
+              </div>
+              <span class="text-xs text-slate-400">大家都在看</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+              <app-resource-card *ngFor="let res of hotRankList().slice(0, 4)"
+                                 [resource]="res"
+                                 viewMode="grid">
+              </app-resource-card>
+            </div>
           </div>
         </div>
 

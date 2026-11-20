@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -142,6 +142,11 @@ export class PortalLayoutComponent implements OnInit {
   };
   isSubmittingRequest = signal<boolean>(false);
   requestSubmitSuccess = signal<boolean>(false);
+
+  @HostListener('window:open-request-modal')
+  handleOpenRequestModal() {
+    this.showRequestModal.set(true);
+  }
 
   ngOnInit() {
     // 0. 监听路由变化实时更新当前路由路径
