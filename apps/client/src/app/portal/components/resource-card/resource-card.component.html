@@ -127,16 +127,14 @@
       </span>
     </div>
 
-    <!-- 资料标题 (优雅 2 行截断) -->
+    <!-- 资料标题 (优雅 2 行截断，支持搜索关键词柔和高亮) -->
     <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
-      <a [routerLink]="['/resource', resource.slug || resource.id]" class="hover:underline">
-        {{ resource.title }}
+      <a [routerLink]="['/resource', resource.slug || resource.id]" class="hover:underline" [innerHTML]="getHighlightedText(resource.title)">
       </a>
     </h3>
 
     <!-- 描述简介 (1 行轻量副标) -->
-    <p *ngIf="cleanDescription" class="text-[11px] text-slate-400 line-clamp-1 leading-normal">
-      {{ cleanDescription }}
+    <p *ngIf="cleanDescription" class="text-[11px] text-slate-400 line-clamp-1 leading-normal" [innerHTML]="getHighlightedText(cleanDescription)">
     </p>
 
     <!-- 底部状态与操作条：数据 + 分享 + 一键转存 -->
@@ -251,16 +249,14 @@
         </span>
       </div>
 
-      <!-- 标题 -->
+      <!-- 标题 (支持搜索关键词柔和高亮) -->
       <h3 class="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
-        <a [routerLink]="['/resource', resource.slug || resource.id]" class="hover:underline">
-          {{ resource.title }}
+        <a [routerLink]="['/resource', resource.slug || resource.id]" class="hover:underline" [innerHTML]="getHighlightedText(resource.title)">
         </a>
       </h3>
 
       <!-- 简介描述 -->
-      <p *ngIf="cleanDescription" class="text-xs text-slate-400 line-clamp-1">
-        {{ cleanDescription }}
+      <p *ngIf="cleanDescription" class="text-xs text-slate-400 line-clamp-1" [innerHTML]="getHighlightedText(cleanDescription)">
       </p>
 
       <!-- 规格与数据 -->

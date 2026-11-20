@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { PortalService } from '../../../core/services/portal.service';
 import { SeoService } from '../../../core/services/seo.service';
-import { ResourceItemDto, ResourceLinkDto } from '../../../services/resource.service';
+import { ResourceService, ResourceItemDto, ResourceLinkDto } from '../../../services/resource.service';
 import { MemberService } from '../../../services/member.service';
 import { generateQRCodeSvg } from '../../../utils/qrcode.util';
 import { WechatGuideModalComponent } from '../../components/wechat-guide-modal/wechat-guide-modal.component';
@@ -166,12 +166,15 @@ export class ResourceDetailComponent implements OnInit {
   // 交互状态
   copiedLink = signal<string | null>(null);
   shareTextCopied = signal<boolean>(false);
+  isReportingLink = signal<boolean>(false);
+  linkReported = signal<boolean>(false);
   expandedDirs = signal<Set<number>>(new Set());
   allExpanded = signal<boolean>(true);
   activeQrModal = signal<{ url: string; driveType: string; extractCode: string } | null>(null);
   showTutorialModal = signal<boolean>(false);
 
   // 推荐/分享给好友与社群状态 (支持纯前端实时 Canvas 海报生成，零 R2 零云端依赖)
+  private resourceService = inject(ResourceService);
   posterService = inject(PosterGeneratorService);
   showShareModal = signal<boolean>(false);
   activeShareTab = signal<'poster' | 'parent' | 'moments' | 'direct'>('poster');
@@ -327,6 +330,21 @@ export class ResourceDetailComponent implements OnInit {
 
   closeTutorialModal() {
     this.showTutorialModal.set(false);
+  }
+
+  reportDeadLink(link: ResourceLinkDto) {
+    if (!link || !link.id || this.isReportingLink() || this.linkReported()) return;
+    this.isReportingLink.set(true);
+    this.resourceService.reportLink(link.id, '前台用户反馈网盘链接失效').subscribe({
+      next: () => {
+        this.isReportingLink.set(false);
+        this.linkReported.set(true);
+        setTimeout(() => this.linkReported.set(false), 5000);
+      },
+      error: () => {
+        this.isReportingLink.set(false);
+      }
+    });
   }
 
   openShareModal(tab: 'poster' | 'parent' | 'moments' | 'direct' = 'poster') {

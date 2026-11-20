@@ -235,8 +235,8 @@
     <router-outlet></router-outlet>
   </main>
 
-  <!-- 全站通用 Footer 页脚 -->
-  <footer class="bg-white border-t border-slate-200/80 text-xs text-slate-500 py-10 mt-16">
+  <!-- 全站通用 Footer 页脚 (移动端留出底部导航避让高度) -->
+  <footer class="bg-white border-t border-slate-200/80 text-xs text-slate-500 py-10 mt-16 pb-24 sm:pb-10">
     <div class="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-100">
         <div class="flex items-center gap-3">
@@ -276,8 +276,8 @@
     </div>
   </footer>
 
-  <!-- 右下角悬浮快捷中心 (桌面端优雅展示，移动端仅保留微型悬浮按钮，绝不遮挡卡片与分页) -->
-  <div class="fixed right-3 sm:right-4 bottom-16 sm:bottom-6 z-30 flex flex-col gap-2 items-end">
+  <!-- 右下角悬浮快捷中心 (桌面端优雅展示，移动端仅保留微型悬浮按钮，避让底部导航栏) -->
+  <div class="fixed right-3 sm:right-4 bottom-20 sm:bottom-6 z-30 flex flex-col gap-2 items-end">
     <!-- 回到顶部浮标 (智能感应淡入，丝滑回滚) -->
     <button *ngIf="showBackToTop()"
             (click)="scrollToTop()"
@@ -616,4 +616,42 @@
       </div>
     </div>
   </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- 4. 移动端原生级吸底快捷导航栏 (大拇指单手触控，极速切换核心专区) -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <nav *ngIf="!isDetailPage()"
+       class="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 py-1.5 flex items-center justify-around select-none">
+    <a routerLink="/"
+       routerLinkActive="!text-emerald-700 !font-extrabold"
+       [routerLinkActiveOptions]="{ exact: true }"
+       class="flex flex-col items-center justify-center py-1 px-2.5 text-slate-500 hover:text-slate-800 transition">
+      <span class="text-base leading-none mb-0.5">🏠</span>
+      <span class="text-[10px]">首页</span>
+    </a>
+    <a routerLink="/primary"
+       routerLinkActive="!text-emerald-700 !font-extrabold"
+       class="flex flex-col items-center justify-center py-1 px-2.5 text-slate-500 hover:text-slate-800 transition">
+      <span class="text-base leading-none mb-0.5">🎒</span>
+      <span class="text-[10px]">小学</span>
+    </a>
+    <a routerLink="/junior"
+       routerLinkActive="!text-emerald-700 !font-extrabold"
+       class="flex flex-col items-center justify-center py-1 px-2.5 text-slate-500 hover:text-slate-800 transition">
+      <span class="text-base leading-none mb-0.5">📘</span>
+      <span class="text-[10px]">初中</span>
+    </a>
+    <a routerLink="/senior"
+       routerLinkActive="!text-emerald-700 !font-extrabold"
+       class="flex flex-col items-center justify-center py-1 px-2.5 text-slate-500 hover:text-slate-800 transition">
+      <span class="text-base leading-none mb-0.5">🎓</span>
+      <span class="text-[10px]">高中</span>
+    </a>
+    <a routerLink="/book"
+       routerLinkActive="!text-emerald-700 !font-extrabold"
+       class="flex flex-col items-center justify-center py-1 px-2.5 text-slate-500 hover:text-slate-800 transition">
+      <span class="text-base leading-none mb-0.5">📖</span>
+      <span class="text-[10px]">课本</span>
+    </a>
+  </nav>
 </div>

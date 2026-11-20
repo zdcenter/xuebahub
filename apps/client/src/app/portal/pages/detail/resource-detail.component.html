@@ -239,6 +239,20 @@
                     <span class="text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded font-black tracking-wider select-all">{{ link.extract_code }}</span>
                     <span class="text-slate-400 font-normal text-[11px]">(转存时已自动复制)</span>
                   </div>
+
+                  <!-- 友好提示与死链报错通道 -->
+                  <div class="flex items-center justify-between text-[11px] text-slate-400 px-1 pt-1">
+                    <span>💡 建议免密转存到自己网盘，手机、电脑随时看</span>
+                    <button type="button"
+                            (click)="reportDeadLink(link)"
+                            [disabled]="isReportingLink() || linkReported()"
+                            class="text-slate-400 hover:text-rose-600 transition flex items-center gap-1 cursor-pointer">
+                      <span>🚨</span>
+                      <span [class.text-rose-600]="linkReported()" [class.font-bold]="linkReported()">
+                        {{ linkReported() ? '已收到失效反馈，站长将尽快补链！' : (isReportingLink() ? '正在提交...' : '链接失效点此报错') }}
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
                 <!-- 备用网盘渠道 (低侵略性次要展示，确保主流量沉淀在夸克) -->

@@ -955,6 +955,11 @@ export class ResourceService {
     });
   }
 
+  // 前台用户反馈网盘死链报错
+  reportLink(linkId: string, reason: string = '前台用户反馈网盘链接失效'): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/public/links/${linkId}/report`, { reason });
+  }
+
   // --- 邮件营销与推广中枢接口 ---
   getEmailConfig(): Observable<EmailConfigDto> {
     return this.http.get<{ code: number; data: EmailConfigDto }>(`${this.baseUrl}/api/v1/admin/email/config`).pipe(

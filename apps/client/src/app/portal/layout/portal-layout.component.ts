@@ -133,6 +133,10 @@ export class PortalLayoutComponent implements OnInit {
   activeRecTab = signal<'parent' | 'moments' | 'direct'>('parent');
   copySuccess = signal<boolean>(false);
 
+  isDetailPage = computed(() => {
+    return this.currentUrl().startsWith('/resource/');
+  });
+
   // 求助表单
   requestForm = {
     title: '',

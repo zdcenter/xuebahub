@@ -293,18 +293,48 @@ export class ChannelComponent implements OnInit {
       !!this.gradeParam() ||
       !!this.subjectParam() ||
       !!this.editionParam() ||
-      !!this.termParam();
+      !!this.termParam() ||
+      !!this.queryParam();
   });
+
+  // 活跃筛选标签胶囊列表（支持单项直接移除）
+  activeFilterChips = computed<{ key: 'stage' | 'grade' | 'subject' | 'edition' | 'term' | 'q'; label: string; value: string }[]>(() => {
+    const chips: { key: 'stage' | 'grade' | 'subject' | 'edition' | 'term' | 'q'; label: string; value: string }[] = [];
+    if (this.channelSlug() === 'all' && this.stageParam() && this.stageParam() !== 'all') {
+      const match = this.stages().find(s => s.slug === this.stageParam());
+      chips.push({ key: 'stage', label: '学段', value: match ? match.name : this.stageParam() });
+    }
+    if (this.gradeParam()) {
+      chips.push({ key: 'grade', label: '年级', value: this.gradeParam() });
+    }
+    if (this.subjectParam()) {
+      chips.push({ key: 'subject', label: '学科', value: this.subjectParam() });
+    }
+    if (this.editionParam()) {
+      chips.push({ key: 'edition', label: '版本', value: this.editionParam() });
+    }
+    if (this.termParam()) {
+      chips.push({ key: 'term', label: '学期', value: this.termParam() });
+    }
+    if (this.queryParam()) {
+      chips.push({ key: 'q', label: '搜索', value: this.queryParam() });
+    }
+    return chips;
+  });
+
+  removeFilterChip(key: 'stage' | 'grade' | 'subject' | 'edition' | 'term' | 'q') {
+    if (key === 'stage') {
+      this.setFilter('stage', 'all');
+    } else if (key === 'q') {
+      this.clearSearch();
+    } else {
+      this.setFilter(key, '');
+    }
+  }
 
   // 统计已激活的筛选维度数量 (用于手机端筛选徽标展示)
   activeFilterCount = computed(() => {
-    let count = 0;
-    if (this.stageParam() !== 'all' && this.channelSlug() === 'all') count++;
-    if (this.gradeParam()) count++;
-    if (this.subjectParam()) count++;
-    if (this.editionParam()) count++;
-    if (this.termParam()) count++;
-    return count;
+    return this.activeFilterChips().length;
   });
 
   ngOnInit() {

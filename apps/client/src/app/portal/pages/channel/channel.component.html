@@ -289,11 +289,19 @@
             </button>
             <span *ngIf="!isK12Stage()"></span>
 
-            <div *ngIf="hasActiveFilters()" class="flex items-center gap-2">
-              <span class="text-slate-400">已激活筛选</span>
+            <div *ngIf="activeFilterChips().length > 0" class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-slate-400 font-medium text-[11px]">已选:</span>
+              <span *ngFor="let chip of activeFilterChips()"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-medium text-[11px] shadow-2xs">
+                <span>{{ chip.label }}: {{ chip.value }}</span>
+                <button (click)="removeFilterChip(chip.key)"
+                        type="button"
+                        class="text-emerald-600 hover:text-rose-600 hover:bg-rose-50 rounded w-3.5 h-3.5 inline-flex items-center justify-center font-bold text-[10px] ml-0.5 transition cursor-pointer"
+                        title="取消此条件">✕</button>
+              </span>
               <button (click)="resetAllFilters()"
-                      class="text-xs text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer">
-                ✕ 清除全部条件
+                      class="text-[11px] text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer ml-1">
+                清空全部
               </button>
             </div>
           </div>
@@ -375,6 +383,7 @@
              [class]="viewMode() === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5 sm:gap-4.5' : 'space-y-3'">
           <app-resource-card *ngFor="let res of displayResources()"
                              [resource]="res"
+                             [searchKeyword]="queryParam() || ''"
                              [viewMode]="viewMode()">
           </app-resource-card>
         </div>

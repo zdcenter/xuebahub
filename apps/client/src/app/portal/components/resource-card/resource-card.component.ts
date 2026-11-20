@@ -17,9 +17,22 @@ export class ResourceCardComponent {
 
   @Input({ required: true }) resource!: ResourceItemDto;
   @Input() viewMode: 'grid' | 'list' = 'grid';
+  @Input() searchKeyword: string = '';
 
   copied = false;
   private copyTimer: any = null;
+
+  // 搜索关键词柔和高亮
+  getHighlightedText(text: string): SafeHtml {
+    if (!text) return '';
+    const kw = (this.searchKeyword || '').trim();
+    if (!kw) return text;
+
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+    const highlighted = text.replace(regex, '<mark class="bg-amber-100 text-amber-900 px-0.5 rounded font-extrabold">$1</mark>');
+    return this.sanitizer.bypassSecurityTrustHtml(highlighted);
+  }
 
   get primaryLink(): ResourceLinkDto | null {
     if (!this.resource.links || this.resource.links.length === 0) return null;
