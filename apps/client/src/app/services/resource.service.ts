@@ -937,6 +937,24 @@ export class ResourceService {
     return this.http.post(`${this.baseUrl}/api/v1/admin/crawler/drafts/batch`, { action, ids });
   }
 
+  batchApproveCrawlerDrafts(payload: { ids?: string[]; auto_transfer?: boolean; auto_publish?: boolean; channel_slug?: string }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/admin/crawler/drafts/batch-approve`, payload);
+  }
+
+  batchImportSimple(payload: { text: string; auto_transfer?: boolean; auto_publish?: boolean; channel_slug?: string }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/admin/resources/batch-import-simple`, payload);
+  }
+
+  batchImportQuarkFolder(payload: { account_id?: string; pdir_fid?: string; fids?: string[]; auto_publish?: boolean; channel_slug?: string }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/v1/admin/netdisk/batch-import-folder`, payload);
+  }
+
+  exportResourcesCSV(): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/api/v1/admin/resources/export?format=csv`, {
+      responseType: 'blob'
+    });
+  }
+
   // --- 邮件营销与推广中枢接口 ---
   getEmailConfig(): Observable<EmailConfigDto> {
     return this.http.get<{ code: number; data: EmailConfigDto }>(`${this.baseUrl}/api/v1/admin/email/config`).pipe(

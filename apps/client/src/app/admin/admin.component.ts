@@ -1610,6 +1610,60 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  async batchApproveDrafts(autoTransfer: boolean = false) {
+    const ids = this.selectedDraftIds();
+    if (ids.length === 0) {
+      this.showToast('请先勾选要入库的草稿');
+      return;
+    }
+    const tip = autoTransfer 
+      ? `确定要将选中的 ${ids.length} 条草稿全自动转存到您的夸克网盘并直接上架发布吗？` 
+      : `确定要将选中的 ${ids.length} 条草稿直接使用原链接批量上架发布吗？`;
+    const ok = await this.confirmDialog({
+      title: '批量审核入库',
+      message: tip,
+      confirmText: autoTransfer ? '🚀 自动转存并上架' : '⚡ 直接上架',
+      type: 'info',
+      icon: '📦'
+    });
+    if (!ok) return;
+
+    this.showToast('正在批量审核入库中，请稍候...');
+    this.resService.batchApproveCrawlerDrafts({
+      ids,
+      auto_transfer: autoTransfer,
+      auto_publish: true
+    }).subscribe({
+      next: (res) => {
+        this.showToast(res.message || '✅ 批量入库成功！', 'success');
+        this.selectedDraftIds.set([]);
+        this.loadCrawlerDrafts();
+        this.loadCrawlerConfigAndStats();
+      },
+      error: (err) => {
+        this.showToast(err?.error?.message || '批量入库失败', 'error');
+      }
+    });
+  }
+
+  exportResourcesCSV() {
+    this.showToast('正在准备全量资料导出...');
+    this.resService.exportResourcesCSV().subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `xuebaw_resources_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.showToast('✅ 全站资料与链接 CSV 导出成功！', 'success');
+      },
+      error: () => {
+        this.showToast('导出失败，请重试', 'error');
+      }
+    });
+  }
+
   async batchDeleteDrafts() {
     const ids = this.selectedDraftIds();
     if (ids.length === 0) return;

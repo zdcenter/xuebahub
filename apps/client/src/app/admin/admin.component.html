@@ -439,6 +439,9 @@
               <button class="btn" style="background: #e0f2fe; color: #0284c7; font-weight: 600;" (click)="openBatchCheckModal()">
                 🛡️ 一键巡检链接 (防封限频)
               </button>
+              <button class="btn" style="background: #ecfdf5; color: #059669; font-weight: 600; border: 1px solid #a7f3d0;" (click)="exportResourcesCSV()" title="一键将全站资料及网盘链接导出为带BOM的Excel/CSV文件">
+                📥 导出全量CSV
+              </button>
               <button class="btn" style="background: #f1f5f9; color: #475569;" (click)="loadResources()">🔄 刷新数据</button>
               <button class="btn btn-primary" (click)="switchTab('add')">+ 发布新资料</button>
             </div>
@@ -3039,7 +3042,23 @@
                 <div style="font-size: 13px; font-weight: 600; color: #065f46;">
                   ✓ 已选中 {{ selectedDraftIds().length }} 项待处理草稿
                 </div>
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button 
+                    type="button" 
+                    class="btn btn-sm" 
+                    (click)="batchApproveDrafts(true)"
+                    style="background: #059669; color: #ffffff; border: 1px solid #047857; cursor: pointer; border-radius: 6px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                    <span>🚀</span>
+                    <span>自动转存并入库发布</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn btn-sm" 
+                    (click)="batchApproveDrafts(false)"
+                    style="background: #0284c7; color: #ffffff; border: 1px solid #0369a1; cursor: pointer; border-radius: 6px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                    <span>⚡</span>
+                    <span>直接入库发布(原链)</span>
+                  </button>
                   <button 
                     type="button" 
                     class="btn btn-sm" 
