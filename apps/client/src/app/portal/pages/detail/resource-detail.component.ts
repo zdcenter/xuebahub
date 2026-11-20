@@ -165,6 +165,7 @@ export class ResourceDetailComponent implements OnInit {
 
   // 交互状态
   copiedLink = signal<string | null>(null);
+  shareTextCopied = signal<boolean>(false);
   expandedDirs = signal<Set<number>>(new Set());
   allExpanded = signal<boolean>(true);
   activeQrModal = signal<{ url: string; driveType: string; extractCode: string } | null>(null);
@@ -292,6 +293,36 @@ export class ResourceDetailComponent implements OnInit {
 
   openTutorialModal() {
     this.showTutorialModal.set(true);
+  }
+
+  copyWechatShareText() {
+    const res = this.resource();
+    if (!res) return;
+
+    const gradeSubject = [res.grade, res.subject].filter(Boolean).join('');
+    const editionText = res.edition ? ` · ${res.edition}` : '';
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : `https://www.xuebaw.com/resource/${res.slug || res.id}`;
+
+    const text = `【学霸网资料整理】《${res.title}》
+适用：${gradeSubject || this.stageLabel}${editionText} · 含完整解析 · 支持A4无损打印
+夸克网盘免密直存：${shareUrl}
+（手机、电脑、平板随时查阅与复习，速存防失效！）`;
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.shareTextCopied.set(true);
+        setTimeout(() => this.shareTextCopied.set(false), 2500);
+      });
+    } else if (typeof document !== 'undefined') {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      this.shareTextCopied.set(true);
+      setTimeout(() => this.shareTextCopied.set(false), 2500);
+    }
   }
 
   closeTutorialModal() {

@@ -46,6 +46,7 @@ export class ChannelComponent implements OnInit {
   // 首页右侧常驻：全站/频道热门转存飙升榜 (TOP 8)
   hotRankList = signal<ResourceItemDto[]>([]);
   isRankLoading = signal<boolean>(false);
+  searchHistory = signal<string[]>([]);
 
   // 根据当前 sortBy 响应式排序的主资源列表
   displayResources = computed(() => {
@@ -317,6 +318,7 @@ export class ChannelComponent implements OnInit {
     this.portalService.getHotSearches().subscribe(h => this.hotSearches.set(h));
     this.portalService.getCategoriesGrouped().subscribe(grp => this.categoriesGroup.set(grp));
     this.loadHotRankList();
+    this.loadSearchHistory();
 
     this.route.data.subscribe(data => {
       const slug = data['channel'] || 'all';
@@ -367,11 +369,61 @@ export class ChannelComponent implements OnInit {
   // 顶部现代搜索提交
   onSearchSubmit() {
     const q = this.searchInput().trim();
+    if (q) {
+      this.saveSearchKeyword(q);
+    }
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { q: q || null, page: '1' },
       queryParamsHandling: 'merge'
     });
+  }
+
+  loadSearchHistory() {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('xuebaw_search_history');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            this.searchHistory.set(list.slice(0, 6));
+          }
+        }
+      } catch (e) {}
+    }
+  }
+
+  saveSearchKeyword(keyword: string) {
+    const k = keyword.trim();
+    if (!k || typeof localStorage === 'undefined') return;
+    try {
+      const cur = this.searchHistory().filter(item => item !== k);
+      const next = [k, ...cur].slice(0, 6);
+      this.searchHistory.set(next);
+      localStorage.setItem('xuebaw_search_history', JSON.stringify(next));
+    } catch (e) {}
+  }
+
+  clearSearchHistory() {
+    this.searchHistory.set([]);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('xuebaw_search_history');
+    }
+  }
+
+  removeSearchHistoryItem(item: string, event: Event) {
+    event.stopPropagation();
+    event.preventDefault();
+    const next = this.searchHistory().filter(i => i !== item);
+    this.searchHistory.set(next);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('xuebaw_search_history', JSON.stringify(next));
+    }
+  }
+
+  applyHistorySearch(keyword: string) {
+    this.searchInput.set(keyword);
+    this.onSearchSubmit();
   }
 
   clearSearch() {

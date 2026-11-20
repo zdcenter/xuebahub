@@ -129,6 +129,7 @@ export class PortalLayoutComponent implements OnInit {
   // 推荐/求助模态窗
   showRecommendModal = signal<boolean>(false);
   showRequestModal = signal<boolean>(false);
+  showBackToTop = signal<boolean>(false);
   activeRecTab = signal<'parent' | 'moments' | 'direct'>('parent');
   copySuccess = signal<boolean>(false);
 
@@ -146,6 +147,49 @@ export class PortalLayoutComponent implements OnInit {
   @HostListener('window:open-request-modal')
   handleOpenRequestModal() {
     this.showRequestModal.set(true);
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll() {
+    if (typeof window !== 'undefined') {
+      this.showBackToTop.set(window.scrollY > 350);
+    }
+  }
+
+  scrollToTop() {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(e: KeyboardEvent) {
+    if (((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) || (e.key === '/' && !this.isTypingInInput(e))) {
+      e.preventDefault();
+      this.focusGlobalSearch();
+    }
+  }
+
+  private isTypingInInput(e: KeyboardEvent): boolean {
+    const target = e.target as HTMLElement;
+    if (!target) return false;
+    const tag = target.tagName?.toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
+  }
+
+  focusGlobalSearch() {
+    if (typeof document === 'undefined') return;
+    const heroInput = document.getElementById('hero-search-input') as HTMLInputElement;
+    if (heroInput) {
+      heroInput.focus();
+      heroInput.select();
+      return;
+    }
+    const headerInput = document.getElementById('header-search-input') as HTMLInputElement;
+    if (headerInput) {
+      headerInput.focus();
+      headerInput.select();
+    }
   }
 
   ngOnInit() {

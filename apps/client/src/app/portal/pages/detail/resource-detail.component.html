@@ -205,22 +205,31 @@
                     </div>
                   </a>
 
-                  <!-- 次级辅助操作栏：转存教程与全页唯一的分享推荐入口 (双按钮对称排布，清晰大方) -->
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <!-- 次级辅助操作栏：转存教程、推荐海报与一键复制微信文案 (三按钮排布，清晰大方) -->
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button
                       type="button"
                       (click)="openTutorialModal()"
-                      class="btn-secondary-action w-full">
+                      class="btn-secondary-action w-full text-xs">
                       <span>📖</span>
-                      <span>转存/打印教程</span>
+                      <span class="truncate">打印/转存教程</span>
                     </button>
 
                     <button
                       type="button"
                       (click)="openShareModal('poster')"
-                      class="btn-secondary-action w-full !bg-emerald-50/70 hover:!bg-emerald-100/80 !border-emerald-200/90 !text-emerald-800">
+                      class="btn-secondary-action w-full !bg-emerald-50/70 hover:!bg-emerald-100/80 !border-emerald-200/90 !text-emerald-800 text-xs">
                       <span>🖼️</span>
-                      <span>生成海报 · 推荐好友</span>
+                      <span class="truncate">生成推荐海报</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      (click)="copyWechatShareText()"
+                      class="btn-secondary-action w-full text-xs transition duration-200 cursor-pointer"
+                      [ngClass]="shareTextCopied() ? '!bg-emerald-600 !text-white !border-emerald-600 font-bold' : '!bg-blue-50/70 hover:!bg-blue-100/80 !border-blue-200/90 !text-blue-800'">
+                      <span>{{ shareTextCopied() ? '✓' : '📋' }}</span>
+                      <span class="truncate">{{ shareTextCopied() ? '已复制分享文案！' : '复制微信文案' }}</span>
                     </button>
                   </div>
 
@@ -585,7 +594,7 @@
       <!-- ══════════════════════════════════════════════ -->
       <!-- 右侧桌面端侧边栏 (PC 宽屏常驻，平板与手机端自动隐藏) -->
       <!-- ══════════════════════════════════════════════ -->
-      <aside class="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-5 sticky top-6">
+      <aside class="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-5 sticky top-20">
         
         <!-- 🏆 模块 1: 热门转存飙升榜 (TOP 8) -->
         <div class="bg-white rounded-3xl border border-slate-200/90 shadow-academic p-5 space-y-3.5">

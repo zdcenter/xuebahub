@@ -59,6 +59,7 @@
           <div *ngIf="!isHomePage()" class="relative hidden sm:block w-36 lg:w-48 xl:w-56 transition-all focus-within:w-48 lg:focus-within:w-60">
             <form (ngSubmit)="onSearchSubmit()" class="relative w-full">
               <input type="text"
+                     id="header-search-input"
                      [(ngModel)]="searchQuery"
                      (input)="onSearchInput()"
                      (focus)="onSearchFocus()"
@@ -66,10 +67,11 @@
                      name="q"
                      placeholder="搜索真题、试卷、课本..."
                      autocomplete="off"
-                     class="w-full pl-8 pr-3 py-1.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white text-xs text-slate-800 rounded-full border border-slate-200/80 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition placeholder:text-slate-400" />
-              <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                     class="w-full pl-8 pr-12 py-1.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white text-xs text-slate-800 rounded-full border border-slate-200/80 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition placeholder:text-slate-400" />
+              <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
               </svg>
+              <kbd class="hidden xl:inline-block px-1.5 py-0.2 text-[9px] font-mono text-slate-400 bg-slate-200/70 rounded border border-slate-300/60 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none">Ctrl K</kbd>
             </form>
 
             <!-- 实时联想下拉浮窗 (Autocomplete Dropdown) -->
@@ -276,6 +278,18 @@
 
   <!-- 右下角悬浮快捷中心 (桌面端优雅展示，移动端仅保留微型悬浮按钮，绝不遮挡卡片与分页) -->
   <div class="fixed right-3 sm:right-4 bottom-16 sm:bottom-6 z-30 flex flex-col gap-2 items-end">
+    <!-- 回到顶部浮标 (智能感应淡入，丝滑回滚) -->
+    <button *ngIf="showBackToTop()"
+            (click)="scrollToTop()"
+            type="button"
+            class="px-3 py-2 sm:px-3 sm:py-2 rounded-2xl bg-white/95 hover:bg-slate-900 text-slate-700 hover:text-white text-xs font-bold shadow-lg border border-slate-200/90 backdrop-blur-md transition-all duration-300 hover:scale-105 flex items-center gap-1.5 cursor-pointer animate-fadeIn"
+            title="回到页面顶部">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+      </svg>
+      <span class="hidden sm:inline">回到顶部</span>
+    </button>
+
     <!-- 桌面端按钮 -->
     <button (click)="showRequestModal.set(true)"
             type="button"
