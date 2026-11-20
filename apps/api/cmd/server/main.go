@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -45,14 +47,15 @@ func main() {
 	coverGen := service.NewCoverGeneratorService()
 	r2Service := service.NewR2Service(cfg)
 	telegramCrawler := service.NewTelegramCrawlerService(database.DB, netdiskParser)
-	crawlerH := handler.NewCrawlerHandler(telegramCrawler)
 	seoService := service.NewSeoService(database.DB)
 	seoH := handler.NewSeoHandler(seoService)
-	resH := handler.NewResourceHandler(netdiskParser, netdiskChecker, coverGen, r2Service, telegramCrawler, seoService)
+	quarkTransfer := service.NewQuarkTransferService()
+	smartMeta := service.NewSmartMetaService()
+	crawlerH := handler.NewCrawlerHandler(telegramCrawler, quarkTransfer, smartMeta)
+	resH := handler.NewResourceHandler(netdiskParser, netdiskChecker, coverGen, r2Service, telegramCrawler, seoService, quarkTransfer, smartMeta)
 	searchAgg := service.NewSearchAggregatorService()
 	searchH := handler.NewSearchHandler(searchAgg)
-	quarkTransfer := service.NewQuarkTransferService()
-	netdiskAccountH := handler.NewNetdiskAccountHandler(quarkTransfer)
+	netdiskAccountH := handler.NewNetdiskAccountHandler(quarkTransfer, smartMeta, telegramCrawler)
 	categoryH := handler.NewCategoryHandler()
 	channelH := handler.NewChannelHandler()
 	navMenuH := handler.NewNavMenuHandler()
@@ -123,12 +126,14 @@ func main() {
 	admin.Get("/settings", settingsH.GetAdminSettings)
 	admin.Put("/settings", settingsH.UpdateSettings)
 	admin.Get("/resources", resH.AdminListResources)
+	admin.Get("/resources/export", resH.AdminExportResources)
 	admin.Post("/resources", resH.AdminCreateResource)
 	admin.Post("/resources/batch-toggle", resH.AdminBatchTogglePublish)
 	admin.Post("/resources/batch-delete", resH.AdminBatchDeleteResources)
 	admin.Post("/resources/batch-assign-account", resH.AdminBatchAssignAccount)
 	admin.Post("/resources/batch-assign-channel", resH.AdminBatchAssignChannel)
 	admin.Post("/resources/batch-import", resH.AdminBatchImportResources)
+	admin.Post("/resources/batch-import-simple", resH.AdminBatchImportSimple)
 	admin.Put("/resources/:id", resH.AdminUpdateResource)
 	admin.Put("/resources/:id/links", resH.AdminQuickUpdateLinks)
 	admin.Patch("/resources/:id/stats", resH.AdminUpdateResourceStats)
@@ -199,6 +204,7 @@ func main() {
 	admin.Post("/netdisk/transfer-share", netdiskAccountH.AutoTransferAndShare)
 	admin.Get("/netdisk/default-account/files", netdiskAccountH.ListDefaultAccountFiles)
 	admin.Post("/netdisk/default-account/create-share", netdiskAccountH.CreateShareFromDefaultAccount)
+	admin.Post("/netdisk/batch-import-folder", netdiskAccountH.AdminBatchImportQuarkFolder)
 
 	// 启动网盘账号健康心跳与容量定时校验轮询 (每6小时自动轮询一次)
 	go netdiskAccountH.StartHeartbeatRoutine(6 * time.Hour)
@@ -230,6 +236,7 @@ func main() {
 	admin.Patch("/crawler/drafts/:id/status", crawlerH.UpdateDraftStatus)
 	admin.Delete("/crawler/drafts/:id", crawlerH.DeleteDraft)
 	admin.Post("/crawler/drafts/batch", crawlerH.BatchDraftAction)
+	admin.Post("/crawler/drafts/batch-approve", crawlerH.BatchApproveDrafts)
 
 	// 邮件营销与推广中枢 (Email Marketing & Contact Dispatch Hub)
 	admin.Get("/email/config", emailH.GetConfig)
@@ -277,20 +284,43 @@ func main() {
 
 	// 启动后台定时死链自动巡检任务 (每 12 小时自动轻量探测存活性，保护前台无死链)
 	go func() {
+		// 告警通知辅助函数
+		sendDeadLinkAlert := func(s *service.BatchCheckSummary) {
+			if s != nil && s.InvalidCount > 0 {
+				var lines []string
+				lines = append(lines, fmt.Sprintf("⚠️ <b>【学霸网·死链巡检预警】</b>\n巡检发现 <b>%d</b> 条失效网盘链接（已自动下架保护前台: %d 部）：", s.InvalidCount, s.DelistedCount))
+				count := 0
+				for _, r := range s.Results {
+					if r.Status == "invalid" {
+						count++
+						lines = append(lines, fmt.Sprintf("%d. 《%s》 (%s)\n   原因: %s", count, r.ResourceTitle, r.DriveType, r.InvalidReason))
+						if count >= 6 {
+							lines = append(lines, "... (更多失效请前往后台补链)")
+							break
+						}
+					}
+				}
+				lines = append(lines, "\n👉 请及时登录管理后台「资源管理」补全有效网盘链接！")
+				go telegramCrawler.SendAdminNotification(strings.Join(lines, "\n"))
+			}
+		}
+
 		// 启动后延迟 30 秒执行首次轻量巡检，避免与服务器启动抢占资源
 		time.Sleep(30 * time.Second)
 		log.Println("[NetdiskChecker] Starting initial background dead-link inspection...")
 		opts := service.BatchCheckOptions{
-			MinIntervalHours: 24, // 24小时冷却保护
-			Force:            false,
-			Limit:            50,
+			MinIntervalHours:  24, // 24小时冷却保护
+			Force:             false,
+			Limit:             50,
+			AutoDelistAllDead: true, // 全失效资料自动静默下架保护前台
 		}
 		summary, err := netdiskChecker.RunBatchCheck(opts)
 		if err != nil {
 			log.Printf("[NetdiskChecker] Background check error: %v", err)
 		} else {
-			log.Printf("[NetdiskChecker] Background check completed: checked=%d, active=%d, invalid=%d, skipped=%d",
-				summary.CheckedCount, summary.ActiveCount, summary.InvalidCount, summary.SkippedCount)
+			log.Printf("[NetdiskChecker] Background check completed: checked=%d, active=%d, invalid=%d, delisted=%d, skipped=%d",
+				summary.CheckedCount, summary.ActiveCount, summary.InvalidCount, summary.DelistedCount, summary.SkippedCount)
+			sendDeadLinkAlert(summary)
 		}
 
 		ticker := time.NewTicker(12 * time.Hour)
@@ -301,8 +331,9 @@ func main() {
 			if err != nil {
 				log.Printf("[NetdiskChecker] Periodic check error: %v", err)
 			} else {
-				log.Printf("[NetdiskChecker] Periodic check completed: checked=%d, active=%d, invalid=%d, skipped=%d",
-					s.CheckedCount, s.ActiveCount, s.InvalidCount, s.SkippedCount)
+				log.Printf("[NetdiskChecker] Periodic check completed: checked=%d, active=%d, invalid=%d, delisted=%d, skipped=%d",
+					s.CheckedCount, s.ActiveCount, s.InvalidCount, s.DelistedCount, s.SkippedCount)
+				sendDeadLinkAlert(s)
 			}
 		}
 	}()

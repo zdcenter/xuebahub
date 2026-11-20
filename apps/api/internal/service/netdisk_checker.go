@@ -31,10 +31,11 @@ type CheckResult struct {
 
 // BatchCheckOptions 批量巡检配置参数（带频率调控）
 type BatchCheckOptions struct {
-	MinIntervalHours int    `json:"min_interval_hours"` // 冷却时间（小时）：跳过指定小时内已检测过的链接，默认 24 小时
-	Force            bool   `json:"force"`              // 是否强制全量检测（忽略冷却时间）
-	StatusFilter     string `json:"status_filter"`      // 筛选特定状态："" (全部), "reported" (仅用户报错), "active", "invalid"
-	Limit            int    `json:"limit"`              // 最大检测数量限制，防止单次执行过重，默认 50
+	MinIntervalHours  int    `json:"min_interval_hours"`   // 冷却时间（小时）：跳过指定小时内已检测过的链接，默认 24 小时
+	Force             bool   `json:"force"`                // 是否强制全量检测（忽略冷却时间）
+	StatusFilter      string `json:"status_filter"`        // 筛选特定状态："" (全部), "reported" (仅用户报错), "active", "invalid"
+	Limit             int    `json:"limit"`                // 最大检测数量限制，防止单次执行过重，默认 50
+	AutoDelistAllDead bool   `json:"auto_delist_all_dead"` // 若某资料的所有链接均已失效，是否自动静默下架保护前台体验
 }
 
 // BatchCheckSummary 批量检测执行汇总
@@ -43,6 +44,7 @@ type BatchCheckSummary struct {
 	CheckedCount  int           `json:"checked_count"`  // 本次实际检测数
 	ActiveCount   int           `json:"active_count"`   // 经检测正常的数量
 	InvalidCount  int           `json:"invalid_count"`  // 经检测失效的数量
+	DelistedCount int           `json:"delisted_count"` // 自动下架的全失效资料数
 	SkippedCount  int           `json:"skipped_count"`  // 因冷却保护跳过的数量
 	Results       []CheckResult `json:"results"`        // 本次检测结果明细
 }
@@ -337,6 +339,26 @@ func (s *NetdiskCheckerService) RunBatchCheck(opts BatchCheckOptions) (*BatchChe
 
 		// 轻量休眠 100ms，友好防封
 		time.Sleep(100 * time.Millisecond)
+	}
+
+	// 检查是否有资料的所有网盘链接均已失效，视配置决定是否自动静默下架保护前台口碑
+	if opts.AutoDelistAllDead && len(resIDs) > 0 {
+		delisted := 0
+		checkedResMap := make(map[uuid.UUID]bool)
+		for _, rid := range resIDs {
+			if checkedResMap[rid] {
+				continue
+			}
+			checkedResMap[rid] = true
+
+			var activeLinks int64
+			database.DB.Model(&model.ResourceLink{}).Where("resource_id = ? AND status = 'active'", rid).Count(&activeLinks)
+			if activeLinks == 0 {
+				database.DB.Model(&model.Resource{}).Where("id = ?", rid).Update("is_published", false)
+				delisted++
+			}
+		}
+		summary.DelistedCount = delisted
 	}
 
 	return summary, nil

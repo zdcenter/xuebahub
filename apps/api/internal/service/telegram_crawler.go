@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -857,6 +858,31 @@ func (s *TelegramCrawlerService) sendTelegramMessage(cfg *model.TelegramConfig, 
 	}
 
 	return nil
+}
+
+// SendAdminNotification 专门向站长广播频道或管理员推送即时系统预警（死链、Cookie失效等）
+func (s *TelegramCrawlerService) SendAdminNotification(text string) error {
+	var cfg model.TelegramConfig
+	if err := s.db.First(&cfg).Error; err != nil {
+		return err
+	}
+	if cfg.BotToken == "" {
+		return errors.New("telegram bot token not configured")
+	}
+
+	targetChat := cfg.BroadcastChannelID
+	if targetChat == "" {
+		var ch model.TelegramBroadcastChannel
+		if err := s.db.Where("is_active = true").First(&ch).Error; err == nil {
+			targetChat = ch.ChannelID
+		}
+	}
+
+	if targetChat == "" {
+		return errors.New("no admin or broadcast channel configured")
+	}
+
+	return s.sendTelegramMessage(&cfg, targetChat, text)
 }
 
 func htmlEscape(s string) string {

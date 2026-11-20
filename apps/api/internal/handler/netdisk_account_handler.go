@@ -2,11 +2,13 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 
 	"netdisk/api/internal/database"
 	"netdisk/api/internal/model"
@@ -15,11 +17,15 @@ import (
 
 type NetdiskAccountHandler struct {
 	transferSvc *service.QuarkTransferService
+	smartMeta   *service.SmartMetaService
+	crawlerSvc  *service.TelegramCrawlerService
 }
 
-func NewNetdiskAccountHandler(transferSvc *service.QuarkTransferService) *NetdiskAccountHandler {
+func NewNetdiskAccountHandler(transferSvc *service.QuarkTransferService, smartMeta *service.SmartMetaService, crawlerSvc *service.TelegramCrawlerService) *NetdiskAccountHandler {
 	return &NetdiskAccountHandler{
 		transferSvc: transferSvc,
+		smartMeta:   smartMeta,
+		crawlerSvc:  crawlerSvc,
 	}
 }
 
@@ -334,12 +340,19 @@ func (h *NetdiskAccountHandler) verifyAllAccountsInternal() int {
 	}
 
 	for _, acc := range accounts {
+		prevStatus := acc.Status
 		verifiedInfo, err := h.transferSvc.VerifyCookie(acc.Cookie)
 		now := time.Now()
 		acc.LastVerifiedAt = &now
 		if err != nil {
 			acc.Status = "expired"
 			acc.ErrorMessage = err.Error()
+
+			// 如果账号从可用变为失效，触发系统即时预警
+			if prevStatus == "valid" && h.crawlerSvc != nil {
+				alertMsg := fmt.Sprintf("⚠️ <b>【学霸网·网盘账号异常告警】</b>\n网盘账号 <b>%s</b> Cookie 已失效或已过期！\n报错详情: %s\n👉 请尽快登录管理后台更新 Cookie 凭据以确保转存正常运行！", acc.AccountName, err.Error())
+				go h.crawlerSvc.SendAdminNotification(alertMsg)
+			}
 		} else {
 			acc.Status = "valid"
 			acc.Nickname = verifiedInfo.Nickname
@@ -348,6 +361,10 @@ func (h *NetdiskAccountHandler) verifyAllAccountsInternal() int {
 			acc.FreeCapacity = verifiedInfo.FreeCapacity
 			if verifiedInfo.IsOverQuota {
 				acc.ErrorMessage = fmt.Sprintf("空间已超限 (已占用 %s / 配额 %s)，请及时扩容或清理", verifiedInfo.UsedCapacity, verifiedInfo.TotalCapacity)
+				if h.crawlerSvc != nil {
+					alertMsg := fmt.Sprintf("⚠️ <b>【学霸网·夸克网盘容量告警】</b>\n网盘账号 <b>%s</b> %s", acc.AccountName, acc.ErrorMessage)
+					go h.crawlerSvc.SendAdminNotification(alertMsg)
+				}
 			} else {
 				acc.ErrorMessage = ""
 			}
@@ -479,48 +496,213 @@ func (h *NetdiskAccountHandler) AutoTransferAndShare(c fiber.Ctx) error {
 		})
 	}
 
-	// 查找转存账号
+	// 查找转存候选账号
+	var candidateAccounts []model.NetdiskAccount
+	if req.AccountID != nil && *req.AccountID != uuid.Nil {
+		var single model.NetdiskAccount
+		if err := database.DB.First(&single, "id = ?", *req.AccountID).Error; err == nil {
+			candidateAccounts = append(candidateAccounts, single)
+		}
+	} else {
+		database.DB.Where("cookie != '' AND (status = 'valid' OR status IS NULL OR status = '')").
+			Order("is_default desc, updated_at desc").Find(&candidateAccounts)
+		if len(candidateAccounts) == 0 {
+			database.DB.Where("cookie != ''").Find(&candidateAccounts)
+		}
+	}
+
+	if len(candidateAccounts) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "尚未配置夸克网盘账号，请先在‘网盘账号管理’中配置个人夸克 Cookie 凭据",
+		})
+	}
+
+	var lastErr error
+	var result *service.TransferShareResult
+	var usedAccount model.NetdiskAccount
+
+	// 自动轮询执行转存（具备多账号故障转移）
+	for _, acc := range candidateAccounts {
+		targetFolderFID := req.TargetFolderFID
+		if targetFolderFID == "" {
+			targetFolderFID = acc.TargetFolderFID
+		}
+		if targetFolderFID == "" {
+			targetFolderFID = "0"
+		}
+
+		res, err := h.transferSvc.TransferAndShare(acc.Cookie, targetFolderFID, req.ShareURL, req.Passcode)
+		if err == nil && res != nil {
+			result = res
+			usedAccount = acc
+			break
+		}
+		lastErr = err
+		log.Printf("[AutoTransferAndShare] Account %s transfer failed: %v, trying next candidate...", acc.AccountName, err)
+	}
+
+	if result == nil {
+		errMsg := "所有可用网盘账号转存均失败"
+		if lastErr != nil {
+			errMsg += "：" + lastErr.Error()
+		}
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": errMsg,
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": fmt.Sprintf("恭喜！文件已自动通过账号 [%s] 转存到网盘并生成全新专属推广链！", usedAccount.AccountName),
+		"data":    result,
+	})
+}
+
+type BatchImportQuarkFolderRequest struct {
+	AccountID   *uuid.UUID `json:"account_id"`
+	PdirFID     string     `json:"pdir_fid"` // 目标文件夹 fid
+	FIDs        []string   `json:"fids"`     // 可选，指定要导入的 fid 列表；留空则导入整目录下的全部文件/文件夹
+	AutoPublish *bool      `json:"auto_publish"`
+	ChannelSlug string     `json:"channel_slug"`
+}
+
+// AdminBatchImportQuarkFolder 将夸克网盘指定目录下的文件一键批量生成分享链并上架为网站资源
+func (h *NetdiskAccountHandler) AdminBatchImportQuarkFolder(c fiber.Ctx) error {
+	var req BatchImportQuarkFolderRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		req.PdirFID = "0"
+	}
+
+	autoPublish := true
+	if req.AutoPublish != nil {
+		autoPublish = *req.AutoPublish
+	}
+
 	var account model.NetdiskAccount
 	if req.AccountID != nil && *req.AccountID != uuid.Nil {
 		if err := database.DB.First(&account, "id = ?", *req.AccountID).Error; err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "指定的网盘账号不存在"})
 		}
 	} else {
-		// 查找默认账号
-		if err := database.DB.Where("is_default = true AND status = 'valid'").First(&account).Error; err != nil {
-			// 退一步找任意有效夸克账号
-			if err := database.DB.Where("status = 'valid'").First(&account).Error; err != nil {
-				// 再退一步找任意夸克账号
-				if err := database.DB.First(&account).Error; err != nil {
-					return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-						"code":    400,
-						"message": "尚未配置夸克网盘账号，请先在‘网盘账号管理’中配置个人夸克 Cookie 凭据",
-					})
-				}
+		if err := database.DB.Where("is_default = true AND cookie != ''").First(&account).Error; err != nil {
+			if err := database.DB.Where("cookie != ''").Order("is_default desc, updated_at desc").First(&account).Error; err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"code":    400,
+					"message": "尚未配置有效的夸克网盘账号凭证",
+				})
 			}
 		}
 	}
 
-	targetFolderFID := req.TargetFolderFID
-	if targetFolderFID == "" {
-		targetFolderFID = account.TargetFolderFID
-	}
-	if targetFolderFID == "" {
-		targetFolderFID = "0"
+	pdirFID := req.PdirFID
+	if pdirFID == "" {
+		pdirFID = "0"
 	}
 
-	result, err := h.transferSvc.TransferAndShare(account.Cookie, targetFolderFID, req.ShareURL, req.Passcode)
+	items, err := h.transferSvc.ListItems(account.Cookie, pdirFID)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"code":    400,
-			"message": err.Error(),
+			"message": "读取网盘目录失败：" + err.Error(),
 		})
+	}
+
+	filterSet := make(map[string]bool)
+	for _, f := range req.FIDs {
+		filterSet[f] = true
+	}
+
+	targetChannel := req.ChannelSlug
+	if targetChannel == "" {
+		targetChannel = "edu"
+	}
+
+	importedCount := 0
+	failedCount := 0
+
+	for _, item := range items {
+		if len(filterSet) > 0 && !filterSet[item.FID] {
+			continue
+		}
+
+		// 为该文件/目录在夸克网盘中生成永久公开分享链接
+		shareResult, err := h.transferSvc.CreateShareForFID(account.Cookie, item.FID, item.FileName)
+		if err != nil || shareResult == nil || shareResult.ShareURL == "" {
+			log.Printf("[BatchImportQuarkFolder] Failed to create share for FID %s (%s): %v", item.FID, item.FileName, err)
+			failedCount++
+			continue
+		}
+
+		// 智能推断学科、学段、年级
+		meta := h.smartMeta.InferMeta(item.FileName)
+
+		resID := uuid.New()
+		slug := fmt.Sprintf("res-%d-%s", time.Now().UnixNano(), uuid.New().String()[:8])
+		chSlug := targetChannel
+		if meta.ChannelSlug == "book" {
+			chSlug = "book"
+		}
+
+		fileSizeStr := item.SizeDesc
+		if fileSizeStr == "" || fileSizeStr == "0 B" {
+			fileSizeStr = "完整教学包"
+		}
+
+		newRes := model.Resource{
+			ID:          resID,
+			Slug:        slug,
+			ChannelSlug: chSlug,
+			Title:       meta.PolishedTitle,
+			Subtitle:    meta.Subtitle,
+			Description: meta.Description,
+			Stage:       meta.Stage,
+			Grade:       meta.Grade,
+			Term:        meta.Term,
+			Subject:     meta.Subject,
+			Edition:     meta.Edition,
+			FileType:    "PDF",
+			FileSize:    fileSizeStr,
+			IsPublished: autoPublish,
+			FileTree:    datatypes.JSON([]byte("[]")),
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+
+		newLink := model.ResourceLink{
+			ID:           uuid.New(),
+			ResourceID:   resID,
+			AccountID:    &account.ID,
+			AccountName:  account.AccountName,
+			DriveType:    "quark",
+			ShareURL:     shareResult.ShareURL,
+			ExtractCode:  shareResult.ExtractCode,
+			IsPrimary:    true,
+			Status:       "active",
+			FileSize:     fileSizeStr,
+			FileType:     "PDF",
+			ResourceDesc: "夸克官方高速免密通道",
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+		newRes.Links = []model.ResourceLink{newLink}
+
+		if err := database.DB.Create(&newRes).Error; err != nil {
+			log.Printf("[BatchImportQuarkFolder] Failed to save resource %s: %v", item.FileName, err)
+			failedCount++
+			continue
+		}
+		importedCount++
 	}
 
 	return c.JSON(fiber.Map{
 		"code":    200,
-		"message": "恭喜！文件已自动转存到您的夸克网盘并生成全新专属分享链！",
-		"data":    result,
+		"message": fmt.Sprintf("网盘目录上架完成！成功录入 %d 条资料，失败 %d 条", importedCount, failedCount),
+		"data": fiber.Map{
+			"imported_count": importedCount,
+			"failed_count":   failedCount,
+		},
 	})
 }
 

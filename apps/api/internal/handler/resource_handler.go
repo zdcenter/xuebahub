@@ -1,9 +1,19 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/csv"
 	"fmt"
+	"io"
+	"log"
 	"math"
+	"net/http"
+	"net/url"
+	"os"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -14,32 +24,29 @@ import (
 	"netdisk/api/internal/database"
 	"netdisk/api/internal/model"
 	"netdisk/api/internal/service"
-	"encoding/base64"
-	"io"
-	"log"
-	"net/http"
-	"net/url"
-	"os"
-	"strings"
 )
 
 type ResourceHandler struct {
-	parser   *service.NetdiskParserService
-	checker  *service.NetdiskCheckerService
-	coverGen *service.CoverGeneratorService
-	r2       *service.R2Service
-	crawler  *service.TelegramCrawlerService
-	seo      *service.SeoService
+	parser      *service.NetdiskParserService
+	checker     *service.NetdiskCheckerService
+	coverGen    *service.CoverGeneratorService
+	r2          *service.R2Service
+	crawler     *service.TelegramCrawlerService
+	seo         *service.SeoService
+	transferSvc *service.QuarkTransferService
+	smartMeta   *service.SmartMetaService
 }
 
-func NewResourceHandler(parser *service.NetdiskParserService, checker *service.NetdiskCheckerService, coverGen *service.CoverGeneratorService, r2 *service.R2Service, crawler *service.TelegramCrawlerService, seo *service.SeoService) *ResourceHandler {
+func NewResourceHandler(parser *service.NetdiskParserService, checker *service.NetdiskCheckerService, coverGen *service.CoverGeneratorService, r2 *service.R2Service, crawler *service.TelegramCrawlerService, seo *service.SeoService, transferSvc *service.QuarkTransferService, smartMeta *service.SmartMetaService) *ResourceHandler {
 	return &ResourceHandler{
-		parser:   parser,
-		checker:  checker,
-		coverGen: coverGen,
-		r2:       r2,
-		crawler:  crawler,
-		seo:      seo,
+		parser:      parser,
+		checker:     checker,
+		coverGen:    coverGen,
+		r2:          r2,
+		crawler:     crawler,
+		seo:         seo,
+		transferSvc: transferSvc,
+		smartMeta:   smartMeta,
 	}
 }
 
@@ -1580,6 +1587,297 @@ func (h *ResourceHandler) AdminBatchImportResources(c fiber.Ctx) error {
 			"imported": importedCount,
 		},
 	})
+}
+
+// SimpleImportPayload 极简多行文本批量导入参数
+type SimpleImportPayload struct {
+	Text         string `json:"text"`          // 批量文本，支持管道符 `|` 或制表符或逗号分隔
+	AutoTransfer bool   `json:"auto_transfer"` // 是否自动转存换链
+	AutoPublish  *bool  `json:"auto_publish"`  // 是否直接上架
+	ChannelSlug  string `json:"channel_slug"`  // 所属频道 (默认 edu)
+}
+
+// AdminBatchImportSimple 极简文本/表格行批量导入资料
+func (h *ResourceHandler) AdminBatchImportSimple(c fiber.Ctx) error {
+	var req SimpleImportPayload
+	if err := c.Bind().JSON(&req); err != nil || strings.TrimSpace(req.Text) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "请提供要批量导入的文本内容（如每行格式：资料标题 | 分享链接 | 提取码）",
+		})
+	}
+
+	autoPublish := true
+	if req.AutoPublish != nil {
+		autoPublish = *req.AutoPublish
+	}
+	channelSlug := req.ChannelSlug
+	if channelSlug == "" {
+		channelSlug = "edu"
+	}
+
+	// 查找可用夸克账号 (若启用自动转存)
+	var defaultAcc model.NetdiskAccount
+	if req.AutoTransfer && h.transferSvc != nil {
+		if err := database.DB.Where("is_default = true AND cookie != ''").First(&defaultAcc).Error; err != nil {
+			database.DB.Where("cookie != ''").Order("is_default desc, updated_at desc").First(&defaultAcc)
+		}
+	}
+
+	lines := strings.Split(req.Text, "\n")
+	importedCount := 0
+	transferredCount := 0
+	failedCount := 0
+	var importedIDs []uuid.UUID
+
+	for _, rawLine := range lines {
+		line := strings.TrimSpace(rawLine)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// 分隔符探测: 支持 `|`, `\t`, `,`
+		var parts []string
+		if strings.Contains(line, "|") {
+			parts = strings.Split(line, "|")
+		} else if strings.Contains(line, "\t") {
+			parts = strings.Split(line, "\t")
+		} else if strings.Contains(line, ",") {
+			parts = strings.Split(line, ",")
+		} else {
+			parts = strings.Fields(line)
+		}
+
+		if len(parts) == 0 {
+			continue
+		}
+
+		title := strings.TrimSpace(parts[0])
+		shareURL := ""
+		extractCode := ""
+
+		if len(parts) >= 2 {
+			shareURL = strings.TrimSpace(parts[1])
+		}
+		if len(parts) >= 3 {
+			extractCode = strings.TrimSpace(parts[2])
+		}
+
+		// 若标题中混入了 URL，自动分离
+		if shareURL == "" {
+			urlPattern := regexp.MustCompile(`https?://[^\s]+`)
+			if m := urlPattern.FindString(title); m != "" {
+				shareURL = m
+				title = strings.Replace(title, m, "", 1)
+			}
+		}
+
+		if title == "" || shareURL == "" {
+			failedCount++
+			continue
+		}
+
+		driveType := "quark"
+		if strings.Contains(shareURL, "pan.baidu.com") {
+			driveType = "baidu"
+		} else if strings.Contains(shareURL, "alipan.com") || strings.Contains(shareURL, "aliyundrive.com") {
+			driveType = "aliyun"
+		}
+
+		// 提取链接内置提取码
+		if extractCode == "" {
+			if u, err := url.Parse(shareURL); err == nil {
+				extractCode = u.Query().Get("pwd")
+				if extractCode == "" {
+					extractCode = u.Query().Get("passcode")
+				}
+			}
+		}
+
+		// 智能推断学科、学段、年级、版本与副标题
+		meta := h.smartMeta.InferMeta(title)
+
+		finalShareURL := shareURL
+		finalExtractCode := extractCode
+		finalFileSize := "完整高清版"
+
+		// 自动转存换链
+		if req.AutoTransfer && driveType == "quark" && defaultAcc.Cookie != "" && h.transferSvc != nil {
+			targetFID := defaultAcc.TargetFolderFID
+			if targetFID == "" {
+				targetFID = "0"
+			}
+			tRes, tErr := h.transferSvc.TransferAndShare(defaultAcc.Cookie, targetFID, shareURL, extractCode)
+			if tErr == nil && tRes != nil && tRes.NewShareURL != "" {
+				finalShareURL = tRes.NewShareURL
+				if tRes.ExtractCode != "" {
+					finalExtractCode = tRes.ExtractCode
+				}
+				if tRes.FileSize != "" && tRes.FileSize != "完整资源包" {
+					finalFileSize = tRes.FileSize
+				}
+				transferredCount++
+			}
+		}
+
+		resID := uuid.New()
+		slug := fmt.Sprintf("res-%d-%s", time.Now().UnixNano(), uuid.New().String()[:8])
+		chSlug := channelSlug
+		if meta.ChannelSlug == "book" {
+			chSlug = "book"
+		}
+
+		item := model.Resource{
+			ID:          resID,
+			Slug:        slug,
+			ChannelSlug: chSlug,
+			Title:       meta.PolishedTitle,
+			Subtitle:    meta.Subtitle,
+			Description: meta.Description,
+			Stage:       meta.Stage,
+			Grade:       meta.Grade,
+			Term:        meta.Term,
+			Subject:     meta.Subject,
+			Edition:     meta.Edition,
+			FileType:    "PDF",
+			FileSize:    finalFileSize,
+			IsPublished: autoPublish,
+			FileTree:    datatypes.JSON([]byte("[]")),
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+
+		newLink := model.ResourceLink{
+			ID:           uuid.New(),
+			ResourceID:   resID,
+			DriveType:    driveType,
+			ShareURL:     finalShareURL,
+			ExtractCode:  finalExtractCode,
+			IsPrimary:    true,
+			Status:       "active",
+			FileSize:     finalFileSize,
+			FileType:     "PDF",
+			ResourceDesc: "夸克官方高速免密通道",
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+		if defaultAcc.ID != uuid.Nil {
+			newLink.AccountID = &defaultAcc.ID
+			newLink.AccountName = defaultAcc.AccountName
+		}
+		item.Links = []model.ResourceLink{newLink}
+
+		if err := database.DB.Create(&item).Error; err != nil {
+			log.Printf("[BatchImportSimple] Failed to create %s: %v", title, err)
+			failedCount++
+			continue
+		}
+		importedCount++
+		importedIDs = append(importedIDs, resID)
+	}
+
+	// 百度/必应主动收录
+	if autoPublish && h.seo != nil && len(importedIDs) > 0 {
+		go func(ids []uuid.UUID) {
+			var seoCfg model.SeoConfig
+			if err := database.DB.Where("id = ?", "global").First(&seoCfg).Error; err == nil && seoCfg.AutoPushOnPublish {
+				h.seo.BatchPush("all", ids, nil)
+			}
+		}(importedIDs)
+	}
+
+	msg := fmt.Sprintf("导入完成！成功录入 %d 条资料", importedCount)
+	if transferredCount > 0 {
+		msg += fmt.Sprintf("，其中 %d 条已全自动转存换链", transferredCount)
+	}
+	if failedCount > 0 {
+		msg += fmt.Sprintf("，忽略 %d 条异常行", failedCount)
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": msg,
+		"data": fiber.Map{
+			"imported_count":    importedCount,
+			"transferred_count": transferredCount,
+			"failed_count":      failedCount,
+		},
+	})
+}
+
+// AdminExportResources 全站资料与网盘链接一键导出冷备 (支持 CSV / JSON)
+func (h *ResourceHandler) AdminExportResources(c fiber.Ctx) error {
+	format := strings.ToLower(c.Query("format", "csv"))
+
+	var resources []model.Resource
+	if err := database.DB.Preload("Links").Order("created_at desc").Find(&resources).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code":    500,
+			"message": "读取资料库失败: " + err.Error(),
+		})
+	}
+
+	if format == "json" {
+		c.Set("Content-Type", "application/json; charset=utf-8")
+		c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=xuebaw_resources_%s.json", time.Now().Format("20060102_150405")))
+		return c.JSON(resources)
+	}
+
+	// 默认导出 CSV 格式 (添加 UTF-8 BOM 确保 Microsoft Excel / WPS 打开中文不乱码)
+	var buf bytes.Buffer
+	buf.WriteString("\xEF\xBB\xBF") // UTF-8 BOM
+
+	writer := csv.NewWriter(&buf)
+	header := []string{
+		"ID", "标题", "副标题", "所属频道", "学段", "年级", "学期/分册", "学科", "教材版本", "文件大小",
+		"转存量", "浏览量", "是否上架", "夸克分享链接", "百度分享链接", "创建时间",
+	}
+	writer.Write(header)
+
+	for _, r := range resources {
+		quarkURL := ""
+		baiduURL := ""
+		for _, l := range r.Links {
+			if l.DriveType == "quark" {
+				quarkURL = l.ShareURL
+			} else if l.DriveType == "baidu" {
+				baiduURL = l.ShareURL
+				if l.ExtractCode != "" {
+					baiduURL += fmt.Sprintf(" (提取码:%s)", l.ExtractCode)
+				}
+			}
+		}
+
+		isPublishedStr := "是"
+		if !r.IsPublished {
+			isPublishedStr = "否"
+		}
+
+		row := []string{
+			r.ID.String(),
+			r.Title,
+			r.Subtitle,
+			r.ChannelSlug,
+			r.Stage,
+			r.Grade,
+			r.Term,
+			r.Subject,
+			r.Edition,
+			r.FileSize,
+			strconv.Itoa(r.SaveCount),
+			strconv.Itoa(r.ViewCount),
+			isPublishedStr,
+			quarkURL,
+			baiduURL,
+			r.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+		writer.Write(row)
+	}
+	writer.Flush()
+
+	c.Set("Content-Type", "text/csv; charset=utf-8")
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=xuebaw_resources_%s.csv", time.Now().Format("20060102_150405")))
+	return c.Send(buf.Bytes())
 }
 
 type ParseNetdiskRequest struct {

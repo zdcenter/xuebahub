@@ -19,12 +19,16 @@ import (
 
 type CrawlerHandler struct {
 	crawlerService *service.TelegramCrawlerService
+	transferSvc    *service.QuarkTransferService
+	smartMeta      *service.SmartMetaService
 	db             *gorm.DB
 }
 
-func NewCrawlerHandler(crawlerService *service.TelegramCrawlerService) *CrawlerHandler {
+func NewCrawlerHandler(crawlerService *service.TelegramCrawlerService, transferSvc *service.QuarkTransferService, smartMeta *service.SmartMetaService) *CrawlerHandler {
 	return &CrawlerHandler{
 		crawlerService: crawlerService,
+		transferSvc:    transferSvc,
+		smartMeta:      smartMeta,
 		db:             database.DB,
 	}
 }
@@ -438,11 +442,13 @@ func (h *CrawlerHandler) DeleteDraft(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "草稿已彻底删除"})
 }
 
-// BatchDraftAction 批量操作草稿 (batch_ignore, batch_delete)
+// BatchDraftAction 批量操作草稿 (batch_ignore, batch_delete, batch_approve)
 func (h *CrawlerHandler) BatchDraftAction(c fiber.Ctx) error {
 	type BatchReq struct {
-		Action string      `json:"action"` // ignore, delete
-		IDs    []uuid.UUID `json:"ids"`
+		Action       string      `json:"action"` // ignore, delete, approve
+		IDs          []uuid.UUID `json:"ids"`
+		AutoTransfer bool        `json:"auto_transfer"`
+		AutoPublish  bool        `json:"auto_publish"`
 	}
 
 	var req BatchReq
@@ -456,9 +462,173 @@ func (h *CrawlerHandler) BatchDraftAction(c fiber.Ctx) error {
 	} else if req.Action == "delete" {
 		h.db.Where("id IN ?", req.IDs).Delete(&model.ResourceDraft{})
 		return c.JSON(fiber.Map{"message": fmt.Sprintf("已彻底删除 %d 条草稿", len(req.IDs))})
+	} else if req.Action == "approve" {
+		return h.BatchApproveDrafts(c)
 	}
 
 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "不支持的批量操作"})
+}
+
+type BatchApproveDraftsRequest struct {
+	IDs          []uuid.UUID `json:"ids"`           // 指定草稿 ID；若为空则默认处理待审核 (pending) 草稿
+	AutoTransfer bool        `json:"auto_transfer"` // 是否自动转存到个人夸克网盘并生成专属分享链
+	AutoPublish  *bool       `json:"auto_publish"`  // 是否直接上架发布 (默认 true)
+	ChannelSlug  string      `json:"channel_slug"`  // 目标顶级频道 (默认 edu)
+}
+
+// BatchApproveDrafts 批量审核草稿并全自动创建为网站资源
+func (h *CrawlerHandler) BatchApproveDrafts(c fiber.Ctx) error {
+	var req BatchApproveDraftsRequest
+	if err := c.Bind().Body(&req); err != nil {
+		req = BatchApproveDraftsRequest{}
+	}
+
+	autoPublish := true
+	if req.AutoPublish != nil {
+		autoPublish = *req.AutoPublish
+	}
+
+	query := h.db.Model(&model.ResourceDraft{}).Where("status = ?", "pending")
+	if len(req.IDs) > 0 {
+		query = query.Where("id IN ?", req.IDs)
+	}
+
+	var drafts []model.ResourceDraft
+	if err := query.Order("created_at desc").Limit(100).Find(&drafts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code":    500,
+			"message": "获取草稿列表失败: " + err.Error(),
+		})
+	}
+
+	if len(drafts) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "未找到待审核入库的草稿项目",
+		})
+	}
+
+	// 查找默认可用夸克账号 (用于自动转存)
+	var defaultAcc model.NetdiskAccount
+	if req.AutoTransfer && h.transferSvc != nil {
+		if err := h.db.Where("is_default = true AND cookie != ''").First(&defaultAcc).Error; err != nil {
+			h.db.Where("cookie != ''").Order("is_default desc, updated_at desc").First(&defaultAcc)
+		}
+	}
+
+	targetChannel := req.ChannelSlug
+	if targetChannel == "" {
+		targetChannel = "edu"
+	}
+
+	approvedCount := 0
+	transferredCount := 0
+	failedCount := 0
+
+	for _, draft := range drafts {
+		meta := h.smartMeta.InferMeta(draft.Title)
+
+		finalShareURL := draft.ShareURL
+		finalExtractCode := draft.ExtractCode
+		finalFileSize := draft.FileSize
+		if finalFileSize == "" || finalFileSize == "未知" {
+			finalFileSize = "完整高清版"
+		}
+
+		// 若启用自动转存且属于夸克链接
+		if req.AutoTransfer && draft.DriveType == "quark" && defaultAcc.Cookie != "" && h.transferSvc != nil {
+			targetFolderFID := defaultAcc.TargetFolderFID
+			if targetFolderFID == "" {
+				targetFolderFID = "0"
+			}
+			tRes, tErr := h.transferSvc.TransferAndShare(defaultAcc.Cookie, targetFolderFID, draft.ShareURL, draft.ExtractCode)
+			if tErr == nil && tRes != nil && tRes.NewShareURL != "" {
+				finalShareURL = tRes.NewShareURL
+				if tRes.ExtractCode != "" {
+					finalExtractCode = tRes.ExtractCode
+				}
+				if tRes.FileSize != "" && tRes.FileSize != "完整资源包" {
+					finalFileSize = tRes.FileSize
+				}
+				transferredCount++
+			}
+		}
+
+		resID := uuid.New()
+		slug := fmt.Sprintf("res-%d-%s", time.Now().UnixNano(), uuid.New().String()[:8])
+		chSlug := targetChannel
+		if meta.ChannelSlug == "book" {
+			chSlug = "book"
+		}
+
+		newRes := model.Resource{
+			ID:          resID,
+			Slug:        slug,
+			ChannelSlug: chSlug,
+			Title:       meta.PolishedTitle,
+			Subtitle:    meta.Subtitle,
+			Description: meta.Description,
+			Stage:       meta.Stage,
+			Grade:       meta.Grade,
+			Term:        meta.Term,
+			Subject:     meta.Subject,
+			Edition:     meta.Edition,
+			FileType:    "PDF",
+			FileSize:    finalFileSize,
+			IsPublished: autoPublish,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+
+		newLink := model.ResourceLink{
+			ID:           uuid.New(),
+			ResourceID:   resID,
+			DriveType:    draft.DriveType,
+			ShareURL:     finalShareURL,
+			ExtractCode:  finalExtractCode,
+			IsPrimary:    true,
+			Status:       "active",
+			FileSize:     finalFileSize,
+			FileType:     "PDF",
+			ResourceDesc: "夸克官方高速免密通道",
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+		if defaultAcc.ID != uuid.Nil {
+			newLink.AccountID = &defaultAcc.ID
+			newLink.AccountName = defaultAcc.AccountName
+		}
+		newRes.Links = []model.ResourceLink{newLink}
+
+		if err := h.db.Create(&newRes).Error; err != nil {
+			log.Printf("[BatchApproveDrafts] Failed to create resource for %s: %v", draft.Title, err)
+			failedCount++
+			continue
+		}
+
+		// 标记草稿为已入库
+		h.db.Model(&model.ResourceDraft{}).Where("id = ?", draft.ID).Updates(map[string]interface{}{
+			"status":               "approved",
+			"approved_resource_id": resID,
+			"updated_at":           time.Now(),
+		})
+		approvedCount++
+	}
+
+	msg := fmt.Sprintf("成功批量入库 %d 条资料", approvedCount)
+	if transferredCount > 0 {
+		msg += fmt.Sprintf("，其中 %d 条已全自动转存换链", transferredCount)
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": msg,
+		"data": fiber.Map{
+			"approved_count":    approvedCount,
+			"transferred_count": transferredCount,
+			"failed_count":      failedCount,
+		},
+	})
 }
 
 // HandleTelegramWebhook 接收 Telegram Webhook 推送的实时频道广播
