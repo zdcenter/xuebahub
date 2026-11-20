@@ -3808,6 +3808,10 @@ body {
   border-color: rgb(96 165 250 / 0.8);
 }
 
+.hover\:border-emerald-200\/60:hover {
+  border-color: rgb(167 243 208 / 0.6);
+}
+
 .hover\:border-emerald-400:hover {
   --tw-border-opacity: 1;
   border-color: rgb(52 211 153 / var(--tw-border-opacity, 1));
