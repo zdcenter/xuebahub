@@ -312,19 +312,19 @@
           </div>
 
           <div class="flex items-center gap-2.5">
-            <!-- 核心排序分段控制器 (转存最多 / 最新收录 / 最多浏览) -->
+            <!-- 核心排序分段控制器 (最新发布 [默认] / 转存最多 / 最多浏览) -->
             <div class="flex items-center bg-white p-1 rounded-xl border border-slate-200/90 shadow-2xs text-xs font-semibold">
-              <button (click)="setSortBy('popular')"
-                      [class]="sortBy() === 'popular' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
-                      class="flex items-center gap-1 px-3 py-1 rounded-lg transition cursor-pointer">
-                <span>🔥</span>
-                <span>转存最多</span>
-              </button>
               <button (click)="setSortBy('latest')"
                       [class]="sortBy() === 'latest' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
                       class="flex items-center gap-1 px-3 py-1 rounded-lg transition cursor-pointer">
                 <span>⏱️</span>
                 <span>最新发布</span>
+              </button>
+              <button (click)="setSortBy('popular')"
+                      [class]="sortBy() === 'popular' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"
+                      class="flex items-center gap-1 px-3 py-1 rounded-lg transition cursor-pointer">
+                <span>🔥</span>
+                <span>转存最多</span>
               </button>
               <button (click)="setSortBy('views')"
                       [class]="sortBy() === 'views' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'"

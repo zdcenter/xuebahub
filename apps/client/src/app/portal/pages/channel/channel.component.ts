@@ -25,8 +25,8 @@ export class ChannelComponent implements OnInit {
   page = signal<number>(1);
   pageSize = signal<number>(20);
 
-  // 排序模式 ('popular': 转存最多/最受欢迎, 'latest': 最新收录, 'views': 最多浏览)
-  sortBy = signal<'popular' | 'latest' | 'views'>('popular');
+  // 排序模式 ('latest': 最新收录/最新发布 [默认], 'popular': 转存最多/最受欢迎, 'views': 最多浏览)
+  sortBy = signal<'popular' | 'latest' | 'views'>('latest');
 
   // 现代视图模式 (grid / list)
   viewMode = signal<'grid' | 'list'>('grid');
