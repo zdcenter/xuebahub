@@ -276,41 +276,18 @@
     </div>
   </footer>
 
-  <!-- 右下角悬浮快捷中心 (桌面端优雅展示，移动端仅保留微型悬浮按钮，避让底部导航栏) -->
-  <div class="fixed right-3 sm:right-4 bottom-20 sm:bottom-6 z-30 flex flex-col gap-2 items-end">
-    <!-- 回到顶部浮标 (智能感应淡入，丝滑回滚) -->
-    <button *ngIf="showBackToTop()"
-            (click)="scrollToTop()"
+  <!-- 右下角悬浮快捷中心 (仅保留回到顶部，杜绝常驻悬浮挡屏与iPad割裂感) -->
+  <div *ngIf="showBackToTop()"
+       class="fixed right-4 sm:right-6 bottom-20 sm:bottom-8 z-30 animate-fadeIn">
+    <!-- 回到顶部浮标 (智能感应淡入，丝滑回滚，只有页面向下滚动时才出现) -->
+    <button (click)="scrollToTop()"
             type="button"
-            class="px-3 py-2 sm:px-3 sm:py-2 rounded-2xl bg-white/95 hover:bg-slate-900 text-slate-700 hover:text-white text-xs font-bold shadow-lg border border-slate-200/90 backdrop-blur-md transition-all duration-300 hover:scale-105 flex items-center gap-1.5 cursor-pointer animate-fadeIn"
+            class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-white/95 hover:bg-slate-900 text-slate-700 hover:text-white text-xs font-bold shadow-lg border border-slate-200/90 backdrop-blur-md transition-all duration-300 hover:scale-105 flex items-center gap-1.5 cursor-pointer"
             title="回到页面顶部">
       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
       </svg>
       <span class="hidden sm:inline">回到顶部</span>
-    </button>
-
-    <!-- 桌面端按钮 -->
-    <button (click)="showRequestModal.set(true)"
-            type="button"
-            class="hidden sm:inline-flex px-3.5 py-2 rounded-2xl bg-white/95 hover:bg-white text-slate-700 hover:text-emerald-700 text-xs font-bold shadow-lg border border-slate-200/80 backdrop-blur-md transition-all hover:scale-105 items-center gap-1.5 cursor-pointer">
-      <span>📝</span>
-      <span>找卷求助</span>
-    </button>
-
-    <button (click)="showRecommendModal.set(true)"
-            type="button"
-            class="hidden sm:inline-flex px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold shadow-lg shadow-emerald-600/20 backdrop-blur-md transition-all hover:scale-105 items-center gap-1.5 cursor-pointer">
-      <span>🎁</span>
-      <span>推荐本站</span>
-    </button>
-
-    <!-- 移动端：仅保留一个极简微型圆形浮标，不挡视线与点击 -->
-    <button (click)="showRecommendModal.set(true)"
-            type="button"
-            class="sm:hidden w-9 h-9 rounded-full bg-emerald-600/90 text-white shadow-lg flex items-center justify-center text-sm active:scale-90 transition backdrop-blur-xs border border-white/30 cursor-pointer"
-            title="推荐本站给好友">
-      <span>🎁</span>
     </button>
   </div>
 

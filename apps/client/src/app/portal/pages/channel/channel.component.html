@@ -236,74 +236,64 @@
             </div>
           </div>
 
-          <!-- 维度 4 & 5: 教材版本与学期分册 (展开时) -->
-          <div *ngIf="isK12Stage() && desktopFilterExpanded()" class="space-y-3 pt-3 border-t border-slate-100">
-            <!-- 版本 -->
-            <div class="flex items-center text-xs gap-3">
-              <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
-                <span>📚</span> 教材版本:
-              </span>
-              <div class="flex-1 flex flex-wrap gap-1.5">
-                <button (click)="setFilter('edition', '')"
-                        [class]="!editionParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                        class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-                  全部版本
-                </button>
-                <button *ngFor="let e of availableEditions()"
-                        (click)="setFilter('edition', e.name)"
-                        [class]="editionParam() === e.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                        class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
-                  <span>{{ e.icon || '📚' }}</span>
-                  <span>{{ e.name }}</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- 学期 -->
-            <div class="flex items-center text-xs gap-3 pt-2">
-              <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
-                <span>📅</span> 学期分册:
-              </span>
-              <div class="flex-1 flex flex-wrap gap-1.5">
-                <button (click)="setFilter('term', '')"
-                        [class]="!termParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                        class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-                  全部学期
-                </button>
-                <button *ngFor="let t of availableTerms"
-                        (click)="setFilter('term', t.name)"
-                        [class]="termParam() === t.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                        class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-                  {{ t.name }}
-                </button>
-              </div>
+          <!-- 维度 4: 教材版本 (仅在中小学K12阶段展示，平铺直选，消除二次点击) -->
+          <div *ngIf="isK12Stage()" class="flex items-center text-xs gap-3 border-t border-slate-100 pt-3">
+            <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
+              <span>📚</span> 教材版本:
+            </span>
+            <div class="flex-1 flex flex-wrap gap-1.5">
+              <button (click)="setFilter('edition', '')"
+                      [class]="!editionParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                      class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+                全部版本
+              </button>
+              <button *ngFor="let e of availableEditions()"
+                      (click)="setFilter('edition', e.name)"
+                      [class]="editionParam() === e.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                      class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
+                <span>{{ e.icon || '📚' }}</span>
+                <span>{{ e.name }}</span>
+              </button>
             </div>
           </div>
 
-          <!-- 底栏：展开/收起按钮 + 激活条件提示 -->
-          <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-            <button *ngIf="isK12Stage()"
-                    (click)="toggleDesktopFilter()"
-                    class="flex items-center gap-1 font-bold text-slate-600 hover:text-emerald-700 transition cursor-pointer">
-              <span>{{ desktopFilterExpanded() ? '收起版本与学期筛选 ▲' : '更多高级筛选 (教材版本 · 学期分册) ▼' }}</span>
-            </button>
-            <span *ngIf="!isK12Stage()"></span>
+          <!-- 维度 5: 学期分册 (仅在中小学K12阶段展示，平铺直选) -->
+          <div *ngIf="isK12Stage()" class="flex items-center text-xs gap-3 border-t border-slate-100 pt-3">
+            <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
+              <span>📅</span> 学期分册:
+            </span>
+            <div class="flex-1 flex flex-wrap gap-1.5">
+              <button (click)="setFilter('term', '')"
+                      [class]="!termParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                      class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+                全部学期
+              </button>
+              <button *ngFor="let t of availableTerms"
+                      (click)="setFilter('term', t.name)"
+                      [class]="termParam() === t.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                      class="px-2.5 py-1 rounded-lg transition cursor-pointer">
+                {{ t.name }}
+              </button>
+            </div>
+          </div>
 
-            <div *ngIf="activeFilterChips().length > 0" class="flex items-center gap-1.5 flex-wrap">
-              <span class="text-slate-400 font-medium text-[11px]">已选:</span>
+          <!-- 底栏：激活条件提示与一键清空 -->
+          <div *ngIf="activeFilterChips().length > 0" class="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-slate-400 font-medium text-[11px]">已选条件:</span>
               <span *ngFor="let chip of activeFilterChips()"
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-medium text-[11px] shadow-2xs">
+                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-medium text-[11px] shadow-2xs">
                 <span>{{ chip.label }}: {{ chip.value }}</span>
                 <button (click)="removeFilterChip(chip.key)"
                         type="button"
                         class="text-emerald-600 hover:text-rose-600 hover:bg-rose-50 rounded w-3.5 h-3.5 inline-flex items-center justify-center font-bold text-[10px] ml-0.5 transition cursor-pointer"
                         title="取消此条件">✕</button>
               </span>
-              <button (click)="resetAllFilters()"
-                      class="text-[11px] text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer ml-1">
-                清空全部
-              </button>
             </div>
+            <button (click)="resetAllFilters()"
+                    class="text-[11px] text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer ml-1 shrink-0">
+              清空全部筛选
+            </button>
           </div>
         </div>
 

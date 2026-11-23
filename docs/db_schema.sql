@@ -417,3 +417,8 @@ BEGIN
   END IF;
 END $$;
 
+-- 增量平滑升级补丁 (如已有旧版本数据库执行)
+ALTER TABLE IF EXISTS netdisk_accounts ADD COLUMN IF NOT EXISTS uid VARCHAR(100);
+ALTER TABLE IF EXISTS netdisk_accounts ADD COLUMN IF NOT EXISTS nickname VARCHAR(100);
+
+

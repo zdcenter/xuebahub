@@ -88,8 +88,12 @@
           </span>
         </div>
 
-        <!-- 右上角：网盘秒存支持标签 -->
+        <!-- 右上角：网盘秒存支持标签 + 品质特性标签 -->
         <div class="absolute top-2 right-2 z-20 pointer-events-none flex flex-col items-end gap-1">
+          <span *ngIf="highlightFeature"
+                class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-600 text-white shadow-2xs backdrop-blur-md">
+            ✓ {{ highlightFeature }}
+          </span>
           <span *ngIf="hasQuark"
                 class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white/95 text-emerald-800 border border-emerald-300/80 shadow-2xs backdrop-blur-md flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -106,7 +110,7 @@
 
   <!-- 下半部：精要信息流与高转化双操作区 (分享 + 转存) -->
   <div class="p-3 sm:p-4 flex-1 flex flex-col justify-between space-y-2">
-    <!-- 极简辅助标签 (精简至核心属性，包含学科主题标签) -->
+    <!-- 极简辅助标签 (精简至核心属性，包含学科主题标签与特性标) -->
     <div class="flex items-center gap-1.5 text-[10px] text-slate-500 flex-wrap">
       <span *ngIf="stageLabel || cleanGrade"
             class="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium">
@@ -121,14 +125,18 @@
             class="px-1.5 py-0.5 rounded-md bg-slate-100/80 text-slate-600 truncate max-w-[90px]">
         {{ resource.edition }}
       </span>
+      <span *ngIf="highlightFeature"
+            class="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80 text-[10px]">
+        ✓ {{ highlightFeature }}
+      </span>
       <span *ngIf="resource.is_recommended"
             class="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold border border-amber-200/60">
         🔥 热门
       </span>
     </div>
 
-    <!-- 资料标题 (优雅 2 行截断，支持搜索关键词柔和高亮) -->
-    <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
+    <!-- 资料标题 (优雅 2 行截断，固定最小两行高度，确保同排卡片高度严丝合缝) -->
+    <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug min-h-[2.5rem]">
       <a [routerLink]="['/resource', resource.slug || resource.id]" class="hover:underline" [innerHTML]="getHighlightedText(resource.title)">
       </a>
     </h3>
@@ -243,6 +251,10 @@
         <span *ngIf="resource.edition"
               class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 truncate max-w-[120px]">
           {{ resource.edition }}
+        </span>
+        <span *ngIf="highlightFeature"
+              class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80 text-[10px]">
+          ✓ {{ highlightFeature }}
         </span>
         <span class="px-1.5 py-0.5 text-emerald-700 bg-emerald-50 border border-emerald-200/70 rounded text-[10px] font-medium ml-auto sm:ml-0">
           ● 存活秒存

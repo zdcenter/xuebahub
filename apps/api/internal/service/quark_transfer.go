@@ -10,9 +10,55 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
+
+// isAllDigits 检查字符串是否由纯数字组成（达人/合作UID均为纯数字）
+func isAllDigits(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func parseAnyUID(val interface{}) string {
+	if val == nil {
+		return ""
+	}
+	var str string
+	switch v := val.(type) {
+	case string:
+		str = strings.TrimSpace(v)
+	case float64:
+		if v > 0 {
+			str = fmt.Sprintf("%.0f", v)
+		}
+	case int64:
+		if v > 0 {
+			str = strconv.FormatInt(v, 10)
+		}
+	case int:
+		if v > 0 {
+			str = strconv.Itoa(v)
+		}
+	case json.Number:
+		str = v.String()
+	default:
+		str = strings.TrimSpace(fmt.Sprint(v))
+	}
+	if isAllDigits(str) {
+		return str
+	}
+	return ""
+}
 
 type QuarkAccountInfo struct {
 	Nickname      string `json:"nickname"`
@@ -115,49 +161,65 @@ func (s *QuarkTransferService) VerifyCookie(cookie string) (*QuarkAccountInfo, e
 		return nil, errors.New("Cookie 不能为空")
 	}
 
-	// 1. 尝试从 Cookie 中解析 UID (优先提取 __uid，其次提取 b-user-id 或 uid)
+	var realNickname string
 	var parsedUID string
-	reUID := regexp.MustCompile(`(?:^|;\s*)__uid=([^;]+)`)
-	if m := reUID.FindStringSubmatch(cookie); len(m) > 1 {
-		parsedUID = strings.TrimSpace(m[1])
-	}
-	if parsedUID == "" {
-		reBUser := regexp.MustCompile(`(?:^|;\s*)b-user-id=([^;]+)`)
-		if m := reBUser.FindStringSubmatch(cookie); len(m) > 1 {
-			parsedUID = strings.TrimSpace(m[1])
-		}
-	}
-	if parsedUID == "" {
-		rePlain := regexp.MustCompile(`(?:^|;\s*)uid=([^;]+)`)
-		if m := rePlain.FindStringSubmatch(cookie); len(m) > 1 {
-			parsedUID = strings.TrimSpace(m[1])
+
+	// 1. 请求 drive-pc 官方核心配置接口 (https://drive-pc.quark.cn/1/clouddrive/config?pr=ucpro&fr=pc)
+	// 该接口同源返回 user_id (全数字合作UID/达人UID) 及用户 nickname (真实网盘昵称)
+	configURL := "https://drive-pc.quark.cn/1/clouddrive/config?pr=ucpro&fr=pc"
+	if cfgReq, err := s.newRequest("GET", configURL, nil, cookie); err == nil {
+		if cfgResp, err := s.client.Do(cfgReq); err == nil {
+			defer cfgResp.Body.Close()
+			if cfgResp.StatusCode == 200 {
+				var cfgRes struct {
+					Status int                    `json:"status"`
+					Code   int                    `json:"code"`
+					Data   map[string]interface{} `json:"data"`
+				}
+				if err := json.NewDecoder(cfgResp.Body).Decode(&cfgRes); err == nil && (cfgRes.Code == 0 || cfgRes.Status == 200 || cfgRes.Status == 0) && cfgRes.Data != nil {
+					if n, ok := cfgRes.Data["nickname"].(string); ok && strings.TrimSpace(n) != "" {
+						realNickname = strings.TrimSpace(n)
+					}
+					if uid := parseAnyUID(cfgRes.Data["user_id"]); uid != "" {
+						parsedUID = uid
+					} else if uid := parseAnyUID(cfgRes.Data["id"]); uid != "" {
+						parsedUID = uid
+					} else if uid := parseAnyUID(cfgRes.Data["uid"]); uid != "" {
+						parsedUID = uid
+					}
+				}
+			}
 		}
 	}
 
-	// 2. 尝试从夸克个人账号核心接口获取真实用户名/昵称 (https://pan.quark.cn/account/info)
-	var realNickname string
-	accountInfoURL := "https://pan.quark.cn/account/info"
-	if accReq, err := s.newRequest("GET", accountInfoURL, nil, cookie); err == nil {
-		if accResp, err := s.client.Do(accReq); err == nil {
-			defer accResp.Body.Close()
-			if accResp.StatusCode == 200 {
-				var infoRes struct {
-					Success bool `json:"success"`
-					Data    struct {
-						Nickname string `json:"nickname"`
-						UID      string `json:"uid"`
-						UserID   string `json:"user_id"`
-					} `json:"data"`
-				}
-				if err := json.NewDecoder(accResp.Body).Decode(&infoRes); err == nil && infoRes.Success {
-					if strings.TrimSpace(infoRes.Data.Nickname) != "" {
-						realNickname = strings.TrimSpace(infoRes.Data.Nickname)
+	// 2. 若仍未获取到昵称或数字 UID，补充请求个人账号核心接口 (https://pan.quark.cn/account/info?fr=pc&platform=pc)
+	if realNickname == "" || parsedUID == "" {
+		accountInfoURL := "https://pan.quark.cn/account/info?fr=pc&platform=pc"
+		if accReq, err := s.newRequest("GET", accountInfoURL, nil, cookie); err == nil {
+			if accResp, err := s.client.Do(accReq); err == nil {
+				defer accResp.Body.Close()
+				if accResp.StatusCode == 200 {
+					var infoRes struct {
+						Status int                    `json:"status"`
+						Code   int                    `json:"code"`
+						Data   map[string]interface{} `json:"data"`
 					}
-					if parsedUID == "" {
-						if strings.TrimSpace(infoRes.Data.UID) != "" {
-							parsedUID = strings.TrimSpace(infoRes.Data.UID)
-						} else if strings.TrimSpace(infoRes.Data.UserID) != "" {
-							parsedUID = strings.TrimSpace(infoRes.Data.UserID)
+					if err := json.NewDecoder(accResp.Body).Decode(&infoRes); err == nil && (infoRes.Code == 0 || infoRes.Status == 200) && infoRes.Data != nil {
+						if realNickname == "" {
+							if n, ok := infoRes.Data["nickname"].(string); ok && strings.TrimSpace(n) != "" {
+								realNickname = strings.TrimSpace(n)
+							}
+						}
+						if parsedUID == "" {
+							if uid := parseAnyUID(infoRes.Data["id"]); uid != "" {
+								parsedUID = uid
+							} else if uid := parseAnyUID(infoRes.Data["account_id"]); uid != "" {
+								parsedUID = uid
+							} else if uid := parseAnyUID(infoRes.Data["user_id"]); uid != "" {
+								parsedUID = uid
+							} else if uid := parseAnyUID(infoRes.Data["uid"]); uid != "" {
+								parsedUID = uid
+							}
 						}
 					}
 				}
@@ -165,7 +227,15 @@ func (s *QuarkTransferService) VerifyCookie(cookie string) (*QuarkAccountInfo, e
 		}
 	}
 
-	// 3. 直接调用 drive-pc 官方会员与容量核心接口（响应迅速且带准确空间数据）
+	// 3. 若接口未能提取数字 UID，从 Cookie 中精确提取全数字 __uid / _up_uid / uid（坚决忽略 b-user-id 等字母组合设备标识）
+	if parsedUID == "" {
+		reUID := regexp.MustCompile(`(?:^|;\s*)(?:__uid|_up_uid|uid)=(\d+)`)
+		if m := reUID.FindStringSubmatch(cookie); len(m) > 1 {
+			parsedUID = strings.TrimSpace(m[1])
+		}
+	}
+
+	// 4. 调用 drive-pc 官方会员与容量核心接口（响应迅速且带准确空间数据）
 	memberURL := "https://drive-pc.quark.cn/1/clouddrive/member?pr=ucpro&fr=pc"
 	req, err := s.newRequest("GET", memberURL, nil, cookie)
 	if err != nil {

@@ -53,6 +53,19 @@ type NetdiskAccountDTO struct {
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
+func isAllDigits(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func toDTO(acc model.NetdiskAccount) NetdiskAccountDTO {
 	masked := ""
 	if len(acc.Cookie) > 12 {
@@ -170,14 +183,14 @@ func (h *NetdiskAccountHandler) SaveAccount(c fiber.Ctx) error {
 	acc.IsDefault = req.IsDefault
 	acc.LastVerifiedAt = &now
 
+	if req.Nickname != "" {
+		acc.Nickname = strings.TrimSpace(req.Nickname)
+	}
+
 	if req.UID != "" {
 		acc.UID = strings.TrimSpace(req.UID)
 	} else if verifiedInfo != nil && verifiedInfo.UID != "" {
 		acc.UID = verifiedInfo.UID
-	}
-
-	if req.Nickname != "" {
-		acc.Nickname = strings.TrimSpace(req.Nickname)
 	}
 
 	if vErr != nil {
@@ -188,7 +201,8 @@ func (h *NetdiskAccountHandler) SaveAccount(c fiber.Ctx) error {
 		if verifiedInfo.Nickname != "" {
 			acc.Nickname = verifiedInfo.Nickname
 		}
-		if acc.UID == "" && verifiedInfo.UID != "" {
+		// 若获取到了真实数字 UID，且当前账号 UID 为空或旧的非数字乱码，自动同步为真实数字 UID
+		if verifiedInfo.UID != "" && (acc.UID == "" || !isAllDigits(acc.UID)) {
 			acc.UID = verifiedInfo.UID
 		}
 		acc.TotalCapacity = verifiedInfo.TotalCapacity
@@ -210,7 +224,10 @@ func (h *NetdiskAccountHandler) SaveAccount(c fiber.Ctx) error {
 
 	if isUpdate {
 		if err := database.DB.Save(&acc).Error; err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "保存账号配置失败"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"code":    500,
+				"message": "保存账号配置失败: " + err.Error(),
+			})
 		}
 	} else {
 		// 如果是第一个账号，自动设为默认
@@ -220,7 +237,10 @@ func (h *NetdiskAccountHandler) SaveAccount(c fiber.Ctx) error {
 			acc.IsDefault = true
 		}
 		if err := database.DB.Create(&acc).Error; err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "添加账号配置失败"})
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"code":    500,
+				"message": "添加账号配置失败: " + err.Error(),
+			})
 		}
 	}
 

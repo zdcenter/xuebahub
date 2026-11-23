@@ -63,6 +63,24 @@ export class ResourceCardComponent {
     return `${origin}/resource/${this.resource.slug || this.resource.id}`;
   }
 
+  // 提取高吸引力品质特性 (含答案解析 / Word可编辑 / 统编高清等，极大提升下载转化率与信任度)
+  get highlightFeature(): string {
+    const raw = (this.resource.title + ' ' + (this.resource.subtitle || '') + ' ' + (this.resource.description || '')).toLowerCase();
+    if (raw.includes('含答案') || raw.includes('带答案') || raw.includes('答案解析') || raw.includes('含解析')) {
+      return '含答案解析';
+    }
+    if (raw.includes('word') || raw.includes('可编辑') || (this.resource.file_type || '').toUpperCase().includes('DOC')) {
+      return 'Word可编辑';
+    }
+    if (raw.includes('音频') || raw.includes('听力') || raw.includes('mp3')) {
+      return '含听力音频';
+    }
+    if (this.resource.channel_slug === 'book' || raw.includes('教材') || raw.includes('课本')) {
+      return '统编高清';
+    }
+    return '';
+  }
+
   // 动态生成直达详情页的 SVG 二维码
   get qrSvg(): SafeHtml {
     const svgStr = generateQRCodeSvg(this.detailUrl, 84, 2);

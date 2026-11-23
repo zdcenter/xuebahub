@@ -421,12 +421,12 @@ func (h *ResourceHandler) TrackResourceSave(c fiber.Ctx) error {
 	})
 }
 
-// GetPublicRelatedResources 获取同名校/同科目/同学段精选关联真题 (最多 6 条)
+// GetPublicRelatedResources 获取同名校/同科目/同学段精选关联真题与教材 (最多 8 条，支持「以书带卷、以卷带书」双向互补)
 func (h *ResourceHandler) GetPublicRelatedResources(c fiber.Ctx) error {
 	identifier := c.Params("id_or_slug")
 
 	var currentRes model.Resource
-	err := database.DB.Select("id, slug, stage, subject, grade, school, region").
+	err := database.DB.Select("id, slug, stage, subject, grade, term, edition, school, region, channel_slug").
 		Where("(slug = ? OR id::text = ?) AND is_published = ?", identifier, identifier, true).
 		First(&currentRes).Error
 
@@ -439,15 +439,58 @@ func (h *ResourceHandler) GetPublicRelatedResources(c fiber.Ctx) error {
 
 	var related []model.Resource
 	collectedIDs := []uuid.UUID{currentRes.ID}
+	targetCount := 8
 
-	// 1. 若有名校字段，优先匹配同一名校的其他资料 (排除自身)
-	if strings.TrimSpace(currentRes.School) != "" {
+	// 1. 核心推荐：以书带卷、以卷带书（跨频道互补）
+	// 如果当前是电子课本 (book)，优先补充同年级同科目的真题试卷/同步教辅 (edu)
+	// 如果当前是真题试卷 (edu)，优先补充同年级同科目的统编正版高清课本 (book)
+	complementChannel := "edu"
+	if currentRes.ChannelSlug == "edu" {
+		complementChannel = "book"
+	}
+	if currentRes.Grade != "" && currentRes.Subject != "" {
+		var complementItems []model.Resource
+		database.DB.Model(&model.Resource{}).
+			Preload("Links").
+			Where("is_published = ? AND channel_slug = ? AND grade = ? AND subject = ? AND id NOT IN ?",
+				true, complementChannel, currentRes.Grade, currentRes.Subject, collectedIDs).
+			Order("is_recommended DESC, save_count DESC, created_at DESC").
+			Limit(3).
+			Find(&complementItems)
+
+		for _, item := range complementItems {
+			related = append(related, item)
+			collectedIDs = append(collectedIDs, item.ID)
+		}
+	}
+
+	// 2. 同年级 + 同科目 + 同学段的同类精品推荐 (排除已收集)
+	if len(related) < targetCount && currentRes.Grade != "" && currentRes.Subject != "" && currentRes.Stage != "" {
+		needed := targetCount - len(related)
+		var sameGradeItems []model.Resource
+		database.DB.Model(&model.Resource{}).
+			Preload("Links").
+			Where("is_published = ? AND stage = ? AND grade = ? AND subject = ? AND id NOT IN ?",
+				true, currentRes.Stage, currentRes.Grade, currentRes.Subject, collectedIDs).
+			Order("is_recommended DESC, save_count DESC, view_count DESC, created_at DESC").
+			Limit(needed).
+			Find(&sameGradeItems)
+
+		for _, item := range sameGradeItems {
+			related = append(related, item)
+			collectedIDs = append(collectedIDs, item.ID)
+		}
+	}
+
+	// 3. 若有名校字段且仍未填满，补充同一名校资料 (排除自身及已收集)
+	if len(related) < targetCount && strings.TrimSpace(currentRes.School) != "" {
+		needed := targetCount - len(related)
 		var schoolItems []model.Resource
 		database.DB.Model(&model.Resource{}).
 			Preload("Links").
-			Where("is_published = ? AND school = ? AND id != ?", true, currentRes.School, currentRes.ID).
-			Order("created_at DESC").
-			Limit(6).
+			Where("is_published = ? AND school = ? AND id NOT IN ?", true, currentRes.School, collectedIDs).
+			Order("save_count DESC, created_at DESC").
+			Limit(needed).
 			Find(&schoolItems)
 
 		for _, item := range schoolItems {
@@ -456,14 +499,14 @@ func (h *ResourceHandler) GetPublicRelatedResources(c fiber.Ctx) error {
 		}
 	}
 
-	// 2. 若数量不足 6 条，同科目 + 同学段补充 (排除已收集)
-	if len(related) < 6 && currentRes.Subject != "" && currentRes.Stage != "" {
-		needed := 6 - len(related)
+	// 4. 若数量不足 8 条，同科目 + 同学段补充 (排除已收集)
+	if len(related) < targetCount && currentRes.Subject != "" && currentRes.Stage != "" {
+		needed := targetCount - len(related)
 		var subjectItems []model.Resource
 		database.DB.Model(&model.Resource{}).
 			Preload("Links").
 			Where("is_published = ? AND stage = ? AND subject = ? AND id NOT IN ?", true, currentRes.Stage, currentRes.Subject, collectedIDs).
-			Order("is_recommended DESC, view_count DESC, created_at DESC").
+			Order("is_recommended DESC, save_count DESC, view_count DESC, created_at DESC").
 			Limit(needed).
 			Find(&subjectItems)
 
@@ -473,14 +516,14 @@ func (h *ResourceHandler) GetPublicRelatedResources(c fiber.Ctx) error {
 		}
 	}
 
-	// 3. 若仍不足 6 条，同学段最新推荐资料补充 (排除已收集)
-	if len(related) < 6 && currentRes.Stage != "" {
-		needed := 6 - len(related)
+	// 5. 若仍不足 8 条，同学段最新推荐资料兜底补充 (排除已收集)
+	if len(related) < targetCount && currentRes.Stage != "" {
+		needed := targetCount - len(related)
 		var stageItems []model.Resource
 		database.DB.Model(&model.Resource{}).
 			Preload("Links").
 			Where("is_published = ? AND stage = ? AND id NOT IN ?", true, currentRes.Stage, collectedIDs).
-			Order("is_recommended DESC, view_count DESC, created_at DESC").
+			Order("is_recommended DESC, save_count DESC, created_at DESC").
 			Limit(needed).
 			Find(&stageItems)
 

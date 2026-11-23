@@ -3039,10 +3039,9 @@ export class AdminComponent implements OnInit {
 
   onCookieInputBlur() {
     if (!this.accountForm.cookie) return;
-    if (!this.accountForm.uid) {
-      const match = this.accountForm.cookie.match(/(?:^|;\s*)__uid=([^;]+)/) ||
-                    this.accountForm.cookie.match(/(?:^|;\s*)b-user-id=([^;]+)/) ||
-                    this.accountForm.cookie.match(/(?:^|;\s*)uid=([^;]+)/);
+    // 仅当未填写或不是纯数字时，尝试从 Cookie 提取纯数字 UID（坚决不提取 b-user-id 等字母组合设备字符串）
+    if (!this.accountForm.uid || !/^\d+$/.test(this.accountForm.uid)) {
+      const match = this.accountForm.cookie.match(/(?:^|;\s*)(?:__uid|_up_uid|uid)=(\d+)(?:;|$)/);
       if (match && match[1]) {
         this.accountForm.uid = match[1].trim();
       }

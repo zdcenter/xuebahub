@@ -57,6 +57,14 @@ func Init(dsn string) (*gorm.DB, error) {
 		}
 	}
 
+	// 显式保证 netdisk_accounts 关键字段存在（防止旧版数据库表缺失 uid / nickname 列导致更新保存失败）
+	if err := db.Exec(`ALTER TABLE netdisk_accounts ADD COLUMN IF NOT EXISTS uid VARCHAR(100);`).Error; err != nil {
+		log.Printf("Ensure netdisk_accounts.uid column error: %v", err)
+	}
+	if err := db.Exec(`ALTER TABLE netdisk_accounts ADD COLUMN IF NOT EXISTS nickname VARCHAR(100);`).Error; err != nil {
+		log.Printf("Ensure netdisk_accounts.nickname column error: %v", err)
+	}
+
 	DB = db
 	seedInitialData(db)
 	return db, nil
