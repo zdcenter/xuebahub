@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cache"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
@@ -75,13 +76,18 @@ func main() {
 
 	// 1. 公开端路由 (供前台 Astro 与 C端用户调用)
 	public := api.Group("/public")
-	public.Get("/categories", categoryH.ListPublicCategories)
-	public.Get("/channels", channelH.ListPublicChannels)
-	public.Get("/settings", settingsH.GetPublicSettings)
-	public.Get("/nav-menus", navMenuH.ListPublicNavMenus)
-	public.Get("/regions", regionSchoolH.ListRegions)
-	public.Get("/schools", regionSchoolH.ListSchools)
-	public.Get("/hot-searches", hotSearchH.ListPublicHotSearches)
+
+	// 高频只读字典配置内存级缓存 (5分钟自动过期，毫秒级响应并大幅降载数据库)
+	metaCache := cache.New(cache.Config{
+		Expiration: 5 * time.Minute,
+	})
+	public.Get("/categories", metaCache, categoryH.ListPublicCategories)
+	public.Get("/channels", metaCache, channelH.ListPublicChannels)
+	public.Get("/settings", metaCache, settingsH.GetPublicSettings)
+	public.Get("/nav-menus", metaCache, navMenuH.ListPublicNavMenus)
+	public.Get("/regions", metaCache, regionSchoolH.ListRegions)
+	public.Get("/schools", metaCache, regionSchoolH.ListSchools)
+	public.Get("/hot-searches", metaCache, hotSearchH.ListPublicHotSearches)
 	public.Get("/resources", resH.ListPublicResources)
 	public.Get("/resources/:id_or_slug/cover.png", resH.GetPublicResourceCover)
 	public.Get("/covers/:id_or_slug.png", resH.GetPublicResourceCover)
@@ -275,12 +281,15 @@ func main() {
 	admin.Put("/member-users/:id", memberH.AdminUpdateUser)
 
 	// 健康检查
-	app.Get("/health", func(c fiber.Ctx) error {
+	healthCheck := func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status":  "ok",
 			"service": "Go Fiber v3 Learning Hub API",
 		})
-	})
+	}
+	app.Get("/health", healthCheck)
+	api.Get("/health", healthCheck)
+	public.Get("/health", healthCheck)
 
 	// 启动后台定时死链自动巡检任务 (每 12 小时自动轻量探测存活性，保护前台无死链)
 	go func() {
@@ -288,7 +297,7 @@ func main() {
 		sendDeadLinkAlert := func(s *service.BatchCheckSummary) {
 			if s != nil && s.InvalidCount > 0 {
 				var lines []string
-				lines = append(lines, fmt.Sprintf("⚠️ <b>【学霸网·死链巡检预警】</b>\n巡检发现 <b>%d</b> 条失效网盘链接（已自动下架保护前台: %d 部）：", s.InvalidCount, s.DelistedCount))
+				lines = append(lines, fmt.Sprintf("⚠️ <b>【学霸网·死链巡检预警】</b>\n巡检发现 <b>%d</b> 条失效网盘链接（已标红记录，页面保持发布以稳定SEO收录）：", s.InvalidCount))
 				count := 0
 				for _, r := range s.Results {
 					if r.Status == "invalid" {
@@ -312,7 +321,7 @@ func main() {
 			MinIntervalHours:  24, // 24小时冷却保护
 			Force:             false,
 			Limit:             50,
-			AutoDelistAllDead: true, // 全失效资料自动静默下架保护前台
+			AutoDelistAllDead: false, // 彻底禁用自动下架，探测失效绝不动 is_published，保护前台与SEO稳定
 		}
 		summary, err := netdiskChecker.RunBatchCheck(opts)
 		if err != nil {

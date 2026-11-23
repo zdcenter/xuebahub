@@ -341,25 +341,9 @@ func (s *NetdiskCheckerService) RunBatchCheck(opts BatchCheckOptions) (*BatchChe
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// 检查是否有资料的所有网盘链接均已失效，视配置决定是否自动静默下架保护前台口碑
-	if opts.AutoDelistAllDead && len(resIDs) > 0 {
-		delisted := 0
-		checkedResMap := make(map[uuid.UUID]bool)
-		for _, rid := range resIDs {
-			if checkedResMap[rid] {
-				continue
-			}
-			checkedResMap[rid] = true
-
-			var activeLinks int64
-			database.DB.Model(&model.ResourceLink{}).Where("resource_id = ? AND status = 'active'", rid).Count(&activeLinks)
-			if activeLinks == 0 {
-				database.DB.Model(&model.Resource{}).Where("id = ?", rid).Update("is_published", false)
-				delisted++
-			}
-		}
-		summary.DelistedCount = delisted
-	}
+	// 注意：存活探测仅更新链接自身状态 (resource_links.status / invalid_reason)
+	// 坚决不自动修改资源的 is_published 状态，避免页面 404 损害 SEO 收录及前台意外消失导致维护困难
+	summary.DelistedCount = 0
 
 	return summary, nil
 }

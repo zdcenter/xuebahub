@@ -508,12 +508,10 @@ func (h *CrawlerHandler) BatchApproveDrafts(c fiber.Ctx) error {
 		})
 	}
 
-	// 查找默认可用夸克账号 (用于自动转存)
-	var defaultAcc model.NetdiskAccount
+	// 查找可用夸克账号列表 (支持主账号优先与多账号自动故障转移 Failover)
+	var availableAccounts []model.NetdiskAccount
 	if req.AutoTransfer && h.transferSvc != nil {
-		if err := h.db.Where("is_default = true AND cookie != ''").First(&defaultAcc).Error; err != nil {
-			h.db.Where("cookie != ''").Order("is_default desc, updated_at desc").First(&defaultAcc)
-		}
+		h.db.Where("cookie != ''").Order("is_default desc, updated_at desc").Find(&availableAccounts)
 	}
 
 	targetChannel := req.ChannelSlug
@@ -535,22 +533,35 @@ func (h *CrawlerHandler) BatchApproveDrafts(c fiber.Ctx) error {
 			finalFileSize = "完整高清版"
 		}
 
+		var usedAccID *uuid.UUID
+		var usedAccName string
+		if len(availableAccounts) > 0 {
+			usedAccID = &availableAccounts[0].ID
+			usedAccName = availableAccounts[0].AccountName
+		}
+
 		// 若启用自动转存且属于夸克链接
-		if req.AutoTransfer && draft.DriveType == "quark" && defaultAcc.Cookie != "" && h.transferSvc != nil {
-			targetFolderFID := defaultAcc.TargetFolderFID
-			if targetFolderFID == "" {
-				targetFolderFID = "0"
-			}
-			tRes, tErr := h.transferSvc.TransferAndShare(defaultAcc.Cookie, targetFolderFID, draft.ShareURL, draft.ExtractCode)
-			if tErr == nil && tRes != nil && tRes.NewShareURL != "" {
-				finalShareURL = tRes.NewShareURL
-				if tRes.ExtractCode != "" {
-					finalExtractCode = tRes.ExtractCode
+		if req.AutoTransfer && draft.DriveType == "quark" && len(availableAccounts) > 0 && h.transferSvc != nil {
+			// 依次尝试：默认账号 -> 其他可用正常账号 (自动故障转移 Failover)
+			for _, acc := range availableAccounts {
+				targetFolderFID := acc.TargetFolderFID
+				if targetFolderFID == "" {
+					targetFolderFID = "0"
 				}
-				if tRes.FileSize != "" && tRes.FileSize != "完整资源包" {
-					finalFileSize = tRes.FileSize
+				tRes, tErr := h.transferSvc.TransferAndShare(acc.Cookie, targetFolderFID, draft.ShareURL, draft.ExtractCode)
+				if tErr == nil && tRes != nil && tRes.NewShareURL != "" {
+					finalShareURL = tRes.NewShareURL
+					if tRes.ExtractCode != "" {
+						finalExtractCode = tRes.ExtractCode
+					}
+					if tRes.FileSize != "" && tRes.FileSize != "完整资源包" {
+						finalFileSize = tRes.FileSize
+					}
+					usedAccID = &acc.ID
+					usedAccName = acc.AccountName
+					transferredCount++
+					break // 转存成功即退出轮询
 				}
-				transferredCount++
 			}
 		}
 
@@ -594,9 +605,9 @@ func (h *CrawlerHandler) BatchApproveDrafts(c fiber.Ctx) error {
 			CreatedAt:    time.Now(),
 			UpdatedAt:    time.Now(),
 		}
-		if defaultAcc.ID != uuid.Nil {
-			newLink.AccountID = &defaultAcc.ID
-			newLink.AccountName = defaultAcc.AccountName
+		if usedAccID != nil && *usedAccID != uuid.Nil {
+			newLink.AccountID = usedAccID
+			newLink.AccountName = usedAccName
 		}
 		newRes.Links = []model.ResourceLink{newLink}
 

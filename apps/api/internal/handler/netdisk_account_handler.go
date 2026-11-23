@@ -41,6 +41,7 @@ type NetdiskAccountDTO struct {
 	TargetFolderName string     `json:"target_folder_name"`
 	IsDefault        bool       `json:"is_default"`
 	Nickname         string     `json:"nickname"`
+	UID              string     `json:"uid"`
 	TotalCapacity    string     `json:"total_capacity"`
 	UsedCapacity     string     `json:"used_capacity"`
 	FreeCapacity     string     `json:"free_capacity"`
@@ -71,6 +72,7 @@ func toDTO(acc model.NetdiskAccount) NetdiskAccountDTO {
 		TargetFolderName: acc.TargetFolderName,
 		IsDefault:        acc.IsDefault,
 		Nickname:         acc.Nickname,
+		UID:              acc.UID,
 		TotalCapacity:    acc.TotalCapacity,
 		UsedCapacity:     acc.UsedCapacity,
 		FreeCapacity:     acc.FreeCapacity,
@@ -107,6 +109,8 @@ type SaveAccountRequest struct {
 	TargetFolderFID  string     `json:"target_folder_fid"`
 	TargetFolderName string     `json:"target_folder_name"`
 	IsDefault        bool       `json:"is_default"`
+	Nickname         string     `json:"nickname"`
+	UID              string     `json:"uid"`
 }
 
 // SaveAccount 新增或修改网盘账号（自动连通验证与容量刷新）
@@ -166,12 +170,27 @@ func (h *NetdiskAccountHandler) SaveAccount(c fiber.Ctx) error {
 	acc.IsDefault = req.IsDefault
 	acc.LastVerifiedAt = &now
 
+	if req.UID != "" {
+		acc.UID = strings.TrimSpace(req.UID)
+	} else if verifiedInfo != nil && verifiedInfo.UID != "" {
+		acc.UID = verifiedInfo.UID
+	}
+
+	if req.Nickname != "" {
+		acc.Nickname = strings.TrimSpace(req.Nickname)
+	}
+
 	if vErr != nil {
 		acc.Status = "invalid"
 		acc.ErrorMessage = vErr.Error()
 	} else {
 		acc.Status = "valid"
-		acc.Nickname = verifiedInfo.Nickname
+		if verifiedInfo.Nickname != "" {
+			acc.Nickname = verifiedInfo.Nickname
+		}
+		if acc.UID == "" && verifiedInfo.UID != "" {
+			acc.UID = verifiedInfo.UID
+		}
 		acc.TotalCapacity = verifiedInfo.TotalCapacity
 		acc.UsedCapacity = verifiedInfo.UsedCapacity
 		acc.FreeCapacity = verifiedInfo.FreeCapacity
@@ -293,7 +312,12 @@ func (h *NetdiskAccountHandler) VerifyAccount(c fiber.Ctx) error {
 	}
 
 	acc.Status = "valid"
-	acc.Nickname = verifiedInfo.Nickname
+	if verifiedInfo.Nickname != "" {
+		acc.Nickname = verifiedInfo.Nickname
+	}
+	if verifiedInfo.UID != "" {
+		acc.UID = verifiedInfo.UID
+	}
 	acc.TotalCapacity = verifiedInfo.TotalCapacity
 	acc.UsedCapacity = verifiedInfo.UsedCapacity
 	acc.FreeCapacity = verifiedInfo.FreeCapacity
@@ -355,7 +379,12 @@ func (h *NetdiskAccountHandler) verifyAllAccountsInternal() int {
 			}
 		} else {
 			acc.Status = "valid"
-			acc.Nickname = verifiedInfo.Nickname
+			if verifiedInfo.Nickname != "" {
+				acc.Nickname = verifiedInfo.Nickname
+			}
+			if verifiedInfo.UID != "" {
+				acc.UID = verifiedInfo.UID
+			}
 			acc.TotalCapacity = verifiedInfo.TotalCapacity
 			acc.UsedCapacity = verifiedInfo.UsedCapacity
 			acc.FreeCapacity = verifiedInfo.FreeCapacity

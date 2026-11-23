@@ -1404,16 +1404,50 @@
             </div>
 
             <div class="form-group full-width" style="grid-column: 1 / -1;">
-              <label>📝 内容介绍与使用说明</label>
-              <textarea [(ngModel)]="newResource.description" name="description" placeholder="如果不填，前端详情页将不展示说明模块。如果填写，将完全展示您输入的内容（支持回车换行）..." rows="4" style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 10px; font-size: 13px; resize: vertical; margin-top: 4px;"></textarea>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <label style="margin-bottom: 0; display: flex; align-items: center; gap: 6px;">
+                  <span>📝 内容介绍与使用说明</span>
+                  <span style="font-size: 11px; padding: 2px 6px; background: #e0e7ff; color: #4338ca; border-radius: 4px; font-weight: 600;">支持 Markdown</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <button 
+                    type="button" 
+                    (click)="newPreviewDesc.set(!newPreviewDesc())" 
+                    style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 10px; font-size: 12px; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;"
+                    [style.background]="newPreviewDesc() ? '#e0e7ff' : '#f1f5f9'"
+                    [style.color]="newPreviewDesc() ? '#4338ca' : '#334155'"
+                    [style.borderColor]="newPreviewDesc() ? '#818cf8' : '#cbd5e1'">
+                    <span>{{ newPreviewDesc() ? '✏️ 返回编辑' : '👁️ 实时预览 Markdown' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              @if (!newPreviewDesc()) {
+                <textarea 
+                  [(ngModel)]="newResource.description" 
+                  name="description" 
+                  placeholder="如果不填，前端详情页将不展示说明模块。支持标准 Markdown 语法：&#10;# 一级标题  ## 二级标题&#10;**加粗文本**  *斜体*&#10;- 无序列表项&#10;1. 有序步骤&#10;> 重点引用注意事项&#10;```代码块```" 
+                  rows="5" 
+                  style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 10px; font-size: 13px; font-family: inherit; resize: vertical; margin-top: 4px; line-height: 1.5;"></textarea>
+              } @else {
+                <div style="width: 100%; min-height: 120px; max-height: 320px; overflow-y: auto; border-radius: 8px; border: 1px dashed #818cf8; background: #f8fafc; padding: 14px; margin-top: 4px;">
+                  @if (newResource.description && newResource.description.trim()) {
+                    <div class="prose max-w-none" [innerHTML]="renderMarkdown(newResource.description)"></div>
+                  } @else {
+                    <div style="color: #94a3b8; font-size: 13px; font-style: italic; text-align: center; padding: 24px 0;">
+                      💡 暂无内容，请切换至编辑模式输入 Markdown 说明文本
+                    </div>
+                  }
+                </div>
+              }
             </div>
 
             <!-- 网盘链接推广配置 -->
             <div class="form-group full-width netdisk-config">
-              <h4>🔗 网盘分发配置（夸克推广拉新与百度备用）</h4>
+              <h4>🔗 网盘分发配置（夸克与百度二选一或兼备，只要有一个有效链接即可发布）</h4>
               <div class="netdisk-grid">
                 <div class="netdisk-item primary">
-                  <div class="netdisk-title">⚡ 夸克网盘链接（主推高佣金通道）<span class="required">*</span></div>
+                  <div class="netdisk-title">⚡ 夸克网盘链接（主推高佣金通道，二选一或兼备）</div>
                   <!-- 存储归属网盘账号选择器 -->
                   <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #ffffff; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
                     <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 0; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
@@ -1436,7 +1470,6 @@
                       name="quarkUrl" 
                       placeholder="https://pan.quark.cn/s/xxxxxxxx (可贴他人分享)" 
                       class="netdisk-url-input"
-                      required 
                     />
                   </div>
                   <div class="netdisk-url-actions">
@@ -1524,7 +1557,7 @@
                 </div>
 
                 <div class="netdisk-item">
-                  <div class="netdisk-title">📦 百度网盘链接（备用）</div>
+                  <div class="netdisk-title">📦 百度网盘链接（备用转存通道，二选一或兼备）</div>
                   <div class="netdisk-url-box">
                     <input 
                       type="url" 
@@ -2105,16 +2138,50 @@
           </div>
 
           <div class="form-group full-width" style="grid-column: 1 / -1;">
-            <label>📝 内容介绍与使用说明</label>
-            <textarea [(ngModel)]="editForm.description" name="edit_description" placeholder="如果不填，前端详情页将不展示说明模块。如果填写，将完全展示您输入的内容（支持回车换行）..." rows="4" style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 10px; font-size: 13px; resize: vertical; margin-top: 4px;"></textarea>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <label style="margin-bottom: 0; display: flex; align-items: center; gap: 6px;">
+                <span>📝 内容介绍与使用说明</span>
+                <span style="font-size: 11px; padding: 2px 6px; background: #e0e7ff; color: #4338ca; border-radius: 4px; font-weight: 600;">支持 Markdown</span>
+              </label>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button 
+                  type="button" 
+                  (click)="editPreviewDesc.set(!editPreviewDesc())" 
+                  style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 10px; font-size: 12px; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;"
+                  [style.background]="editPreviewDesc() ? '#e0e7ff' : '#f1f5f9'"
+                  [style.color]="editPreviewDesc() ? '#4338ca' : '#334155'"
+                  [style.borderColor]="editPreviewDesc() ? '#818cf8' : '#cbd5e1'">
+                  <span>{{ editPreviewDesc() ? '✏️ 返回编辑' : '👁️ 实时预览 Markdown' }}</span>
+                </button>
+              </div>
+            </div>
+
+            @if (!editPreviewDesc()) {
+              <textarea 
+                [(ngModel)]="editForm.description" 
+                name="edit_description" 
+                placeholder="如果不填，前端详情页将不展示说明模块。支持标准 Markdown 语法：&#10;# 一级标题  ## 二级标题&#10;**加粗文本**  *斜体*&#10;- 无序列表项&#10;1. 有序步骤&#10;> 重点引用注意事项&#10;```代码块```" 
+                rows="5" 
+                style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 10px; font-size: 13px; font-family: inherit; resize: vertical; margin-top: 4px; line-height: 1.5;"></textarea>
+            } @else {
+              <div style="width: 100%; min-height: 120px; max-height: 320px; overflow-y: auto; border-radius: 8px; border: 1px dashed #818cf8; background: #f8fafc; padding: 14px; margin-top: 4px;">
+                @if (editForm.description && editForm.description.trim()) {
+                  <div class="prose max-w-none" [innerHTML]="renderMarkdown(editForm.description)"></div>
+                } @else {
+                  <div style="color: #94a3b8; font-size: 13px; font-style: italic; text-align: center; padding: 24px 0;">
+                    💡 暂无内容，请切换至编辑模式输入 Markdown 说明文本
+                  </div>
+                }
+              </div>
+            }
           </div>
 
           <!-- 网盘分发配置 -->
           <div class="form-group full-width netdisk-config">
-            <h4>🔗 网盘分发配置（夸克推广拉新与百度备用）</h4>
+            <h4>🔗 网盘分发配置（夸克与百度二选一或兼备，只要有一个有效链接即可发布）</h4>
             <div class="netdisk-grid">
               <div class="netdisk-item primary">
-                <div class="netdisk-title">⚡ 夸克网盘链接（主推高佣金通道）<span class="required">*</span></div>
+                <div class="netdisk-title">⚡ 夸克网盘链接（主推高佣金通道，二选一或兼备）</div>
                 <!-- 存储归属网盘账号选择器 -->
                 <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #ffffff; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
                   <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 0; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
@@ -2137,7 +2204,6 @@
                     name="edit_quarkUrl" 
                     placeholder="https://pan.quark.cn/s/xxxxxxxx (可贴他人分享)" 
                     class="netdisk-url-input"
-                    required 
                   />
                 </div>
                 <div class="netdisk-url-actions">
@@ -2225,7 +2291,7 @@
               </div>
 
               <div class="netdisk-item">
-                <div class="netdisk-title">📦 百度网盘链接（备用）</div>
+                <div class="netdisk-title">📦 百度网盘链接（备用转存通道，二选一或兼备）</div>
                 <div class="netdisk-url-box">
                   <input 
                     type="url" 
@@ -4315,282 +4381,172 @@
             </div>
           </div>
 
-          <!-- 双栏主体：左侧账号表单，右侧账号列表 -->
-          <div class="accounts-grid-layout">
-            <!-- 左侧：添加/编辑账号表单 -->
-            <!-- 左侧：添加/编辑账号表单 -->
-            <div class="card account-form-card" id="account-config-card">
-              <div class="card-header">
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <h3 style="margin: 0; font-size: 15px; font-weight: 700;">
-                    {{ accountForm.id ? i18n.t('accounts.viewAndEditTitle') : i18n.t('accounts.configNewTitle') }}
-                  </h3>
-                  @if (accountForm.id) {
-                    <span class="badge" style="background: var(--bg-hover, #f1f5f9); color: var(--primary, #0284c7); border: 1px solid var(--border-color, #cbd5e1); font-size: 11px; font-weight: 600;">
-                      {{ i18n.t('accounts.loadedBadge') }}: {{ accountForm.account_name }}
-                    </span>
-                  }
-                </div>
-                <div style="display: flex; gap: 8px;">
-                  @if (accountForm.id) {
-                    <button type="button" class="btn btn-sm btn-primary" (click)="startAddNewAccount()" style="font-weight: 600;">
-                      {{ i18n.t('accounts.addNewAccount') }}
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" (click)="resetAccountForm()">
-                      {{ i18n.t('accounts.clearNew') }}
-                    </button>
-                  }
-                </div>
+          <!-- 网盘账号列表卡片 (标准普通列表形式) -->
+          <div class="card" style="padding: 0; overflow: hidden; border-radius: 12px; border: 1px solid var(--border-color, #e2e8f0); box-shadow: 0 1px 3px rgba(0,0,0,0.05); background: #ffffff;">
+            <div class="card-header" style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-color, #e2e8f0); background: #ffffff;">
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                  <span>☁️</span> 网盘账号列表 ({{ accounts().length }})
+                </h3>
+                <span style="font-size: 12px; color: #64748b;">
+                  支持多账号批量托管与轮询洗链，点击【➕ 添加网盘账号】或【✏️ 编辑】可在弹窗中统一维护凭据与设置
+                </span>
               </div>
-              <form (ngSubmit)="saveAccountConfig()" class="account-form-body">
-                @if (currentSelectedAccount; as cur) {
-                  <div style="margin-bottom: 14px; background: var(--bg-hover, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 10px 14px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                      <div style="font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a); display: flex; align-items: center; gap: 6px;">
-                        <span>⚡ {{ cur.account_name }}</span>
-                        @if (cur.is_default) {
-                          <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 11px; font-weight: 700;">🟢 默认激活中</span>
-                        }
-                      </div>
-                      <div>
-                        @if (cur.status === 'valid') {
-                          @if (cur.is_over_quota) {
-                            <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px;">⚠️ 空间已超限</span>
-                          } @else {
-                            <span class="badge" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px;">🟢 连通正常</span>
-                          }
-                        } @else {
-                          <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px;">🔴 Cookie已失效</span>
-                        }
-                      </div>
-                    </div>
-                    <div style="display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted, #64748b);">
-                      <span>网盘昵称: <b style="color: var(--text-main, #0f172a);">{{ cur.nickname || '未同步' }}</b></span>
-                      <span>总容量: <b style="color: var(--text-main, #0f172a);">{{ cur.total_capacity || '--' }}</b></span>
-                      <span>剩余可用: <b [style.color]="cur.is_over_quota ? '#dc2626' : '#059669'">{{ cur.free_capacity || '--' }}</b></span>
-                      <span>验证时间: {{ cur.last_verified_at ? (cur.last_verified_at | date:'MM-dd HH:mm') : '未验证' }}</span>
-                    </div>
-                  </div>
-                } @else {
-                  <div style="margin-bottom: 14px; font-size: 12px; color: var(--text-muted, #64748b); background: var(--bg-secondary, #f8fafc); border: 1px dashed var(--border-color, #cbd5e1); border-radius: 8px; padding: 8px 12px;">
-                    {{ i18n.t('accounts.syncTip') }}
-                  </div>
-                }
-
-                <div class="form-group">
-                  <label>网盘平台 <span class="required">*</span></label>
-                  <select [(ngModel)]="accountForm.drive_type" name="acc_drive_type">
-                    <option value="quark">⚡ 夸克网盘 (Quark) - 支持全自动洗链与转存</option>
-                    <option value="baidu" disabled>📦 百度网盘 (Baidu) - 规划中</option>
-                    <option value="aliyun" disabled>☁️ 阿里云盘 (Aliyun) - 规划中</option>
-                  </select>
-                </div>
-
-                <div class="form-group">
-                  <label>账号标识备注 <span class="required">*</span></label>
-                  <input 
-                    type="text" 
-                    [(ngModel)]="accountForm.account_name" 
-                    name="acc_name" 
-                    placeholder="如：站长主力夸克盘 / 2号推广备用盘" 
-                    required 
-                  />
-                </div>
-
-                <div class="form-group">
-                  <label>默认保存目标文件夹</label>
-                  <div style="display: flex; gap: 8px;">
-                    <input 
-                      type="text" 
-                      [(ngModel)]="accountForm.target_folder_name" 
-                      name="acc_folder_name" 
-                      readonly 
-                      style="background: #f8fafc; font-weight: 600; flex: 1;" 
-                    />
-                    <input type="hidden" [(ngModel)]="accountForm.target_folder_fid" name="acc_folder_fid" />
-                    @if (accountForm.id) {
-                      <button type="button" class="btn btn-secondary btn-sm" (click)="openFolderPickerById(accountForm.id)">📁 浏览选择</button>
-                    }
-                  </div>
-                  <small style="color: #64748b; font-size: 11px; margin-top: 4px; display: block;">
-                    默认转存至根目录 <code>/</code>，您可点击【📁 浏览选择】或在右侧卡片中自由挑选/新建/删除网盘目录。
-                  </small>
-                </div>
-
-                <div class="form-group">
-                  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" [(ngModel)]="accountForm.is_default" name="acc_is_default" style="width: 16px; height: 16px;" />
-                    <span>设为系统默认转存网盘（洗链时优先选用）</span>
-                  </label>
-                </div>
-
-                <div class="form-group">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <label style="margin: 0;">网页端 Cookie 凭据 <span class="required">*</span></label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                      @if (accountForm.cookie) {
-                        <button type="button" class="btn btn-xs btn-secondary" (click)="copyCurrentCookie()" style="font-size: 11px; padding: 2px 8px; font-weight: 600;" title="一键复制完整 Cookie 到剪贴板">
-                          {{ i18n.t('accounts.copyCookie') }}
-                        </button>
-                      }
-                      <span style="font-size: 11px; color: var(--primary, #0284c7); font-weight: 600;">
-                        {{ accountForm.id ? (accountForm.cookie ? i18n.t('accounts.cookieLoadedNotice') : i18n.t('accounts.cookieKeepNotice')) : i18n.t('accounts.cookieRequired') }}
-                      </span>
-                    </div>
-                  </div>
-                  <textarea 
-                    [(ngModel)]="accountForm.cookie" 
-                    name="acc_cookie" 
-                    rows="5" 
-                    [placeholder]="i18n.t('accounts.cookiePlaceholder')"
-                    style="font-family: monospace; font-size: 12px; resize: vertical; line-height: 1.45; word-break: break-all;"
-                  ></textarea>
-                </div>
-
-                <!-- 贴心获取教程提示 -->
-                <div class="cookie-guide-box">
-                  <div class="guide-title">💡 30秒快速获取夸克 Cookie：</div>
-                  <ol>
-                    <li>电脑浏览器访问 <a href="https://pan.quark.cn" target="_blank">pan.quark.cn</a> 并正常登录您的账号；</li>
-                    <li>按 <b>F12</b> 打开开发者工具，切换到 <b>Network (网络)</b> 标签；</li>
-                    <li>刷新网页（F5），点击左侧任意一个网络请求；</li>
-                    <li>在右侧 <b>Headers -> Request Headers</b> 复制 <code>Cookie:</code> 后的全部内容，粘贴至上方输入框。</li>
-                  </ol>
-                </div>
-
-                <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
-                  <button type="submit" class="btn btn-primary" [disabled]="accountLoading()" style="padding: 10px 20px; font-weight: 600;">
-                    {{ accountLoading() ? '正在连通测试与保存...' : (accountForm.id ? i18n.t('accounts.saveAndVerify') : i18n.t('accounts.addAndVerify')) }}
-                  </button>
-                </div>
-              </form>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-sm btn-primary" (click)="openNewAccountModal()" style="font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                  <span>➕</span> 添加网盘账号
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" (click)="openBatchImportModal()" style="font-weight: 600; display: inline-flex; align-items: center; gap: 5px; background: #059669; color: #ffffff; border-color: #059669;" title="选择夸克网盘指定目录，自动推断学科并批量建档生成分享上架">
+                  <span>🚀</span> 网盘目录批量上新
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" (click)="verifyAllAccounts()" [disabled]="verifyAllLoading()" title="重新检测所有托管账号的Cookie有效性与存储空间">
+                  {{ verifyAllLoading() ? '⏳ 正在检测...' : '🔄 一键检测全量账号' }}
+                </button>
+                <button type="button" class="btn btn-sm btn-secondary" (click)="loadAccounts()">
+                  刷新列表
+                </button>
+              </div>
             </div>
 
-            <!-- 右侧：已配置账号卡片列表 -->
-            <div style="display: flex; flex-direction: column; gap: 16px;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="font-size: 15px; font-weight: 700; color: #0f172a;">已托管的网盘账号 ({{ accounts().length }})</h3>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                  <button type="button" class="btn btn-sm btn-primary" (click)="startAddNewAccount()" style="font-weight: 600;">➕ 添加新网盘账号</button>
-                  <button type="button" class="btn btn-sm btn-secondary" (click)="verifyAllAccounts()" [disabled]="verifyAllLoading()" title="全量批量检测所有已托管账号的Cookie有效性与存储空间">
-                    {{ verifyAllLoading() ? '⏳ 正在检测...' : '🔄 一键检测所有账号状态' }}
-                  </button>
-                  <button type="button" class="btn btn-sm btn-secondary" (click)="loadAccounts()">刷新列表</button>
-                </div>
+            @if (accounts().length === 0) {
+              <div style="padding: 48px 20px; text-align: center; color: #64748b;">
+                <div style="font-size: 40px; margin-bottom: 12px;">☁️</div>
+                <div style="font-size: 15px; font-weight: 700; color: #1e293b;">尚未添加任何网盘账号</div>
+                <p style="font-size: 13px; margin: 6px 0 16px 0; color: #64748b;">添加您的夸克网盘账号后，系统即可自动识别真实用户名与夸克UID，激活一键全自动转存与换链功能。</p>
+                <button type="button" class="btn btn-primary" (click)="openNewAccountModal()">➕ 立即添加第一个网盘账号</button>
               </div>
+            } @else {
+              <div class="table-responsive" style="overflow-x: auto;">
+                <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #475569; text-align: left;">
+                      <th style="padding: 12px 16px; font-weight: 600;">账号标识 / 平台</th>
+                      <th style="padding: 12px 16px; font-weight: 600;">夸克用户名 (昵称)</th>
+                      <th style="padding: 12px 16px; font-weight: 600;">夸克 UID</th>
+                      <th style="padding: 12px 16px; font-weight: 600;">连通状态</th>
+                      <th style="padding: 12px 16px; font-weight: 600;">存储空间使用情况</th>
+                      <th style="padding: 12px 16px; font-weight: 600;">默认转存目录</th>
+                      <th style="padding: 12px 16px; font-weight: 600;">上次检测</th>
+                      <th style="padding: 12px 16px; font-weight: 600; text-align: right;">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (acc of accounts(); track acc.id) {
+                      <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" [style.background]="acc.is_default ? '#f0fdf4' : 'transparent'">
+                        <!-- 账号标识 / 平台 -->
+                        <td style="padding: 14px 16px;">
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #e0f2fe; color: #0284c7; font-weight: 700; white-space: nowrap;">⚡ 夸克</span>
+                            <div>
+                              <div style="font-weight: 700; color: #0f172a; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                                <span>{{ acc.account_name }}</span>
+                                @if (acc.is_default) {
+                                  <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 10px; font-weight: 700; padding: 1px 6px;">🟢 默认</span>
+                                }
+                              </div>
+                              @if (acc.cookie_masked) {
+                                <div style="font-size: 11px; color: #94a3b8; font-family: monospace; margin-top: 2px;" title="Cookie 凭据">
+                                  {{ acc.cookie_masked }}
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        </td>
 
-              @if (accounts().length === 0) {
-                <div class="card" style="padding: 40px 20px; text-align: center; color: #64748b;">
-                  <div style="font-size: 36px; margin-bottom: 8px;">☁️</div>
-                  <div style="font-size: 14px; font-weight: 600; color: #334155;">尚未添加任何网盘账号</div>
-                  <p style="font-size: 12px; margin-top: 4px;">在左侧添加您的夸克网盘账号后，即可激活一键全自动转存与换链功能。</p>
-                </div>
-              }
-
-              @for (acc of accounts(); track acc.id) {
-                <div class="card account-item-card" 
-                     [class.is-default]="acc.is_default" 
-                     [class.is-selected]="accountForm.id === acc.id"
-                     [class.is-over-quota]="acc.is_over_quota"
-                     (click)="selectAccount(acc)">
-                  <div class="acc-card-header">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                      <div class="drive-icon-badge quark">⚡</div>
-                      <div>
-                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                          <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0;">{{ acc.account_name }}</h4>
-                          @if (accountForm.id === acc.id) {
-                            <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; font-weight: 700; font-size: 11px;">
-                              {{ i18n.t('accounts.selectedOnLeft') }}
+                        <!-- 夸克用户名 -->
+                        <td style="padding: 14px 16px;">
+                          <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 15px;">👤</span>
+                            <span style="font-weight: 600; color: #1e293b; font-size: 13px;">
+                              {{ acc.nickname || '未同步' }}
                             </span>
-                          }
-                          @if (acc.is_default) {
-                            <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-weight: 700;">🟢 默认激活中</span>
+                          </div>
+                        </td>
+
+                        <!-- 夸克 UID -->
+                        <td style="padding: 14px 16px;">
+                          @if (acc.uid) {
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 3px 8px;">
+                              <code style="font-family: monospace; font-size: 11px; color: #0284c7; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="acc.uid">{{ acc.uid }}</code>
+                              <button type="button" (click)="copyAccountUID(acc.uid)" title="复制 UID" style="border: none; background: transparent; cursor: pointer; padding: 0; font-size: 12px; line-height: 1; color: #64748b;">📋</button>
+                            </div>
                           } @else {
-                            <button type="button" class="btn btn-xs" style="background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer; padding: 2px 8px;" (click)="setDefaultAccount(acc, $event)">
-                              ⚪ 点击设为默认
-                            </button>
+                            <span style="color: #94a3b8; font-size: 12px;">--</span>
                           }
-                        </div>
-                        <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
-                          平台: 夸克网盘 · 昵称: <b>{{ acc.nickname || '未同步' }}</b>
-                        </div>
-                      </div>
-                    </div>
+                        </td>
 
-                    <div>
-                      @if (acc.status === 'valid') {
-                        @if (acc.is_over_quota) {
-                          <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px;">⚠️ 空间已超限</span>
-                        } @else {
-                          <span class="badge" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px;">🟢 连通正常</span>
-                        }
-                      } @else {
-                        <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px;">🔴 Cookie已失效</span>
-                      }
-                    </div>
-                  </div>
+                        <!-- 连通状态 -->
+                        <td style="padding: 14px 16px;">
+                          @if (acc.status === 'valid') {
+                            @if (acc.is_over_quota) {
+                              <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px; font-weight: 600;">⚠️ 空间已超限</span>
+                            } @else {
+                              <span class="badge" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 600;">🟢 连通正常</span>
+                            }
+                          } @else {
+                            <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; font-size: 11px; font-weight: 600;" [title]="acc.error_message || 'Cookie已失效'">🔴 Cookie已失效</span>
+                          }
+                          @if (acc.error_message) {
+                            <div style="font-size: 10px; color: #dc2626; margin-top: 3px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="acc.error_message">
+                              {{ acc.error_message }}
+                            </div>
+                          }
+                        </td>
 
-                  <div class="acc-metrics-grid">
-                    <div class="metric-cell">
-                      <span class="metric-label">网盘总空间</span>
-                      <span class="metric-val">{{ acc.total_capacity || '--' }}</span>
-                    </div>
-                    <div class="metric-cell">
-                      <span class="metric-label">{{ acc.is_over_quota ? '已用容量 (超限)' : '可用剩余容量' }}</span>
-                      <span class="metric-val" [style.color]="acc.is_over_quota ? '#dc2626' : '#059669'">
-                        {{ acc.is_over_quota ? (acc.used_capacity || '--') : (acc.free_capacity || '--') }}
-                      </span>
-                    </div>
-                    <div class="metric-cell">
-                      <span class="metric-label">默认转存目录</span>
-                      <span class="metric-val" style="font-family: monospace;">📁 {{ formatFolderPath(acc.target_folder_name) }}</span>
-                    </div>
-                    <div class="metric-cell">
-                      <span class="metric-label">上次验证</span>
-                      <span class="metric-val" style="font-size: 11px; color: #64748b;">
-                        {{ acc.last_verified_at ? (acc.last_verified_at | date:'MM-dd HH:mm') : '未验证' }}
-                      </span>
-                    </div>
-                  </div>
+                        <!-- 存储空间 -->
+                        <td style="padding: 14px 16px;">
+                          <div style="font-size: 12px; color: #334155;">
+                            已用: <b [style.color]="acc.is_over_quota ? '#dc2626' : '#0f172a'">{{ acc.used_capacity || '--' }}</b> / 
+                            总计: <span>{{ acc.total_capacity || '--' }}</span>
+                          </div>
+                          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                            剩余: <span [style.color]="acc.is_over_quota ? '#dc2626' : '#059669'">{{ acc.free_capacity || '--' }}</span>
+                          </div>
+                        </td>
 
-                  @if (acc.error_message) {
-                    <div style="margin-top: 10px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 6px 10px; font-size: 11px; color: #be123c;">
-                      ⚠️ {{ acc.error_message }}
-                    </div>
-                  }
+                        <!-- 默认转存目录 -->
+                        <td style="padding: 14px 16px;">
+                          <div style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-family: monospace; color: #0369a1;">
+                            <span>📁</span>
+                            <span style="max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="acc.target_folder_name">
+                              {{ formatFolderPath(acc.target_folder_name) }}
+                            </span>
+                          </div>
+                        </td>
 
-                  <div class="acc-card-footer">
-                    <div style="font-size: 11px; color: #94a3b8; font-family: monospace;">
-                      Cookie: {{ acc.cookie_masked }}
-                    </div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                      @if (acc.is_default) {
-                        <button type="button" class="btn btn-sm" style="background: #10b981; color: #ffffff; border: 1px solid #059669; font-weight: 700; box-shadow: 0 1px 3px rgba(16, 185, 129, 0.3); cursor: default;" (click)="$event.stopPropagation()" title="当前已是默认转存账号">
-                          ✅ 当前默认
-                        </button>
-                      } @else {
-                        <button type="button" class="btn btn-sm btn-secondary" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 600;" (click)="setDefaultAccount(acc, $event)" title="立即将此账号设为默认转存账号">
-                          ⭐ 设为默认
-                        </button>
-                      }
-                      <button type="button" class="btn btn-sm btn-secondary" (click)="verifyAccount(acc); $event.stopPropagation()" title="重新发送探测包验证Cookie是否可用并刷新容量">
-                        🔍 重新验证
-                      </button>
-                      <button type="button" class="btn btn-sm btn-secondary" (click)="openFolderPicker(acc); $event.stopPropagation()" title="选择个人网盘下的目标文件夹">
-                        📁 选择目录
-                      </button>
-                      <button type="button" class="btn btn-sm btn-secondary" (click)="selectAccount(acc, true, true); $event.stopPropagation()" title="在左侧表单中查看完整凭据与修改配置">
-                        ✏️ 查看/修改
-                      </button>
-                      <button type="button" class="btn btn-sm" style="color: #dc2626; border-color: #fca5a5;" (click)="deleteAccount(acc.id!); $event.stopPropagation()">
-                        🗑️ 删除
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
+                        <!-- 上次检测 -->
+                        <td style="padding: 14px 16px; font-size: 11px; color: #64748b;">
+                          {{ acc.last_verified_at ? (acc.last_verified_at | date:'MM-dd HH:mm') : '未验证' }}
+                        </td>
+
+                        <!-- 操作 -->
+                        <td style="padding: 14px 16px; text-align: right;">
+                          <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
+                            @if (!acc.is_default) {
+                              <button type="button" class="btn btn-xs btn-secondary" (click)="setDefaultAccount(acc, $event)" title="设为默认转存账号" style="font-size: 11px; padding: 3px 8px;">
+                                ⭐ 设为默认
+                              </button>
+                            }
+                            <button type="button" class="btn btn-xs btn-secondary" (click)="verifyAccount(acc)" title="重新发送探测包验证Cookie是否可用并刷新容量" style="font-size: 11px; padding: 3px 8px;">
+                              🔍 验证
+                            </button>
+                            <button type="button" class="btn btn-xs btn-secondary" (click)="openFolderPicker(acc)" title="选择目标转存文件夹" style="font-size: 11px; padding: 3px 8px;">
+                              📁 目录
+                            </button>
+                            <button type="button" class="btn btn-xs btn-primary" (click)="openEditAccountModal(acc, $event)" title="编辑账号与修改配置" style="font-size: 11px; padding: 3px 8px;">
+                              ✏️ 编辑
+                            </button>
+                            <button type="button" class="btn btn-xs" style="color: #dc2626; border: 1px solid #fecdd3; background: #fff1f2; font-size: 11px; padding: 3px 8px;" (click)="deleteAccount(acc.id!)" title="删除账号">
+                              🗑️ 删除
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
           </div>
 
           <!-- 独立测试转存与换链沙盒 -->
@@ -8971,5 +8927,276 @@
       </div>
     </div>
   }
+  <!-- 模态弹窗：添加 / 编辑网盘账号 (普通列表弹窗修改形式) -->
+  @if (isAccountModalOpen()) {
+    <div class="modal-backdrop" (click)="closeAccountModal()">
+      <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 620px; width: 94%; background: #ffffff; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15);">
+        <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+              <span>{{ accountForm.id ? '✏️ 编辑网盘账号' : '➕ 添加新网盘账号' }}</span>
+              @if (accountForm.id) {
+                <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 11px;">{{ accountForm.account_name }}</span>
+              }
+            </h3>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">
+              保存或检测时将自动连通夸克网盘，智能识别并获取真实用户名、UID及存储容量
+            </p>
+          </div>
+          <button type="button" class="modal-close-btn" (click)="closeAccountModal()" style="border: none; background: transparent; font-size: 18px; cursor: pointer; color: #64748b;">✕</button>
+        </div>
+
+        <form (ngSubmit)="saveAccountConfig()">
+          <div class="modal-body" style="padding: 20px; max-height: calc(85vh - 130px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px;">
+            <!-- 网盘平台与账号备注 -->
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 14px;">
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">网盘平台 <span class="required" style="color: #ef4444;">*</span></label>
+                <select [(ngModel)]="accountForm.drive_type" name="m_drive_type" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;">
+                  <option value="quark">⚡ 夸克网盘 (Quark)</option>
+                  <option value="baidu" disabled>📦 百度网盘 (规划中)</option>
+                  <option value="aliyun" disabled>☁️ 阿里云盘 (规划中)</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">账号标识备注 <span class="required" style="color: #ef4444;">*</span></label>
+                <input 
+                  type="text" 
+                  [(ngModel)]="accountForm.account_name" 
+                  name="m_acc_name" 
+                  placeholder="如：站长主力夸克盘 / 2号推广备用盘" 
+                  required 
+                  style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;"
+                />
+              </div>
+            </div>
+
+            <!-- 网页端 Cookie 凭据 -->
+            <div class="form-group" style="margin: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 12px; font-weight: 600; color: #334155; margin: 0;">网页端 Cookie 凭据 <span class="required" style="color: #ef4444;">*</span></label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  @if (accountForm.cookie) {
+                    <button type="button" class="btn btn-xs btn-secondary" (click)="copyCurrentCookie()" style="font-size: 11px; padding: 2px 8px;">
+                      📋 复制 Cookie
+                    </button>
+                  }
+                  <button type="button" class="btn btn-xs btn-secondary" (click)="testAndFetchAccountInfoInModal()" style="font-size: 11px; padding: 2px 8px; color: #0284c7; border-color: #bae6fd; background: #f0f9ff;" title="立即从 Cookie 解析并调用夸克接口同步用户名与UID">
+                    🔍 立即检测并同步身份
+                  </button>
+                </div>
+              </div>
+              <textarea 
+                [(ngModel)]="accountForm.cookie" 
+                name="m_cookie" 
+                rows="4" 
+                (blur)="onCookieInputBlur()"
+                placeholder="在电脑浏览器访问 pan.quark.cn 登录后按 F12，在控制台输入 copy(document.cookie) 并回车，随后粘贴到此处" 
+                style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: monospace; font-size: 12px; resize: vertical; box-sizing: border-box;"
+                [required]="!accountForm.id"></textarea>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-top: 4px;">
+                <span>💡 需包含 <code>__uid</code>、<code>__pus</code> 或 <code>__puus</code> 等认证项</span>
+                <a href="https://pan.quark.cn" target="_blank" rel="noopener noreferrer" style="color: #0284c7; text-decoration: underline;">打开夸克网页端 ↗</a>
+              </div>
+            </div>
+
+            <!-- 自动获取到的用户名与 UID 信息展示 / 编辑区 -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+              <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="display: flex; align-items: center; gap: 6px;">
+                  <span>✨</span> 夸克网盘账号身份信息 (自动获取 & 可微调)
+                </span>
+                <span style="font-size: 11px; font-weight: normal; color: #10b981;">
+                  {{ accountForm.nickname ? '🟢 已获取用户名' : '⚪ 输入Cookie后自动解析' }}
+                </span>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group" style="margin: 0;">
+                  <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block;">夸克用户名 / 昵称</label>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="accountForm.nickname" 
+                    name="m_nickname" 
+                    placeholder="自动获取（如：满心欢喜的向日葵）" 
+                    style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; background: #ffffff;"
+                  />
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block;">夸克 UID (唯一标识/推广UID)</label>
+                  <input 
+                    type="text" 
+                    [(ngModel)]="accountForm.uid" 
+                    name="m_uid" 
+                    placeholder="自动从Cookie提取或输入推广UID" 
+                    style="width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; font-family: monospace; background: #ffffff;"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- 默认保存目标文件夹 -->
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">默认保存目标文件夹</label>
+              <div style="display: flex; gap: 8px;">
+                <input 
+                  type="text" 
+                  [(ngModel)]="accountForm.target_folder_name" 
+                  name="m_folder_name" 
+                  readonly 
+                  style="background: #f8fafc; font-weight: 600; flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;" 
+                />
+                <input type="hidden" [(ngModel)]="accountForm.target_folder_fid" name="m_folder_fid" />
+                @if (accountForm.id) {
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="openFolderPickerById(accountForm.id)">📁 浏览选择目录</button>
+                }
+              </div>
+              <small style="color: #64748b; font-size: 11px; margin-top: 4px; display: block;">
+                默认保存至根目录 <code>/</code>，您可在保存后点击【📁 目录】自由挑选或新建专有存储目录。
+              </small>
+            </div>
+
+            <!-- 设为系统默认账号 -->
+            <div class="form-group" style="margin: 0;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #1e293b; font-weight: 600;">
+                <input type="checkbox" [(ngModel)]="accountForm.is_default" name="m_is_default" style="width: 16px; height: 16px;" />
+                <span>设为系统默认转存网盘（全自动洗链与换链时优先选用此账号）</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 模态框底部操作栏 -->
+          <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+            <div>
+              @if (accountForm.id) {
+                <button type="button" class="btn btn-sm btn-secondary" style="color: #dc2626; border-color: #fecdd3;" (click)="deleteAccount(accountForm.id); closeAccountModal()">
+                  🗑️ 删除此账号
+                </button>
+              }
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" class="btn btn-secondary" (click)="closeAccountModal()">取消</button>
+              <button type="submit" class="btn btn-primary" [disabled]="accountLoading()" style="font-weight: 600;">
+                {{ accountLoading() ? '⏳ 正在保存并验证...' : '💾 保存账号配置' }}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- 夸克网盘整目录批量建档上新模态弹窗 -->
+  @if (isBatchImportModalOpen()) {
+    <div class="modal-backdrop" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 20px;" (click)="closeBatchImportModal()">
+      <div class="modal-dialog" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 680px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;" (click)="$event.stopPropagation()">
+        <!-- 弹窗头部 -->
+        <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+              <span>📁</span> 夸克网盘整目录批量建档上新
+            </h3>
+            <span style="font-size: 12px; color: #64748b; margin-top: 2px; display: block;">
+              选择网盘目录，系统自动扫描并基于启发式引擎推断学科与标题，一键批量生成公开分享链接并建档入库
+            </span>
+          </div>
+          <button type="button" (click)="closeBatchImportModal()" style="border: none; background: transparent; font-size: 20px; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
+        </div>
+
+        <!-- 弹窗内容 -->
+        <div class="modal-body" style="padding: 20px; overflow-y: auto; flex: 1;">
+          <!-- 账号与参数配置 -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; background: #f8fafc; padding: 14px; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <div>
+              <label style="display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px;">归属网盘账号</label>
+              <select [ngModel]="batchImportAccountId()" (ngModelChange)="batchImportAccountId.set($event); fetchBatchImportFolders($event, '0')" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
+                @for (acc of accounts(); track acc.id) {
+                  <option [value]="acc.id">{{ acc.account_name }} ({{ acc.nickname || '夸克用户' }})</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 4px;">发布目标频道</label>
+              <select [ngModel]="batchImportChannel()" (ngModelChange)="batchImportChannel.set($event)" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px;">
+                <option value="edu">📚 刚需教辅与学习资料 (edu)</option>
+                <option value="book">📖 统编电子教材专区 (book)</option>
+              </select>
+            </div>
+            <div style="grid-column: span 2; display: flex; align-items: center; justify-content: space-between;">
+              <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #1e293b; cursor: pointer;">
+                <input type="checkbox" [ngModel]="batchImportAutoPublish()" (ngModelChange)="batchImportAutoPublish.set($event)" style="width: 16px; height: 16px;" />
+                <span>生成后立即上架前台发布 (若取消勾选则保留在后台资料库中)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 目录面包屑导航 -->
+          <div style="margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-size: 12px; font-weight: 600; color: #475569;">选择要建档的网盘目录：</span>
+              <span style="font-size: 11px; color: #0284c7;">当前选定：<b>{{ batchImportFolderName() }}</b></span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap; background: #ffffff; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 8px; font-size: 12px;">
+              @for (crumb of batchImportBreadcrumbs(); track crumb.fid; let i = $index) {
+                <span (click)="navigateBatchImportBreadcrumb(i)" style="color: #0284c7; cursor: pointer; text-decoration: underline;">
+                  {{ crumb.name }}
+                </span>
+                @if (i < batchImportBreadcrumbs().length - 1) {
+                  <span style="color: #94a3b8;">/</span>
+                }
+              }
+            </div>
+          </div>
+
+          <!-- 子文件夹列表 (可下钻选择) -->
+          <div style="border: 1px solid #e2e8f0; border-radius: 8px; max-height: 200px; overflow-y: auto;">
+            @if (batchImportLoading()) {
+              <div style="padding: 24px; text-align: center; color: #64748b; font-size: 13px;">
+                ⏳ 正在加载网盘目录列表...
+              </div>
+            } @else if (batchImportFolders().length === 0) {
+              <div style="padding: 24px; text-align: center; color: #94a3b8; font-size: 12px;">
+                当前目录下无更多子文件夹（点击下方按钮将直接扫描本目录所有文件进行建档）
+              </div>
+            } @else {
+              <div style="padding: 4px;">
+                @for (folder of batchImportFolders(); track folder.fid) {
+                  <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: background 0.15s;"
+                       (click)="enterBatchImportFolder(folder)">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #1e293b;">
+                      <span>📁</span>
+                      <span style="font-weight: 500;">{{ folder.file_name }}</span>
+                    </div>
+                    <span style="font-size: 11px; color: #0284c7;">进入该目录 &rarr;</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- 执行中的进度反馈 -->
+          @if (batchImportSubmitting()) {
+            <div style="margin-top: 16px; padding: 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1d4ed8; font-size: 13px; display: flex; align-items: center; gap: 10px;">
+              <span>⏳</span>
+              <span>{{ batchImportProgressText() }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- 弹窗底部操作栏 -->
+        <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <span style="font-size: 12px; color: #64748b;">
+            将自动为此目录内的资源生成专属分享短链
+          </span>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-secondary" (click)="closeBatchImportModal()" [disabled]="batchImportSubmitting()">取消</button>
+            <button type="button" class="btn btn-primary" (click)="executeBatchImportCurrentFolder()" [disabled]="batchImportSubmitting() || batchImportLoading()" style="background: #059669; border-color: #059669; font-weight: 600;">
+              {{ batchImportSubmitting() ? '🚀 正在批量建档生成中...' : '🚀 导入【' + batchImportFolderName() + '】全部文件' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
 </div>
 

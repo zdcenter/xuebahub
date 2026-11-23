@@ -196,6 +196,7 @@ type NetdiskAccount struct {
 	TargetFolderName string     `gorm:"type:varchar(255);default:'/'" json:"target_folder_name"`
 	IsDefault        bool       `gorm:"default:false" json:"is_default"`
 	Nickname         string     `gorm:"type:varchar(100)" json:"nickname"`
+	UID              string     `gorm:"column:uid;type:varchar(100)" json:"uid"`
 	TotalCapacity    string     `gorm:"type:varchar(50)" json:"total_capacity"`
 	UsedCapacity     string     `gorm:"type:varchar(50)" json:"used_capacity"`
 	FreeCapacity     string     `gorm:"type:varchar(50)" json:"free_capacity"`

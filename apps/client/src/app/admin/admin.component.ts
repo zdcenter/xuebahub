@@ -7,6 +7,7 @@ import { CoverGeneratorService } from '../services/cover-generator.service';
 import { I18nService } from '../services/i18n.service';
 import { SmartMetaHelperService, AiConfig } from '../services/smart-meta-helper.service';
 import { APP_VERSION } from '../version';
+import { parseMarkdown } from '../utils/markdown.util';
 
 export interface StageConfigItem {
   key: string;
@@ -94,6 +95,14 @@ export class AdminComponent implements OnInit {
   aiConfigVersion = signal<number>(0);
   suggestedTitleNew = signal<string>('');
   suggestedTitleEdit = signal<string>('');
+
+  // 📝 内容介绍 Markdown 实时预览切换
+  newPreviewDesc = signal<boolean>(false);
+  editPreviewDesc = signal<boolean>(false);
+
+  renderMarkdown(text: string | null | undefined): string {
+    return parseMarkdown(text);
+  }
 
   // 编译构建版本号信息
   appVersion = APP_VERSION;
@@ -2882,8 +2891,12 @@ export class AdminComponent implements OnInit {
     cookie: '',
     target_folder_fid: '0',
     target_folder_name: '/',
-    is_default: true
+    is_default: true,
+    nickname: '',
+    uid: ''
   };
+
+  isAccountModalOpen = signal<boolean>(false);
 
   testTransfer = {
     account_id: '',
@@ -2981,7 +2994,9 @@ export class AdminComponent implements OnInit {
       cookie: acc.cookie || '',
       target_folder_fid: acc.target_folder_fid || '0',
       target_folder_name: this.formatFolderPath(acc.target_folder_name),
-      is_default: acc.is_default || false
+      is_default: acc.is_default || false,
+      nickname: acc.nickname || '',
+      uid: acc.uid || ''
     };
     if (notify) {
       const msg = this.i18n.t('accounts.accountLoadedToast').replace('{name}', acc.account_name);
@@ -2992,6 +3007,71 @@ export class AdminComponent implements OnInit {
       if (el) {
         el.scrollIntoView({ behavior: 'smooth' });
       }
+    }
+  }
+
+  openNewAccountModal() {
+    this.resetAccountForm();
+    this.isAccountModalOpen.set(true);
+  }
+
+  openEditAccountModal(acc: NetdiskAccountDto, event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.accountForm = {
+      id: acc.id || '',
+      drive_type: acc.drive_type || 'quark',
+      account_name: acc.account_name,
+      cookie: acc.cookie || '',
+      target_folder_fid: acc.target_folder_fid || '0',
+      target_folder_name: this.formatFolderPath(acc.target_folder_name),
+      is_default: acc.is_default || false,
+      nickname: acc.nickname || '',
+      uid: acc.uid || ''
+    };
+    this.isAccountModalOpen.set(true);
+  }
+
+  closeAccountModal() {
+    this.isAccountModalOpen.set(false);
+  }
+
+  onCookieInputBlur() {
+    if (!this.accountForm.cookie) return;
+    if (!this.accountForm.uid) {
+      const match = this.accountForm.cookie.match(/(?:^|;\s*)__uid=([^;]+)/) ||
+                    this.accountForm.cookie.match(/(?:^|;\s*)b-user-id=([^;]+)/) ||
+                    this.accountForm.cookie.match(/(?:^|;\s*)uid=([^;]+)/);
+      if (match && match[1]) {
+        this.accountForm.uid = match[1].trim();
+      }
+    }
+  }
+
+  testAndFetchAccountInfoInModal() {
+    if (!this.accountForm.cookie) {
+      this.showToast('请先粘贴 Cookie 凭据后再进行检测', 'error');
+      return;
+    }
+    this.onCookieInputBlur();
+    this.showToast('🔍 正在连通夸克网盘并同步账号与UID信息...');
+    this.saveAccountConfig(true);
+  }
+
+  copyAccountUID(uid?: string) {
+    if (!uid) {
+      this.showToast('该账号暂无 UID', 'error');
+      return;
+    }
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(uid).then(() => {
+        this.showToast('📋 夸克 UID 已复制到剪贴板', 'success');
+      }).catch(() => {
+        this.showToast('复制失败', 'error');
+      });
+    } else {
+      this.showToast('复制失败', 'error');
     }
   }
 
@@ -3011,7 +3091,7 @@ export class AdminComponent implements OnInit {
     }
   }
 
-  saveAccountConfig() {
+  saveAccountConfig(keepModalOpen = false) {
     if (!this.accountForm.cookie && !this.accountForm.id) {
       this.showToast('请粘贴网页端获取的 Cookie 凭据', 'error');
       return;
@@ -3023,7 +3103,9 @@ export class AdminComponent implements OnInit {
       cookie: this.accountForm.cookie,
       target_folder_fid: this.accountForm.target_folder_fid,
       target_folder_name: this.accountForm.target_folder_name,
-      is_default: this.accountForm.is_default
+      is_default: this.accountForm.is_default,
+      nickname: this.accountForm.nickname,
+      uid: this.accountForm.uid
     };
     if (this.accountForm.id) {
       payload.id = this.accountForm.id;
@@ -3032,12 +3114,21 @@ export class AdminComponent implements OnInit {
     this.resService.saveAccount(payload).subscribe({
       next: (saved) => {
         this.accountLoading.set(false);
+        this.accountForm.id = saved.id || this.accountForm.id;
+        if (saved.nickname) {
+          this.accountForm.nickname = saved.nickname;
+        }
+        if (saved.uid) {
+          this.accountForm.uid = saved.uid;
+        }
+        if (!keepModalOpen) {
+          this.isAccountModalOpen.set(false);
+        }
         if (saved.status === 'valid') {
-          this.showToast(`✅ 账号【${saved.account_name}】连通验证成功！容量: ${saved.total_capacity}`, 'success');
+          this.showToast(`✅ 账号【${saved.account_name}】连通验证成功！用户: ${saved.nickname || '已同步'}，UID: ${saved.uid || '已获取'}`, 'success');
         } else {
           this.showToast(`⚠️ 账号已保存，但验证提示: ${saved.error_message}`, 'error');
         }
-        this.accountForm.id = saved.id || this.accountForm.id;
         this.loadAccounts(true);
       },
       error: (err) => {
@@ -3051,7 +3142,7 @@ export class AdminComponent implements OnInit {
     if (event) {
       event.stopPropagation();
     }
-    this.selectAccount(acc, true, true);
+    this.openEditAccountModal(acc, event);
   }
 
   setDefaultAccount(acc: NetdiskAccountDto, event?: Event) {
@@ -3084,12 +3175,7 @@ export class AdminComponent implements OnInit {
   }
 
   startAddNewAccount() {
-    this.resetAccountForm();
-    this.showToast(this.i18n.t('accounts.newAccountModeToast'));
-    const el = document.getElementById('account-config-card');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+    this.openNewAccountModal();
   }
 
   resetAccountForm() {
@@ -3100,7 +3186,9 @@ export class AdminComponent implements OnInit {
       cookie: '',
       target_folder_fid: '0',
       target_folder_name: '/',
-      is_default: this.accounts().length === 0
+      is_default: this.accounts().length === 0,
+      nickname: '',
+      uid: ''
     };
   }
 
@@ -3136,6 +3224,110 @@ export class AdminComponent implements OnInit {
         }
       },
       error: (err) => this.showToast('验证请求失败: ' + err.message, 'error')
+    });
+  }
+
+  // 夸克网盘整目录批量建档上新
+  isBatchImportModalOpen = signal<boolean>(false);
+  batchImportAccountId = signal<string>('');
+  batchImportPdirFid = signal<string>('0');
+  batchImportFolderName = signal<string>('根目录');
+  batchImportBreadcrumbs = signal<{ fid: string; name: string }[]>([{ fid: '0', name: '根目录' }]);
+  batchImportFolders = signal<{ fid: string; file_name: string }[]>([]);
+  batchImportLoading = signal<boolean>(false);
+  batchImportSubmitting = signal<boolean>(false);
+  batchImportChannel = signal<string>('edu');
+  batchImportAutoPublish = signal<boolean>(true);
+  batchImportProgressText = signal<string>('');
+
+  openBatchImportModal(acc?: NetdiskAccountDto) {
+    let targetAcc = acc;
+    if (!targetAcc) {
+      targetAcc = this.accounts().find(a => a.is_default) || this.accounts()[0];
+    }
+    if (!targetAcc || !targetAcc.id) {
+      this.showToast('请先配置并选中一个有效的夸克网盘账号', 'error');
+      return;
+    }
+    this.batchImportAccountId.set(targetAcc.id);
+    this.batchImportPdirFid.set('0');
+    this.batchImportFolderName.set('根目录');
+    this.batchImportBreadcrumbs.set([{ fid: '0', name: '根目录' }]);
+    this.batchImportChannel.set('edu');
+    this.batchImportAutoPublish.set(true);
+    this.batchImportProgressText.set('');
+    this.isBatchImportModalOpen.set(true);
+    this.fetchBatchImportFolders(targetAcc.id, '0');
+  }
+
+  closeBatchImportModal() {
+    if (this.batchImportSubmitting()) return;
+    this.isBatchImportModalOpen.set(false);
+  }
+
+  fetchBatchImportFolders(accId: string, pdirFid: string) {
+    this.batchImportLoading.set(true);
+    this.resService.listAccountFolders(accId, pdirFid).subscribe({
+      next: (folders) => {
+        this.batchImportFolders.set(folders || []);
+        this.batchImportLoading.set(false);
+      },
+      error: (err) => {
+        this.batchImportLoading.set(false);
+        this.showToast('获取网盘目录失败: ' + err.message, 'error');
+      }
+    });
+  }
+
+  enterBatchImportFolder(folder: { fid: string; file_name: string }) {
+    const accId = this.batchImportAccountId();
+    if (!accId) return;
+    this.batchImportPdirFid.set(folder.fid);
+    this.batchImportFolderName.set(folder.file_name);
+    this.batchImportBreadcrumbs.update(crumbs => [...crumbs, { fid: folder.fid, name: folder.file_name }]);
+    this.fetchBatchImportFolders(accId, folder.fid);
+  }
+
+  navigateBatchImportBreadcrumb(index: number) {
+    const crumbs = this.batchImportBreadcrumbs();
+    if (index >= crumbs.length) return;
+    const target = crumbs[index];
+    const accId = this.batchImportAccountId();
+    if (!accId) return;
+    this.batchImportPdirFid.set(target.fid);
+    this.batchImportFolderName.set(target.name);
+    this.batchImportBreadcrumbs.set(crumbs.slice(0, index + 1));
+    this.fetchBatchImportFolders(accId, target.fid);
+  }
+
+  executeBatchImportCurrentFolder() {
+    const accId = this.batchImportAccountId();
+    const pdirFid = this.batchImportPdirFid();
+    const folderName = this.batchImportFolderName();
+    if (!accId) {
+      this.showToast('未选择网盘账号', 'error');
+      return;
+    }
+    this.batchImportSubmitting.set(true);
+    this.batchImportProgressText.set(`正在扫描【${folderName}】并自动推断元数据、生成分享链...`);
+    
+    this.resService.batchImportQuarkFolder({
+      account_id: accId,
+      pdir_fid: pdirFid,
+      channel_slug: this.batchImportChannel(),
+      auto_publish: this.batchImportAutoPublish()
+    }).subscribe({
+      next: (res: any) => {
+        this.batchImportSubmitting.set(false);
+        const msg = res.message || '批量建档导入成功！';
+        this.showToast(msg, 'success');
+        this.isBatchImportModalOpen.set(false);
+        this.loadResources();
+      },
+      error: (err) => {
+        this.batchImportSubmitting.set(false);
+        this.showToast('批量建档上架失败: ' + (err.error?.message || err.message), 'error');
+      }
     });
   }
 
@@ -3717,13 +3909,42 @@ export class AdminComponent implements OnInit {
   }
 
   async saveEdit() {
-    if (!this.editForm.title || !this.editForm.quarkUrl) {
-      this.showToast('请至少填写资料标题和夸克推广链接！', 'error');
+    const hasQuark = !!this.editForm.quarkUrl?.trim();
+    const hasBaidu = !!this.editForm.baiduUrl?.trim();
+    if (!this.editForm.title?.trim() || (!hasQuark && !hasBaidu)) {
+      this.showToast('请至少填写资料标题，并提供夸克网盘或百度网盘链接之一！', 'error');
       return;
     }
 
     // 封面确定：严格使用用户上传或转存的书本/资料真实封面（不再自动生成海报冲刷覆盖）
     const finalCover = (this.editForm.cover_image || this.editCoverPreview() || '').trim();
+
+    const links: any[] = [];
+    if (hasQuark) {
+      links.push({
+        drive_type: 'quark',
+        share_url: this.editForm.quarkUrl.trim(),
+        account_id: this.editForm.quarkAccountId || undefined,
+        account_name: this.editForm.quarkAccountName || undefined,
+        file_size: this.editForm.quarkFileSize || this.editForm.file_size || '',
+        file_type: this.editForm.quarkFileType || (this.editForm.has_video ? '高清视频课' : 'PDF'),
+        resource_desc: this.editForm.quarkDesc || (this.editForm.has_video ? '包含超清视频合集' : '手机转存立享原画'),
+        is_primary: true,
+        password_hint: this.editForm.has_video ? '夸克APP原画倍速看视频' : '手机转存立享原画'
+      });
+    }
+    if (hasBaidu) {
+      links.push({
+        drive_type: 'baidu',
+        share_url: this.editForm.baiduUrl.trim(),
+        extract_code: this.editForm.baiduCode?.trim() || '',
+        file_size: this.editForm.baiduFileSize || '',
+        file_type: this.editForm.baiduFileType || 'PDF',
+        resource_desc: this.editForm.baiduDesc || '百度网盘转存通道',
+        is_primary: !hasQuark, // 若无夸克链接，则百度自动成为主推通道
+        password_hint: this.editForm.baiduCode?.trim() ? `提取码：${this.editForm.baiduCode.trim()}` : ''
+      });
+    }
 
     const payload: Partial<ResourceItemDto> = {
       channel_slug: this.editForm.channel_slug || 'edu',
@@ -3745,33 +3966,8 @@ export class AdminComponent implements OnInit {
       save_count: Number(this.editForm.save_count) || 0,
       file_tree: (this.editForm as any).file_tree || [],
       is_published: this.editForm.is_published,
-      links: [
-        {
-          drive_type: 'quark',
-          share_url: this.editForm.quarkUrl,
-          account_id: this.editForm.quarkAccountId || undefined,
-          account_name: this.editForm.quarkAccountName || undefined,
-          file_size: this.editForm.quarkFileSize || this.editForm.file_size || '',
-          file_type: this.editForm.quarkFileType || (this.editForm.has_video ? '高清视频课' : 'PDF'),
-          resource_desc: this.editForm.quarkDesc || (this.editForm.has_video ? '包含超清视频合集' : '手机转存立享原画'),
-          is_primary: true,
-          password_hint: this.editForm.has_video ? '夸克APP原画倍速看视频' : '手机转存立享原画'
-        }
-      ]
+      links: links
     };
-
-    if (this.editForm.baiduUrl) {
-      payload.links?.push({
-        drive_type: 'baidu',
-        share_url: this.editForm.baiduUrl,
-        extract_code: this.editForm.baiduCode,
-        file_size: this.editForm.baiduFileSize || '',
-        file_type: this.editForm.baiduFileType || 'PDF',
-        resource_desc: this.editForm.baiduDesc || '百度网盘备用转存',
-        is_primary: false,
-        password_hint: this.editForm.baiduCode ? `提取码：${this.editForm.baiduCode}` : ''
-      });
-    }
 
     this.resService.update(this.editForm.id, payload).subscribe({
       next: () => {
@@ -4171,13 +4367,42 @@ export class AdminComponent implements OnInit {
   }
 
   async saveNewResource() {
-    if (!this.newResource.title || !this.newResource.quarkUrl) {
-      this.showToast('请至少填写资料标题和夸克推广链接！', 'error');
+    const hasQuark = !!this.newResource.quarkUrl?.trim();
+    const hasBaidu = !!this.newResource.baiduUrl?.trim();
+    if (!this.newResource.title?.trim() || (!hasQuark && !hasBaidu)) {
+      this.showToast('请至少填写资料标题，并提供夸克网盘或百度网盘链接之一！', 'error');
       return;
     }
 
     // 封面确定：严格使用用户上传或转存的书本/资料真实封面（不再自动生成海报冲刷覆盖）
     const finalCover = (this.newResource.cover_image || this.newCoverPreview() || '').trim();
+
+    const links: any[] = [];
+    if (hasQuark) {
+      links.push({
+        drive_type: 'quark',
+        share_url: this.newResource.quarkUrl.trim(),
+        account_id: this.newResource.quarkAccountId || undefined,
+        account_name: this.newResource.quarkAccountName || undefined,
+        file_size: this.newResource.quarkFileSize || this.newResource.file_size || '',
+        file_type: this.newResource.quarkFileType || (this.newResource.has_video ? '高清视频课' : 'PDF'),
+        resource_desc: this.newResource.quarkDesc || (this.newResource.has_video ? '包含超清视频合集' : '手机转存立享原画'),
+        is_primary: true,
+        password_hint: this.newResource.has_video ? '夸克APP原画倍速看视频' : '手机转存立享原画'
+      });
+    }
+    if (hasBaidu) {
+      links.push({
+        drive_type: 'baidu',
+        share_url: this.newResource.baiduUrl.trim(),
+        extract_code: this.newResource.baiduCode?.trim() || '',
+        file_size: this.newResource.baiduFileSize || '',
+        file_type: this.newResource.baiduFileType || 'PDF',
+        resource_desc: this.newResource.baiduDesc || '百度网盘转存通道',
+        is_primary: !hasQuark, // 若无夸克链接，则百度自动成为主推通道
+        password_hint: this.newResource.baiduCode?.trim() ? `提取码：${this.newResource.baiduCode.trim()}` : ''
+      });
+    }
 
     const payload: Partial<ResourceItemDto> = {
       channel_slug: this.newResource.channel_slug || 'edu',
@@ -4200,33 +4425,8 @@ export class AdminComponent implements OnInit {
       file_tree: (this.newResource as any).file_tree || [],
       is_published: true,
       is_recommended: true,
-      links: [
-        {
-          drive_type: 'quark',
-          share_url: this.newResource.quarkUrl,
-          account_id: this.newResource.quarkAccountId || undefined,
-          account_name: this.newResource.quarkAccountName || undefined,
-          file_size: this.newResource.quarkFileSize || this.newResource.file_size || '',
-          file_type: this.newResource.quarkFileType || (this.newResource.has_video ? '高清视频课' : 'PDF'),
-          resource_desc: this.newResource.quarkDesc || (this.newResource.has_video ? '包含超清视频合集' : '手机转存立享原画'),
-          is_primary: true,
-          password_hint: this.newResource.has_video ? '夸克APP原画倍速看视频' : '手机转存立享原画'
-        }
-      ]
+      links: links
     };
-
-    if (this.newResource.baiduUrl) {
-      payload.links?.push({
-        drive_type: 'baidu',
-        share_url: this.newResource.baiduUrl,
-        extract_code: this.newResource.baiduCode,
-        file_size: this.newResource.baiduFileSize || '',
-        file_type: this.newResource.baiduFileType || 'PDF',
-        resource_desc: this.newResource.baiduDesc || '百度网盘备用转存',
-        is_primary: false,
-        password_hint: this.newResource.baiduCode ? `提取码：${this.newResource.baiduCode}` : ''
-      });
-    }
 
     this.resService.create(payload).subscribe({
       next: (createdRes: any) => {

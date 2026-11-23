@@ -226,6 +226,7 @@ CREATE TABLE IF NOT EXISTS netdisk_accounts (
     target_folder_name VARCHAR(255) DEFAULT '/',-- 目标目录全路径名称
     is_default BOOLEAN DEFAULT FALSE,         -- 是否默认转存账号
     nickname VARCHAR(100),                    -- 网盘账号昵称
+    uid VARCHAR(100),                         -- 网盘账号UID/用户唯一标识
     total_capacity VARCHAR(50),               -- 总容量 (如 1024 GB)
     used_capacity VARCHAR(50),                -- 已用容量 (如 21.3 TB)
     free_capacity VARCHAR(50),                -- 剩余容量 / 状态 (如 580 GB 或 已超限)

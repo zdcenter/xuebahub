@@ -16,6 +16,7 @@ import (
 
 type QuarkAccountInfo struct {
 	Nickname      string `json:"nickname"`
+	UID           string `json:"uid"`
 	TotalCapacity string `json:"total_capacity"`
 	UsedCapacity  string `json:"used_capacity"`
 	FreeCapacity  string `json:"free_capacity"`
@@ -107,14 +108,64 @@ func (s *QuarkTransferService) newRequest(method, reqURL string, body interface{
 	return req, nil
 }
 
-// VerifyCookie 验证夸克账号Cookie有效性，并获取昵称与容量
+// VerifyCookie 验证夸克账号Cookie有效性，并获取真实用户名、UID与容量
 func (s *QuarkTransferService) VerifyCookie(cookie string) (*QuarkAccountInfo, error) {
 	cookie = strings.TrimSpace(cookie)
 	if cookie == "" {
 		return nil, errors.New("Cookie 不能为空")
 	}
 
-	// 直接调用 drive-pc 官方会员与容量核心接口（响应迅速且带准确空间数据）
+	// 1. 尝试从 Cookie 中解析 UID (优先提取 __uid，其次提取 b-user-id 或 uid)
+	var parsedUID string
+	reUID := regexp.MustCompile(`(?:^|;\s*)__uid=([^;]+)`)
+	if m := reUID.FindStringSubmatch(cookie); len(m) > 1 {
+		parsedUID = strings.TrimSpace(m[1])
+	}
+	if parsedUID == "" {
+		reBUser := regexp.MustCompile(`(?:^|;\s*)b-user-id=([^;]+)`)
+		if m := reBUser.FindStringSubmatch(cookie); len(m) > 1 {
+			parsedUID = strings.TrimSpace(m[1])
+		}
+	}
+	if parsedUID == "" {
+		rePlain := regexp.MustCompile(`(?:^|;\s*)uid=([^;]+)`)
+		if m := rePlain.FindStringSubmatch(cookie); len(m) > 1 {
+			parsedUID = strings.TrimSpace(m[1])
+		}
+	}
+
+	// 2. 尝试从夸克个人账号核心接口获取真实用户名/昵称 (https://pan.quark.cn/account/info)
+	var realNickname string
+	accountInfoURL := "https://pan.quark.cn/account/info"
+	if accReq, err := s.newRequest("GET", accountInfoURL, nil, cookie); err == nil {
+		if accResp, err := s.client.Do(accReq); err == nil {
+			defer accResp.Body.Close()
+			if accResp.StatusCode == 200 {
+				var infoRes struct {
+					Success bool `json:"success"`
+					Data    struct {
+						Nickname string `json:"nickname"`
+						UID      string `json:"uid"`
+						UserID   string `json:"user_id"`
+					} `json:"data"`
+				}
+				if err := json.NewDecoder(accResp.Body).Decode(&infoRes); err == nil && infoRes.Success {
+					if strings.TrimSpace(infoRes.Data.Nickname) != "" {
+						realNickname = strings.TrimSpace(infoRes.Data.Nickname)
+					}
+					if parsedUID == "" {
+						if strings.TrimSpace(infoRes.Data.UID) != "" {
+							parsedUID = strings.TrimSpace(infoRes.Data.UID)
+						} else if strings.TrimSpace(infoRes.Data.UserID) != "" {
+							parsedUID = strings.TrimSpace(infoRes.Data.UserID)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 3. 直接调用 drive-pc 官方会员与容量核心接口（响应迅速且带准确空间数据）
 	memberURL := "https://drive-pc.quark.cn/1/clouddrive/member?pr=ucpro&fr=pc"
 	req, err := s.newRequest("GET", memberURL, nil, cookie)
 	if err != nil {
@@ -171,9 +222,12 @@ func (s *QuarkTransferService) VerifyCookie(cookie string) (*QuarkAccountInfo, e
 		vipName = "夸克普通用户"
 	}
 
-	nickname := vipName
-	if memRes.Data.MemberInfo.FileSaveToRemains > 0 {
-		nickname = fmt.Sprintf("%s (转存剩余:%d次)", vipName, memRes.Data.MemberInfo.FileSaveToRemains)
+	nickname := realNickname
+	if nickname == "" {
+		nickname = vipName
+		if memRes.Data.MemberInfo.FileSaveToRemains > 0 {
+			nickname = fmt.Sprintf("%s (转存剩余:%d次)", vipName, memRes.Data.MemberInfo.FileSaveToRemains)
+		}
 	}
 
 	totalCap := formatCapacityBytes(memRes.Data.TotalCapacity)
@@ -191,6 +245,7 @@ func (s *QuarkTransferService) VerifyCookie(cookie string) (*QuarkAccountInfo, e
 
 	return &QuarkAccountInfo{
 		Nickname:      nickname,
+		UID:           parsedUID,
 		TotalCapacity: totalCap,
 		UsedCapacity:  usedCap,
 		FreeCapacity:  freeCap,

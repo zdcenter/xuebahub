@@ -1158,6 +1158,7 @@ export interface NetdiskAccountDto {
   target_folder_name?: string;
   is_default?: boolean;
   nickname?: string;
+  uid?: string;
   total_capacity?: string;
   used_capacity?: string;
   free_capacity?: string;

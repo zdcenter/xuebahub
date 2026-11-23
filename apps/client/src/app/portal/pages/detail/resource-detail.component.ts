@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { PortalService } from '../../../core/services/portal.service';
+import { PortalService, SiteSettings } from '../../../core/services/portal.service';
 import { SeoService } from '../../../core/services/seo.service';
 import { ResourceService, ResourceItemDto, ResourceLinkDto } from '../../../services/resource.service';
 import { MemberService } from '../../../services/member.service';
@@ -11,6 +11,7 @@ import { generateQRCodeSvg } from '../../../utils/qrcode.util';
 import { WechatGuideModalComponent } from '../../components/wechat-guide-modal/wechat-guide-modal.component';
 import { PosterGeneratorService, PosterOptions, PosterTheme } from '../../../services/poster-generator.service';
 import { getStageTheme, StageThemeInfo } from '../../../utils/stage-theme.util';
+import { parseMarkdown } from '../../../utils/markdown.util';
 
 @Component({
   selector: 'app-resource-detail',
@@ -44,6 +45,32 @@ import { getStageTheme, StageThemeInfo } from '../../../utils/stage-theme.util';
     .btn-primary-transfer:active {
       transform: translateY(1px) scale(0.99);
       box-shadow: 0 2px 8px -2px rgba(5, 150, 105, 0.3);
+    }
+    .btn-baidu-transfer {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e40af 100%) !important;
+      color: #ffffff !important;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 14px -2px rgba(37, 99, 235, 0.35);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      width: 100%;
+      min-height: 48px;
+    }
+    .btn-baidu-transfer:hover {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%) !important;
+      box-shadow: 0 6px 20px -2px rgba(37, 99, 235, 0.45);
+      transform: translateY(-1px);
+    }
+    .btn-baidu-transfer:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: 0 2px 8px -2px rgba(37, 99, 235, 0.3);
     }
     .btn-secondary-action {
       background: #f8fafc;
@@ -165,6 +192,18 @@ export class ResourceDetailComponent implements OnInit {
 
   // 交互状态
   copiedLink = signal<string | null>(null);
+  copiedCode = signal<string | null>(null);
+
+  copyExtractCode(code: string, event?: Event) {
+    if (event?.stopPropagation) event.stopPropagation();
+    if (!code) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(code).then(() => {
+        this.copiedCode.set(code);
+        setTimeout(() => this.copiedCode.set(null), 2500);
+      });
+    }
+  }
   shareTextCopied = signal<boolean>(false);
   isReportingLink = signal<boolean>(false);
   linkReported = signal<boolean>(false);
@@ -244,6 +283,15 @@ export class ResourceDetailComponent implements OnInit {
     private sanitizer: DomSanitizer
   ) {}
 
+  siteSettings = signal<SiteSettings>({});
+
+  // 📝 解析并渲染 Markdown 内容介绍
+  renderedDescription = computed<SafeHtml>(() => {
+    const desc = this.resource()?.description;
+    if (!desc) return '';
+    return this.sanitizer.bypassSecurityTrustHtml(parseMarkdown(desc));
+  });
+
   // 估算总页数 (若有显式定义则取真实值，否则基于文件大小智能推算)
   estimatedPages = computed<number>(() => {
     const res = this.resource();
@@ -252,10 +300,26 @@ export class ResourceDetailComponent implements OnInit {
     return Math.max(18, Math.min(128, Math.round(size * 2.5)));
   });
 
-  // 判定是否为主推夸克网盘
+  // 检查是否存在至少一个有效未失效的网盘链接
+  get hasActiveLinks(): boolean {
+    return this.links().some(l => l.status !== 'invalid' && !!l.share_url);
+  }
+
+  // 判定主推网盘（优先存活正常的夸克网盘；若夸克失效则自动将可用备用网盘提升为主推；若全部失效则回退首条展示维护态）
   get primaryLink(): ResourceLinkDto | null {
     const list = this.links();
-    return list.find(l => l.drive_type === 'quark') || list[0] || null;
+    if (!list || list.length === 0) return null;
+
+    // 1. 优先找存活正常的夸克网盘
+    const activeQuark = list.find(l => l.drive_type === 'quark' && l.status !== 'invalid' && !!l.share_url);
+    if (activeQuark) return activeQuark;
+
+    // 2. 若夸克失效，自动升格其他可用存活网盘为主要入口
+    const activeBackup = list.find(l => l.status !== 'invalid' && !!l.share_url);
+    if (activeBackup) return activeBackup;
+
+    // 3. 若所有链接均失效，回退首条以展示维护状态
+    return list[0] || null;
   }
 
   // 备用网盘 (百度)
@@ -263,21 +327,33 @@ export class ResourceDetailComponent implements OnInit {
     return this.links().find(l => l.drive_type === 'baidu') || null;
   }
 
-  // 备用网盘列表 (除主推网盘外的所有可用网盘)
+  // 所有带分享链接的网盘列表 (按夸克优先、百度次之排序，确保各网盘地址完整呈现)
+  allDriveLinks = computed<ResourceLinkDto[]>(() => {
+    const list = this.links().filter(l => !!l.share_url);
+    return [...list].sort((a, b) => {
+      if (a.drive_type === 'quark') return -1;
+      if (b.drive_type === 'quark') return 1;
+      if (a.drive_type === 'baidu') return -1;
+      if (b.drive_type === 'baidu') return 1;
+      return 0;
+    });
+  });
+
+  // 备用网盘列表 (除主推网盘外的所有可用未失效网盘)
   get otherLinks(): ResourceLinkDto[] {
     const primary = this.primaryLink;
     if (!primary) return [];
     return this.links().filter(l => l !== primary && l.status !== 'invalid' && !!l.share_url);
   }
 
-  getDriveLabel(type: string): { name: string; icon: string } {
+  getDriveLabel(type: string): { name: string; icon: string; badge: string; isQuark: boolean; isBaidu: boolean } {
     switch (type) {
-      case 'quark': return { name: '夸克网盘', icon: '⚡' };
-      case 'baidu': return { name: '百度网盘', icon: '☁️' };
-      case 'xunlei': return { name: '迅雷云盘', icon: '⚡' };
-      case 'aliyun': return { name: '阿里云盘', icon: '📦' };
-      case 'uc': return { name: 'UC网盘', icon: '🐿️' };
-      default: return { name: '备用通道', icon: '🔗' };
+      case 'quark': return { name: '夸克网盘', icon: '⚡', badge: '官方推荐 · 极速直存', isQuark: true, isBaidu: false };
+      case 'baidu': return { name: '百度网盘', icon: '☁️', badge: '备用转存通道', isQuark: false, isBaidu: true };
+      case 'xunlei': return { name: '迅雷云盘', icon: '⚡', badge: '备用云盘', isQuark: false, isBaidu: false };
+      case 'aliyun': return { name: '阿里云盘', icon: '📦', badge: '备用通道', isQuark: false, isBaidu: false };
+      case 'uc': return { name: 'UC网盘', icon: '🐿️', badge: '备用通道', isQuark: false, isBaidu: false };
+      default: return { name: '网盘分发通道', icon: '🔗', badge: '转存通道', isQuark: false, isBaidu: false };
     }
   }
 
@@ -572,6 +648,7 @@ export class ResourceDetailComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.portalService.getSiteSettings().subscribe(s => this.siteSettings.set(s));
     this.loadHotRankList();
     this.route.params.subscribe(params => {
       const idOrSlug = params['id'];
@@ -986,6 +1063,7 @@ export class ResourceDetailComponent implements OnInit {
     targetUrl: string;
     isQuark: boolean;
     driveName: string;
+    suggestedItem?: ResourceItemDto | null;
   } | null>(null);
   private toastTimer: any = null;
 
@@ -993,15 +1071,17 @@ export class ResourceDetailComponent implements OnInit {
     if (this.toastTimer) clearTimeout(this.toastTimer);
     const isQuark = link.drive_type === 'quark' || Boolean(link.share_url && link.share_url.includes('quark.cn'));
     const driveName = this.getDriveLabel(link.drive_type).name;
+    const suggestedItem = this.relatedResources().length > 0 ? this.relatedResources()[0] : null;
     this.downloadToast.set({
       extractCode: link.extract_code,
       targetUrl: link.share_url,
       isQuark,
-      driveName
+      driveName,
+      suggestedItem
     });
     this.toastTimer = setTimeout(() => {
       this.closeDownloadToast();
-    }, 5000);
+    }, 6500);
   }
 
   closeDownloadToast() {
