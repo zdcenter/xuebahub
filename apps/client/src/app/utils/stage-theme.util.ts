@@ -1,4 +1,4 @@
-export type StageLevel = 'primary' | 'junior' | 'senior' | 'teacher' | 'civil';
+export type StageLevel = 'primary' | 'junior' | 'senior' | 'teacher' | 'civil' | 'classic';
 
 export interface StageThemeInfo {
   level: StageLevel;
@@ -10,13 +10,14 @@ export interface StageThemeInfo {
 
 /**
  * 根据资源的多维度信息（学段 stage、年级 grade、学科 subject、标题 title）
- * 精准智能识别出 5 大核心考学阶段，并赋予极高辨识度的专属视觉色彩体系：
+ * 精准智能识别出 6 大核心考学与经典拓展阶段，并赋予极高辨识度的专属视觉色彩体系：
  * 
- * 1. 小学 / 小升初：晴空湛蓝 (Sky Azure) - 代表启蒙纯净与基础智慧
- * 2. 初中 / 中考：翡翠青绿 (Teal Emerald) - 代表青春拔节与蓬勃朝气
- * 3. 高中 / 高考：深邃靛紫 (Indigo Violet) - 代表学霸进阶与沉稳厚重
- * 4. 教师资格 / 考编：知性琥珀橙 (Amber Gold) - 代表师道尊严与温润儒雅
- * 5. 公考 / 事业单位：庄严朱砂红 (Crimson Red) - 代表体制正统与仕途选拔
+ * 1. 学科经典 / 竞赛名著：典雅朱墨与古籍金 (Classic Amber & Bronze) - 代表传世经典与深度探究
+ * 2. 小学 / 小升初：晴空湛蓝 (Sky Azure) - 代表启蒙纯净与基础智慧
+ * 3. 初中 / 中考：翡翠青绿 (Teal Emerald) - 代表青春拔节与蓬勃朝气
+ * 4. 高中 / 高考：深邃靛紫 (Indigo Violet) - 代表学霸进阶与沉稳厚重
+ * 5. 教师资格 / 考编：知性琥珀橙 (Amber Gold) - 代表师道尊严与温润儒雅
+ * 6. 公考 / 事业单位：庄严朱砂红 (Crimson Red) - 代表体制正统与仕途选拔
  */
 export function detectStageLevel(resource?: {
   stage?: string;
@@ -31,6 +32,31 @@ export function detectStageLevel(resource?: {
   const sub = (resource.subject || '').toLowerCase().trim();
   const t = (resource.title || '').toLowerCase().trim();
   const combined = `${s} ${g} ${sub} ${t}`;
+
+  // 0. 学科经典 / 竞赛名著 / 大学数理 / 文史典籍 (毛选、资治通鉴、史记、伯克利物理、费曼物理、奥赛等)
+  if (
+    s === 'classic' ||
+    s.includes('经典') ||
+    combined.includes('毛泽东选集') ||
+    combined.includes('毛选') ||
+    combined.includes('资治通鉴') ||
+    combined.includes('史记') ||
+    combined.includes('论持久战') ||
+    combined.includes('伯克利物理') ||
+    combined.includes('费曼物理') ||
+    combined.includes('新概念物理') ||
+    combined.includes('大学物理') ||
+    combined.includes('吉米多维奇') ||
+    combined.includes('托马斯微积分') ||
+    combined.includes('高等代数') ||
+    combined.includes('学科经典') ||
+    combined.includes('竞赛拓展') ||
+    combined.includes('奥赛培优') ||
+    combined.includes('物理竞赛') ||
+    combined.includes('数学联赛')
+  ) {
+    return 'classic';
+  }
 
   // 1. 公考 / 事业单位 / 考研
   if (
@@ -174,6 +200,16 @@ export function getStageTheme(resource?: {
         badgeLabel: '公考精选',
         gradientClass: 'from-rose-600 via-red-600 to-rose-800',
         primaryColorHex: '#dc2626'
+      };
+
+    // 6. 学科经典与竞赛拓展：典雅朱墨/古籍沉香金
+    case 'classic':
+      return {
+        level: 'classic',
+        shortLabel: '经典',
+        badgeLabel: '学科经典',
+        gradientClass: 'from-amber-700 via-orange-800 to-stone-900',
+        primaryColorHex: '#b45309'
       };
   }
 }

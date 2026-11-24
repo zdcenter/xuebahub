@@ -588,6 +588,7 @@ func SeedStandardCategories(db *gorm.DB) error {
 		{Name: "幼小衔接", Slug: "kindergarten", Type: "stage", SortOrder: 4, Icon: "🧸", IsHot: false},
 		{Name: "教师资格证", Slug: "cert", Type: "stage", SortOrder: 5, Icon: "📜", IsHot: true},
 		{Name: "考公考研", Slug: "exam", Type: "stage", SortOrder: 6, Icon: "🏛️", IsHot: true},
+		{Name: "学科经典与拓展", Slug: "classic", Type: "stage", SortOrder: 7, Icon: "🏛️", IsHot: true},
 	}
 
 	stageIdMap := make(map[string]uint)
@@ -612,6 +613,7 @@ func SeedStandardCategories(db *gorm.DB) error {
 	primaryID := stageIdMap["primary"]
 	juniorID := stageIdMap["junior"]
 	seniorID := stageIdMap["senior"]
+	classicID := stageIdMap["classic"]
 
 	// 2. 年级与其余分类
 	type CategorySeedWithParent struct {
@@ -633,6 +635,11 @@ func SeedStandardCategories(db *gorm.DB) error {
 		{Category: model.Category{Name: "高一", Slug: "grade-10", Type: "grade", SortOrder: 10, Icon: "🎓", IsHot: true}, ParentStageSlug: "senior"},
 		{Category: model.Category{Name: "高二", Slug: "grade-11", Type: "grade", SortOrder: 11, Icon: "🎓", IsHot: true}, ParentStageSlug: "senior"},
 		{Category: model.Category{Name: "高三", Slug: "grade-12", Type: "grade", SortOrder: 12, Icon: "🎓", IsHot: true}, ParentStageSlug: "senior"},
+		{Category: model.Category{Name: "通用/典藏", Slug: "grade-classic-general", Type: "grade", SortOrder: 13, Icon: "🏛️", IsHot: true}, ParentStageSlug: "classic"},
+		{Category: model.Category{Name: "文史政典籍", Slug: "grade-classic-history", Type: "grade", SortOrder: 14, Icon: "📜", IsHot: true}, ParentStageSlug: "classic"},
+		{Category: model.Category{Name: "大学数理经典", Slug: "grade-classic-mathphys", Type: "grade", SortOrder: 15, Icon: "⚡", IsHot: true}, ParentStageSlug: "classic"},
+		{Category: model.Category{Name: "竞赛奥赛培优", Slug: "grade-classic-olympiad", Type: "grade", SortOrder: 16, Icon: "🏆", IsHot: true}, ParentStageSlug: "classic"},
+		{Category: model.Category{Name: "通识科学人文", Slug: "grade-classic-general-studies", Type: "grade", SortOrder: 17, Icon: "💡", IsHot: true}, ParentStageSlug: "classic"},
 
 		// 3. 学期 / 分册 (term)
 		{Category: model.Category{Name: "上册", Slug: "term-up", Type: "term", SortOrder: 1, Icon: "🍂", IsHot: true}},
@@ -659,6 +666,10 @@ func SeedStandardCategories(db *gorm.DB) error {
 		{Category: model.Category{Name: "思想政治", Slug: "subject-politics", Type: "subject", SortOrder: 11, Icon: "🏛️", IsHot: false}},
 		{Category: model.Category{Name: "信息技术/编程", Slug: "subject-it", Type: "subject", SortOrder: 12, Icon: "💻", IsHot: false}},
 		{Category: model.Category{Name: "奥数与思维培优", Slug: "subject-olympiad", Type: "subject", SortOrder: 13, Icon: "🧠", IsHot: true}},
+		{Category: model.Category{Name: "文史政经典", Slug: "subject-classic-humanities", Type: "subject", SortOrder: 14, Icon: "📜", IsHot: true}},
+		{Category: model.Category{Name: "大学物理与数理", Slug: "subject-classic-mathphys", Type: "subject", SortOrder: 15, Icon: "⚡", IsHot: true}},
+		{Category: model.Category{Name: "学科竞赛培优", Slug: "subject-olympiad-advanced", Type: "subject", SortOrder: 16, Icon: "🏆", IsHot: true}},
+		{Category: model.Category{Name: "通识科学人文", Slug: "subject-general-studies", Type: "subject", SortOrder: 17, Icon: "💡", IsHot: true}},
 
 		// 5. 教材版本 (edition)
 		{Category: model.Category{Name: "人教版 (教育部统编)", Slug: "edition-renjiao", Type: "edition", SortOrder: 1, Icon: "📚", IsHot: true}},
@@ -674,6 +685,10 @@ func SeedStandardCategories(db *gorm.DB) error {
 		{Category: model.Category{Name: "仁爱版 (英语)", Slug: "edition-renai", Type: "edition", SortOrder: 11, Icon: "🔤", IsHot: false}},
 		{Category: model.Category{Name: "教科版 (科学为主)", Slug: "edition-jiaoke", Type: "edition", SortOrder: 12, Icon: "🔬", IsHot: false}},
 		{Category: model.Category{Name: "浙教版 (浙江教育)", Slug: "edition-zhejiao", Type: "edition", SortOrder: 13, Icon: "📚", IsHot: false}},
+		{Category: model.Category{Name: "权威典藏全集版", Slug: "edition-classic-complete", Type: "edition", SortOrder: 14, Icon: "📚", IsHot: true}},
+		{Category: model.Category{Name: "影印原著权威版", Slug: "edition-classic-facsimile", Type: "edition", SortOrder: 15, Icon: "📚", IsHot: true}},
+		{Category: model.Category{Name: "大学名校教材版", Slug: "edition-university-standard", Type: "edition", SortOrder: 16, Icon: "🎓", IsHot: true}},
+		{Category: model.Category{Name: "中学生竞赛培优版", Slug: "edition-olympiad-training", Type: "edition", SortOrder: 17, Icon: "🏆", IsHot: true}},
 	}
 
 	for _, item := range otherCategories {
@@ -684,6 +699,8 @@ func SeedStandardCategories(db *gorm.DB) error {
 			cat.ParentID = &juniorID
 		} else if item.ParentStageSlug == "senior" && seniorID > 0 {
 			cat.ParentID = &seniorID
+		} else if item.ParentStageSlug == "classic" && classicID > 0 {
+			cat.ParentID = &classicID
 		}
 
 		var existing model.Category

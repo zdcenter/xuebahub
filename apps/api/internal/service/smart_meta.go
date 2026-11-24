@@ -112,6 +112,16 @@ func (s *SmartMetaService) CleanTitle(title string) string {
 func (s *SmartMetaService) DetectStage(title string) string {
 	t := strings.ToLower(title)
 
+	// 0. 学科经典与竞赛名著 (毛选、资治通鉴、史记、论持久战、大学经典物理数理、奥林匹克竞赛)
+	if strings.Contains(t, "毛泽东选集") || strings.Contains(t, "毛选") || strings.Contains(t, "资治通鉴") || strings.Contains(t, "史记") ||
+		strings.Contains(t, "论持久战") || strings.Contains(t, "马列") || strings.Contains(t, "资本论") || strings.Contains(t, "共产党宣言") ||
+		strings.Contains(t, "伯克利物理") || strings.Contains(t, "费曼物理") || strings.Contains(t, "新概念物理") || strings.Contains(t, "大学物理") ||
+		strings.Contains(t, "托马斯微积分") || strings.Contains(t, "吉米多维奇") || strings.Contains(t, "数学分析") || strings.Contains(t, "高等代数") ||
+		strings.Contains(t, "全国中学生物理竞赛") || strings.Contains(t, "高中数学联赛") || strings.Contains(t, "物理奥赛") || strings.Contains(t, "数学奥赛") ||
+		strings.Contains(t, "信息学奥赛") || strings.Contains(t, "化学奥赛") || strings.Contains(t, "竞赛培优") || strings.Contains(t, "学科经典") || strings.Contains(t, "名著导读") {
+		return "classic"
+	}
+
 	// 1. 幼小衔接
 	if strings.Contains(t, "幼小衔接") || strings.Contains(t, "幼儿园") || strings.Contains(t, "学前") || strings.Contains(t, "早教") {
 		return "kindergarten"
@@ -175,6 +185,18 @@ func (s *SmartMetaService) DetectGrade(title string, stage string) string {
 	}
 
 	// 依据学段推荐通用级
+	if stage == "classic" {
+		if strings.Contains(t, "竞赛") || strings.Contains(t, "奥赛") || strings.Contains(t, "联赛") {
+			return "竞赛奥赛培优"
+		}
+		if strings.Contains(t, "物理") || strings.Contains(t, "数学") || strings.Contains(t, "微积分") || strings.Contains(t, "代数") || strings.Contains(t, "伯克利") || strings.Contains(t, "费曼") {
+			return "大学数理经典"
+		}
+		if strings.Contains(t, "毛选") || strings.Contains(t, "毛泽东") || strings.Contains(t, "资治通鉴") || strings.Contains(t, "史记") || strings.Contains(t, "通史") || strings.Contains(t, "马列") || strings.Contains(t, "哲学") || strings.Contains(t, "政治") {
+			return "文史政典籍"
+		}
+		return "通用/典藏"
+	}
 	if stage == "senior" {
 		if strings.Contains(t, "高考") {
 			return "高三"
@@ -232,6 +254,20 @@ func (s *SmartMetaService) DetectTerm(title string) string {
 // DetectSubject 智能推断学科
 func (s *SmartMetaService) DetectSubject(title string, stage string) string {
 	t := strings.ToLower(title)
+
+	// 学科经典与竞赛名著特定科目
+	if stage == "classic" {
+		if strings.Contains(t, "毛选") || strings.Contains(t, "毛泽东") || strings.Contains(t, "资治通鉴") || strings.Contains(t, "史记") || strings.Contains(t, "论持久战") || strings.Contains(t, "资本论") || strings.Contains(t, "马列") {
+			return "文史政经典"
+		}
+		if strings.Contains(t, "伯克利") || strings.Contains(t, "费曼") || strings.Contains(t, "新概念物理") || strings.Contains(t, "大学物理") || strings.Contains(t, "微积分") || strings.Contains(t, "数学分析") || strings.Contains(t, "高等数学") || strings.Contains(t, "吉米多维奇") {
+			return "大学物理与数理"
+		}
+		if strings.Contains(t, "竞赛") || strings.Contains(t, "奥赛") || strings.Contains(t, "联赛") || strings.Contains(t, "培优") {
+			return "学科竞赛培优"
+		}
+		return "通识科学人文"
+	}
 
 	// 英语
 	if strings.Contains(t, "英语") || strings.Contains(t, "新概念") || strings.Contains(t, "自然拼读") || strings.Contains(t, "单词") || strings.Contains(t, "完形填空") || strings.Contains(t, "阅读理解") || strings.Contains(t, "english") {
@@ -395,6 +431,8 @@ func (s *SmartMetaService) GetStageLabel(stage string) string {
 		return "考公考研"
 	case "kindergarten":
 		return "幼小衔接"
+	case "classic":
+		return "学科经典与拓展"
 	default:
 		return "教育专区"
 	}

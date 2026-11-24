@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-课本主数据集 (keben_master_dataset.json) 批量导入 PostgreSQL 数据库工具
-支持：
-1. 单一总合集链接模式 (--all-in-one "https://pan.quark.cn/s/xxx")
-2. 分学段链接模式 (--quark-primary "..." --quark-junior "..." --quark-senior "...")
-3. JSON 映射模式（从 keben_master_dataset.json 中的 quark_share_url 逐条读取）
-4. 先行无链接上架模式 (--no-links，仅上架课本书架展示，后续随时追加链接)
+课本主数据集 (keben_master_dataset.json) 批量导入 PostgreSQL 数据库工具 (支持全层级自适应匹配)
+
+链接匹配优先级（自顶向下智能回溯）：
+1. 命令行覆盖 (--all-in-one / --quark-primary 等)
+2. 【学科细分链接】(如 "小学/一年级/语文", "高中/语文")
+3. 【年级专属链接】(如 "小学/一年级", "初中/七年级")
+4. 【学段专属链接】(如 "小学", "初中", "高中")
+5. 课本自带链接 (quark_share_url)
 """
 
 import os
+import re
 import sys
 import json
 import uuid
@@ -17,6 +20,7 @@ import subprocess
 
 BASE_DIR = "/home/zd/netdisk/keben_pipeline"
 MASTER_DATASET_FILE = os.path.join(BASE_DIR, "keben_master_dataset.json")
+CATEGORY_LINKS_FILE = os.path.join(BASE_DIR, "quark_category_links.json")
 
 # 数据库配置（默认读取 apps/api/.env）
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -24,6 +28,24 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "format.11")
 DB_NAME = os.getenv("DB_NAME", "netdisk_db")
+
+def parse_quark_input(text):
+    """智能解析用户粘贴的夸克分享链接与提取码"""
+    if not text or not isinstance(text, str):
+        return "", ""
+    text = text.strip()
+    if not text:
+        return "", ""
+
+    url_match = re.search(r"https?://pan\.quark\.cn/s/[a-zA-Z0-9]+", text)
+    if not url_match:
+        return "", ""
+    share_url = url_match.group(0)
+
+    code_match = re.search(r"(?:提取码|密码|code|pwd)[:：\s]*([a-zA-Z0-9]{4})", text, re.IGNORECASE)
+    extract_code = code_match.group(1) if code_match else ""
+
+    return share_url, extract_code
 
 def escape_sql_str(val):
     if val is None:
@@ -54,6 +76,83 @@ def run_sql_script(sql_content):
         return False
     return True
 
+def get_book_hierarchy_keys(book):
+    """
+    返回书籍的多级层级候选 key 列表，用于向上回溯自适应匹配：
+    优先级：学科细分 -> 学段/科目 (如 高中/语文) -> 年级 (如 小学/一年级) -> 学段 (如 小学)
+    """
+    candidates = []
+    p = book.get("local_pdf_path", "")
+    parts = [x for x in p.split("/") if x]
+
+    stage_map = {"primary": "小学", "junior": "初中", "senior": "高中"}
+    raw_stage = book.get("stage", "")
+    cn_stage = stage_map.get(raw_stage, raw_stage)
+    cn_grade = book.get("grade", "")
+    cn_subject = book.get("subject", "")
+
+    if len(parts) >= 4:
+        # downloads/小学/一年级/语文/[xxx].pdf
+        st = parts[1]
+        gr = parts[2]
+        sub = parts[3]
+        candidates.append(f"{st}/{gr}/{sub}")
+        candidates.append(f"{st}/{sub}")      # 兼容用户配置 高中/语文
+        candidates.append(f"{st}/{gr}")       # 兼容 小学/一年级
+        candidates.append(st)                 # 兼容 小学
+    elif len(parts) >= 3:
+        st = parts[1]
+        gr = parts[2]
+        candidates.append(f"{st}/{gr}")
+        candidates.append(st)
+
+    # 兜底补充从元数据生成的候选 key
+    if cn_stage and cn_subject:
+        if cn_grade:
+            candidates.append(f"{cn_stage}/{cn_grade}/{cn_subject}")
+        candidates.append(f"{cn_stage}/{cn_subject}")
+    if cn_stage and cn_grade:
+        candidates.append(f"{cn_stage}/{cn_grade}")
+    if cn_stage:
+        candidates.append(cn_stage)
+
+    # 去重并保持顺序
+    seen = set()
+    result = []
+    for c in candidates:
+        if c and c not in seen:
+            seen.add(c)
+            result.append(c)
+    return result
+
+def print_status(books, cat_links):
+    """打印分类与年级链接配置进度"""
+    covered = 0
+    missing = []
+    for b in books:
+        keys = get_book_hierarchy_keys(b)
+        hit = False
+        for k in keys:
+            if k in cat_links and parse_quark_input(cat_links[k])[0]:
+                hit = True
+                break
+        if hit:
+            covered += 1
+        else:
+            missing.append(b)
+
+    print("==================================================")
+    print("  夸克电子教材链接配置全量覆盖报告")
+    print("==================================================")
+    print(f"全库课本总册数: {len(books)} 本 | 已覆盖可转存: {covered} 本 ({(covered/len(books)*100):.1f}%)")
+    if missing:
+        print(f"❌ 待覆盖课本: {len(missing)} 本")
+        print("未覆盖样本示例:")
+        for m in missing[:5]:
+            print(f"  • [{m.get('keben_id')}] {m.get('title')} ({m.get('stage')}/{m.get('grade')}/{m.get('subject')})")
+    else:
+        print("🎉 全库 2032 本电子课本已实现 100% 全覆盖！")
+
 def main():
     if not os.path.exists(MASTER_DATASET_FILE):
         print(f"❌ 未找到主数据集文件: {MASTER_DATASET_FILE}")
@@ -62,13 +161,33 @@ def main():
     with open(MASTER_DATASET_FILE, "r", encoding="utf-8") as f:
         books = json.load(f)
 
+    cat_links = {}
+    if os.path.exists(CATEGORY_LINKS_FILE):
+        try:
+            with open(CATEGORY_LINKS_FILE, "r", encoding="utf-8") as f:
+                cat_links = json.load(f)
+        except Exception as e:
+            print(f"⚠️ 读取 {CATEGORY_LINKS_FILE} 失败: {e}")
+
+    if "--status" in sys.argv:
+        print_status(books, cat_links)
+        return
+
     # 参数解析
     all_in_one_url = None
     all_in_one_pwd = ""
     primary_url = None
     junior_url = None
     senior_url = None
-    allow_no_links = "--no-links" in sys.argv
+    dry_run = "--dry-run" in sys.argv
+    allow_no_links = "--all" in sys.argv or "--no-links" in sys.argv
+    sql_only_path = None
+    if "--sql-only" in sys.argv:
+        idx = sys.argv.index("--sql-only")
+        if idx + 1 < len(sys.argv):
+            sql_only_path = sys.argv[idx + 1]
+        else:
+            sql_only_path = "keben_export.sql"
 
     for i, arg in enumerate(sys.argv):
         if arg == "--all-in-one" and i + 1 < len(sys.argv):
@@ -83,11 +202,9 @@ def main():
             all_in_one_pwd = sys.argv[i + 1]
 
     print(f"==================================================")
-    print(f"  学霸网 统编电子教材全量入库工具 (PostgreSQL)")
+    print(f"  学霸网 统编电子教材入库工具 (PostgreSQL)")
     print(f"==================================================")
-    print(f"共加载课本数据: {len(books)} 本")
 
-    # 构建 SQL 语句
     sql_lines = ["BEGIN;"]
 
     # 1. 确保 channel 存在
@@ -99,6 +216,7 @@ def main():
 
     resource_count = 0
     link_count = 0
+    matched_level_stats = {}
 
     for item in books:
         bid = item.get("keben_id")
@@ -119,22 +237,42 @@ def main():
         desc = item.get("description", f"{title} 全国中小学统编官方审定正版矢量高清电子教材 PDF。")
         toc = item.get("toc", [])
 
-        # 确定网盘链接
-        quark_url = item.get("quark_share_url", "")
-        quark_pwd = item.get("quark_extract_code", "")
+        # 多级回溯匹配网盘链接
+        quark_url = ""
+        quark_pwd = ""
+        matched_level_name = ""
 
+        # 获取候选 keys
+        h_keys = get_book_hierarchy_keys(item)
+        for k in h_keys:
+            if k in cat_links and cat_links[k]:
+                u, c = parse_quark_input(cat_links[k])
+                if u:
+                    quark_url = u
+                    quark_pwd = c
+                    matched_level_name = k
+                    matched_level_stats[k] = matched_level_stats.get(k, 0) + 1
+                    break
+
+        # 命令行覆盖优先
         if all_in_one_url:
             quark_url = all_in_one_url
             quark_pwd = all_in_one_pwd
+            matched_level_name = "全套合集"
         elif stage == "primary" and primary_url:
             quark_url = primary_url
+            matched_level_name = "小学合集"
         elif stage == "junior" and junior_url:
             quark_url = junior_url
+            matched_level_name = "初中合集"
         elif stage == "senior" and senior_url:
             quark_url = senior_url
+            matched_level_name = "高中合集"
+        elif not quark_url and item.get("quark_share_url"):
+            quark_url = item.get("quark_share_url")
+            quark_pwd = item.get("quark_extract_code", "")
 
         if not quark_url and not allow_no_links:
-            # 如果既未提供链接也未开启 --no-links，则跳过
             continue
 
         # 写入 resources
@@ -150,13 +288,14 @@ def main():
             {escape_sql_str(stage)}, {escape_sql_str(grade)}, {escape_sql_str(term)}, {escape_sql_str(subject)}, {escape_sql_str(edition)}, '', '',
             {escape_sql_str(cover_image)}, 'PDF', {escape_sql_str(file_size)}, {page_count},
             {item.get('page_count', 120) * 3}, {item.get('page_count', 120) * 2}, true, true,
-            '{{"source": "keben.app", "keben_id": "{bid}"}}'::jsonb, {escape_json_str(toc)}, NOW(), NOW()
+            '{{"source": "keben.app", "keben_id": "{bid}", "matched_key": "{matched_level_name}"}}'::jsonb, {escape_json_str(toc)}, NOW(), NOW()
         )
         ON CONFLICT (slug) DO UPDATE SET
             title = EXCLUDED.title,
             cover_image = EXCLUDED.cover_image,
             file_size = EXCLUDED.file_size,
             page_count = EXCLUDED.page_count,
+            extra_metadata = EXCLUDED.extra_metadata,
             is_published = true,
             updated_at = NOW();
         """)
@@ -164,6 +303,7 @@ def main():
 
         if quark_url:
             link_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"xuebaw.keben.link.quark.{bid}"))
+            desc_text = f"夸克网盘极速转存 ({matched_level_name} 专属直达)" if matched_level_name else "夸克网盘极速转存"
             sql_lines.append(f"""
             INSERT INTO resource_links (
                 id, resource_id, drive_type, share_url, extract_code,
@@ -172,11 +312,12 @@ def main():
             ) VALUES (
                 '{link_uuid}', '{res_uuid}', 'quark', {escape_sql_str(quark_url)}, {escape_sql_str(quark_pwd)},
                 '', true, 0, {escape_sql_str(file_size)}, 'PDF',
-                '夸克网盘极速转存 (支持手机免下载预览翻页与A4极清打印)', 'active', 0, NOW(), NOW()
+                {escape_sql_str(desc_text)}, 'active', 0, NOW(), NOW()
             )
             ON CONFLICT (id) DO UPDATE SET
                 share_url = EXCLUDED.share_url,
                 extract_code = EXCLUDED.extract_code,
+                resource_desc = EXCLUDED.resource_desc,
                 status = 'active',
                 updated_at = NOW();
             """)
@@ -185,20 +326,27 @@ def main():
     sql_lines.append("COMMIT;")
 
     if resource_count == 0:
-        print("\n⚠️ 提示：本次未指定任何夸克网盘链接。")
-        print("使用示例：")
-        print("  1. 一个总文件夹合集链接导入全库 2031 本课本：")
-        print("     python3 scripts/import_keben_to_db.py --all-in-one 'https://pan.quark.cn/s/xxxx'\n")
-        print("  2. 分小学/初中/高中三大阶段文件夹链接导入：")
-        print("     python3 scripts/import_keben_to_db.py --quark-primary 'https://pan.quark.cn/s/p1' --quark-junior 'https://pan.quark.cn/s/j1' --quark-senior 'https://pan.quark.cn/s/s1'\n")
-        print("  3. 若希望先将全部课本直接上架书架展示（无链接模式）：")
-        print("     python3 scripts/import_keben_to_db.py --no-links\n")
+        print("\n⚠️ 提示：当前未检测到任何已配置的夸克网盘链接。")
         return
 
-    print(f"正在向 PostgreSQL 写入 {resource_count} 部课本元数据，{link_count} 条夸克直链...")
+    print(f"准备写入/更新：{resource_count} 部课本元数据，{link_count} 条夸克直链")
+    if dry_run:
+        print("🔍 [Dry Run 演练模式] 未执行实际数据库操作。")
+        return
+
     full_sql = "\n".join(sql_lines)
+
+    if sql_only_path:
+        with open(sql_only_path, "w", encoding="utf-8") as f:
+            f.write(full_sql)
+        file_size_mb = os.path.getsize(sql_only_path) / 1024 / 1024
+        print(f"📦 [SQL 纯文本导出模式] 成功导出全部 2032 本课本入库 SQL 到: {sql_only_path} ({file_size_mb:.2f} MB)")
+        print(f"👉 您只需将该文件上传到服务器，执行以下命令即可一键完成导入：")
+        print(f"   psql -h <服务器DB_HOST> -p 5432 -U postgres -d netdisk_db -f {sql_only_path}")
+        return
+
     if run_sql_script(full_sql):
-        print(f"🎉 成功导入！数据库已新增/更新 {resource_count} 部正版教材资源，前台书架即刻生效。")
+        print(f"🎉 成功执行！PostgreSQL 已写入/更新 {resource_count} 部教材资源，前台专区即刻生效。")
     else:
         print("❌ 写入失败，请检查数据库服务状态。")
 

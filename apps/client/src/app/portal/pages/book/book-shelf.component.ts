@@ -81,7 +81,8 @@ export class BookShelfComponent implements OnInit {
       { slug: 'senior', name: '高中阶段', icon: '🎓' },
       { slug: 'kindergarten', name: '幼小衔接', icon: '🧸' },
       { slug: 'cert', name: '教师资格证', icon: '📜' },
-      { slug: 'exam', name: '考公考研', icon: '🏛️' }
+      { slug: 'exam', name: '考公考研', icon: '🏛️' },
+      { slug: 'classic', name: '学科经典/名著', icon: '🏛️' }
     ];
   });
 
@@ -90,6 +91,12 @@ export class BookShelfComponent implements OnInit {
     const s = this.stageParam().toLowerCase();
     const dbGrades = this.categoriesGroup()['grade'] || [];
 
+    if (s === 'classic' || s.includes('经典') || s.includes('名著') || s.includes('竞赛')) {
+      return [
+        { name: '通用/典藏' }, { name: '文史政典籍' }, { name: '大学数理经典' },
+        { name: '竞赛奥赛培优' }, { name: '通识科学人文' }
+      ];
+    }
     if (s === 'primary' || s.includes('小学')) {
       return [
         { name: '一年级' }, { name: '二年级' }, { name: '三年级' },
@@ -129,6 +136,14 @@ export class BookShelfComponent implements OnInit {
   // 3. 学科自适应计算
   availableSubjects = computed(() => {
     const s = this.stageParam().toLowerCase();
+    if (s === 'classic' || s.includes('经典') || s.includes('名著') || s.includes('竞赛')) {
+      return [
+        { name: '文史政经典', icon: '📜' },
+        { name: '大学物理与数理', icon: '⚡' },
+        { name: '学科竞赛培优', icon: '🏆' },
+        { name: '通识科学人文', icon: '💡' }
+      ];
+    }
     if (s === 'cert' || s.includes('教师') || s.includes('资格')) {
       return [
         { name: '综合素质 (科一)', icon: '📘' }, { name: '教育知识与能力 (科二)', icon: '📗' },

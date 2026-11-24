@@ -523,8 +523,8 @@ export class ResourceService {
     );
   }
 
-  // 批量巡检（受频率调控保护）
-  batchCheckLinks(options: { min_interval_hours?: number; force?: boolean; status_filter?: string; limit?: number }): Observable<{
+  // 批量巡检（受频率调控保护，支持指定当前页资料ID或链接ID）
+  batchCheckLinks(options: { min_interval_hours?: number; force?: boolean; status_filter?: string; limit?: number; resource_ids?: string[]; link_ids?: string[] }): Observable<{
     total_eligible: number;
     checked_count: number;
     active_count: number;

@@ -59,6 +59,13 @@ export const STAGE_OPTIONS: Record<string, StageConfigItem> = {
     grades: ['统考大纲通用', '国家公务员考试 (国考)', '多省公务员联考 (省考)', '事业单位统考', '全国硕士研究生统考 (考研)'],
     subjects: ['备考全套大礼包', '申论提分范文与热点', '行测高频速算与技巧', '考研政治核心背诵', '考研英语词汇与长难句', '考研数学'],
     editions: ['国家考试大纲通用', '华图教育版', '中公教育版', '粉笔教育版']
+  },
+  classic: {
+    key: 'classic',
+    label: '学科经典/竞赛名著',
+    grades: ['通用/典藏', '文史政典籍', '大学数理经典', '竞赛奥赛培优', '通识科学人文'],
+    subjects: ['文史政经典', '大学物理与数理', '学科竞赛培优', '通识科学人文'],
+    editions: ['权威典藏全集版', '影印原著权威版', '大学名校教材版', '中学生竞赛培优版', '国家通用版']
   }
 };
 
@@ -897,6 +904,62 @@ export class AdminComponent implements OnInit {
       error: (err: any) => {
         this.isCheckingDeadlinks.set(false);
         this.lastCheckResult.set('❌ 巡检失败: ' + (err.error?.message || err.message));
+      }
+    });
+  }
+
+  isCheckingCurrentPage = signal<boolean>(false);
+
+  // 立即并发探测当前页展示的全部网盘链接
+  checkCurrentPageLinks() {
+    const list = this.resources();
+    if (!list || list.length === 0) {
+      this.showToast('当前页暂无资料可巡检');
+      return;
+    }
+    const resourceIds = list.map(r => r.id).filter((id): id is string => Boolean(id));
+    this.isCheckingCurrentPage.set(true);
+    this.showToast(`🔍 正在精准并发探测当前页 ${list.length} 套资料的网盘链接...`);
+
+    this.resService.batchCheckLinks({
+      resource_ids: resourceIds,
+      force: true,
+      limit: 100
+    }).subscribe({
+      next: (res) => {
+        this.isCheckingCurrentPage.set(false);
+        if (res.results && res.results.length > 0) {
+          const resultMap = new Map<string, any>();
+          for (const item of res.results) {
+            resultMap.set(item.link_id, item);
+          }
+          const current = this.resources();
+          for (const r of current) {
+            if (r.links) {
+              for (const l of r.links) {
+                if (l.id) {
+                  const checked = resultMap.get(l.id);
+                  if (checked) {
+                    l.status = checked.status;
+                    l.invalid_reason = checked.invalid_reason;
+                    l.last_checked_at = checked.checked_at;
+                  }
+                }
+              }
+            }
+          }
+          this.resources.set([...current]);
+        }
+        this.loadDashboardStats();
+        if (res.invalid_count > 0) {
+          this.showToast(`⚠️ 本页巡检完成：检测 ${res.checked_count} 条，存活 ${res.active_count} 条，发现 ${res.invalid_count} 条失效！已高亮标红`, 'error');
+        } else {
+          this.showToast(`✅ 本页巡检完毕：${res.checked_count} 条网盘链接全部存活正常！`, 'success');
+        }
+      },
+      error: (err: any) => {
+        this.isCheckingCurrentPage.set(false);
+        this.showToast('本页链接巡检失败: ' + (err.error?.message || err.message), 'error');
       }
     });
   }
@@ -2123,6 +2186,7 @@ export class AdminComponent implements OnInit {
     if (s === 'cert' || s.includes('教师') || s.includes('资格') || s.includes('教资') || s.includes('考证')) return 'cert';
     if (s === 'exam' || s.includes('公考') || s.includes('考研') || s.includes('公务员') || s.includes('省考') || s.includes('国考')) return 'exam';
     if (s === 'kindergarten' || s.includes('幼') || s.includes('学前')) return 'kindergarten';
+    if (s === 'classic' || s.includes('经典') || s.includes('名著') || s.includes('竞赛') || s.includes('奥赛')) return 'classic';
     return this.stageOptions[s] ? s : 'primary';
   }
 
@@ -2132,6 +2196,9 @@ export class AdminComponent implements OnInit {
     const n = gradeName || '';
     const s = gradeSlug || '';
 
+    if (key === 'classic') {
+      return /经典|名著|典籍|文史|数理|大学|竞赛|奥赛|通识|培优|通用|典藏/.test(n) || /classic/.test(s);
+    }
     if (key === 'junior') {
       if (/[一二三四五六]年级|小学|高[一二三]|高考|高中|考研|公考|教资|保教|幼小/.test(n)) return false;
       return /初[一二三]|七年级|八年级|九年级|中考|初中/.test(n) || /grade-[789]|junior/.test(s);
@@ -2195,6 +2262,10 @@ export class AdminComponent implements OnInit {
 
     if (key === 'kindergarten') {
       return /拼音|识字|思维|启蒙|学前|绘本|专注力|手工/.test(n);
+    }
+
+    if (key === 'classic') {
+      return /文史|经典|名著|典籍|大学|物理|数理|高数|微积分|奥林匹克|竞赛|奥赛|通识|培优/.test(n) || /classic|olympiad|general-studies/.test(key);
     }
 
     return false;

@@ -31,11 +31,13 @@ type CheckResult struct {
 
 // BatchCheckOptions 批量巡检配置参数（带频率调控）
 type BatchCheckOptions struct {
-	MinIntervalHours  int    `json:"min_interval_hours"`   // 冷却时间（小时）：跳过指定小时内已检测过的链接，默认 24 小时
-	Force             bool   `json:"force"`                // 是否强制全量检测（忽略冷却时间）
-	StatusFilter      string `json:"status_filter"`        // 筛选特定状态："" (全部), "reported" (仅用户报错), "active", "invalid"
-	Limit             int    `json:"limit"`                // 最大检测数量限制，防止单次执行过重，默认 50
-	AutoDelistAllDead bool   `json:"auto_delist_all_dead"` // 若某资料的所有链接均已失效，是否自动静默下架保护前台体验
+	MinIntervalHours  int      `json:"min_interval_hours"`   // 冷却时间（小时）：跳过指定小时内已检测过的链接，默认 24 小时
+	Force             bool     `json:"force"`                // 是否强制全量检测（忽略冷却时间）
+	StatusFilter      string   `json:"status_filter"`        // 筛选特定状态："" (全部), "reported" (仅用户报错), "active", "invalid"
+	Limit             int      `json:"limit"`                // 最大检测数量限制，防止单次执行过重，默认 50
+	AutoDelistAllDead bool     `json:"auto_delist_all_dead"` // 若某资料的所有链接均已失效，是否自动静默下架保护前台体验
+	ResourceIDs       []string `json:"resource_ids"`         // 指定资料ID集合（用于快速巡检当前页或勾选的资料）
+	LinkIDs           []string `json:"link_ids"`             // 指定网盘链接ID集合
 }
 
 // BatchCheckSummary 批量检测执行汇总
@@ -126,9 +128,9 @@ func (s *NetdiskCheckerService) probeQuarkLiveness(rawURL, passcode string) (str
 	body, _ := io.ReadAll(resp.Body)
 
 	var tokenResult struct {
-		Status  int    `json:"status"`
-		Code    int    `json:"code"`
-		Message string `json:"message"`
+		Status  interface{} `json:"status"`
+		Code    interface{} `json:"code"`
+		Message string      `json:"message"`
 		Data    struct {
 			Stoken string `json:"stoken"`
 			Title  string `json:"title"`
@@ -239,14 +241,27 @@ func (s *NetdiskCheckerService) probeGenericLiveness(rawURL string) (string, str
 
 // RunBatchCheck 执行批量轻量巡检（极速且保护历史状态）
 func (s *NetdiskCheckerService) RunBatchCheck(opts BatchCheckOptions) (*BatchCheckSummary, error) {
-	if opts.MinIntervalHours <= 0 {
-		opts.MinIntervalHours = 24 // 默认冷却时间：24 小时
-	}
-	if opts.Limit <= 0 || opts.Limit > 200 {
-		opts.Limit = 50 // 默认单次巡检批次上限
+	hasSpecifiedTargets := len(opts.ResourceIDs) > 0 || len(opts.LinkIDs) > 0
+	if hasSpecifiedTargets {
+		opts.Force = true
+		if opts.Limit <= 0 || opts.Limit > 200 {
+			opts.Limit = 100
+		}
+	} else {
+		if opts.MinIntervalHours <= 0 {
+			opts.MinIntervalHours = 24 // 默认冷却时间：24 小时
+		}
+		if opts.Limit <= 0 || opts.Limit > 200 {
+			opts.Limit = 50 // 默认单次巡检批次上限
+		}
 	}
 
 	query := database.DB.Model(&model.ResourceLink{})
+	if len(opts.LinkIDs) > 0 {
+		query = query.Where("id IN ?", opts.LinkIDs)
+	} else if len(opts.ResourceIDs) > 0 {
+		query = query.Where("resource_id IN ?", opts.ResourceIDs)
+	}
 
 	// 状态过滤
 	if opts.StatusFilter != "" {
@@ -258,6 +273,11 @@ func (s *NetdiskCheckerService) RunBatchCheck(opts BatchCheckOptions) (*BatchChe
 	query.Count(&totalEligible)
 
 	checkQuery := database.DB.Model(&model.ResourceLink{})
+	if len(opts.LinkIDs) > 0 {
+		checkQuery = checkQuery.Where("id IN ?", opts.LinkIDs)
+	} else if len(opts.ResourceIDs) > 0 {
+		checkQuery = checkQuery.Where("resource_id IN ?", opts.ResourceIDs)
+	}
 	if opts.StatusFilter != "" {
 		checkQuery = checkQuery.Where("status = ?", opts.StatusFilter)
 	}

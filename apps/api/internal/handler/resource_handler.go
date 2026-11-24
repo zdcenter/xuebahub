@@ -72,12 +72,13 @@ func NormalizeStage(stage string) string {
 // IsKnownStage 判断是否属于标准学段或常见中文学段
 func IsKnownStage(val string) bool {
 	switch strings.ToLower(strings.TrimSpace(val)) {
-	case "primary", "junior", "senior", "cert", "exam", "kindergarten",
+	case "primary", "junior", "senior", "cert", "exam", "kindergarten", "classic",
 		"小学", "小学阶段", "小学专区",
 		"初中", "初中冲刺", "初中专区",
 		"高中", "高中专区", "高中高考专项",
 		"成人考证", "考证", "教师资格证", "教资",
-		"考公考研", "考公", "考研", "幼小衔接":
+		"考公考研", "考公", "考研", "幼小衔接",
+		"学科经典", "学科经典与拓展", "经典名著", "竞赛名著", "学科经典/竞赛名著":
 		return true
 	default:
 		return false
