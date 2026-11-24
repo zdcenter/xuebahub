@@ -1,6 +1,12 @@
 <div class="group relative flex flex-col bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 overflow-hidden">
   <!-- 书籍封面展示区 (标准 3:4 黄金竖版比例，3D 书脊微阴影质感) -->
   <a [routerLink]="['/resource', resource.slug || resource.id]" class="relative block w-full aspect-[3/4] bg-slate-100 overflow-hidden select-none">
+    <!-- 2024 新课标新教材专属高光角标 -->
+    <div *ngIf="isNew2024"
+         class="absolute top-2 left-2 z-20 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-black shadow-md flex items-center gap-1 tracking-wider border border-white/20">
+      <span>🔥</span> 2024新版
+    </div>
+
     <img *ngIf="resource.cover_image"
          [src]="resource.cover_image"
          [alt]="resource.title"

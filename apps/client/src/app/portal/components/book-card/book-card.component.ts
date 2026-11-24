@@ -25,4 +25,10 @@ export class BookCardComponent {
   get subjectBgColor(): string {
     return getStageTheme(this.resource).gradientClass;
   }
+
+  get isNew2024(): boolean {
+    const t = (this.resource?.title || '');
+    const d = (this.resource?.description || '');
+    return t.includes('2024') || d.includes('2024');
+  }
 }

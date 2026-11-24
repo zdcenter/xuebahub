@@ -211,8 +211,8 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 			query = query.Where("grade IN (?)", aliases)
 		}
 	}
-	if subject != "" {
-		query = query.Where("subject = ?", subject)
+	if subject != "" && subject != "all" {
+		query = query.Where("(subject = ? OR subject ILIKE ?)", subject, "%"+subject+"%")
 	}
 	edition := c.Query("edition")
 	if edition != "" && edition != "all" {

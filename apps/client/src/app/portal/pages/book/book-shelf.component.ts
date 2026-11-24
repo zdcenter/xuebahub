@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { PortalService } from '../../../core/services/portal.service';
 import { SeoService } from '../../../core/services/seo.service';
@@ -9,7 +10,7 @@ import { BookCardComponent } from '../../components/book-card/book-card.componen
 @Component({
   selector: 'app-book-shelf',
   standalone: true,
-  imports: [CommonModule, RouterLink, BookCardComponent],
+  imports: [CommonModule, FormsModule, RouterLink, BookCardComponent],
   templateUrl: './book-shelf.component.html'
 })
 export class BookShelfComponent implements OnInit {
@@ -18,6 +19,9 @@ export class BookShelfComponent implements OnInit {
   gradeParam = signal<string>('');
   termParam = signal<string>('');
   subjectParam = signal<string>('');
+  editionParam = signal<string>('');
+  queryParam = signal<string>('');
+  searchKeyword = signal<string>('');
 
   constructor(
     private portalService: PortalService,
@@ -25,8 +29,6 @@ export class BookShelfComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router
   ) {}
-  editionParam = signal<string>('');
-  queryParam = signal<string>('');
 
   page = signal<number>(1);
   pageSize = signal<number>(25);
@@ -133,7 +135,26 @@ export class BookShelfComponent implements OnInit {
     return dbGrades.map(g => ({ name: g.name }));
   });
 
-  // 3. 学科自适应计算
+  // 3. 分册/学期自适应选项列表 (P0 核心体验)
+  availableTerms = computed(() => {
+    const s = this.stageParam().toLowerCase();
+    if (s === 'senior' || s.includes('高中')) {
+      return [
+        { name: '必修', icon: '📌' },
+        { name: '选择性必修', icon: '🎯' },
+        { name: '上册', icon: '🍁' },
+        { name: '下册', icon: '🌱' },
+        { name: '全一册', icon: '📗' }
+      ];
+    }
+    return [
+      { name: '上册', icon: '🍁' },
+      { name: '下册', icon: '🌱' },
+      { name: '全一册', icon: '📗' }
+    ];
+  });
+
+  // 4. 学科自适应计算 (全学段学科完备适配)
   availableSubjects = computed(() => {
     const s = this.stageParam().toLowerCase();
     if (s === 'classic' || s.includes('经典') || s.includes('名著') || s.includes('竞赛')) {
@@ -164,9 +185,26 @@ export class BookShelfComponent implements OnInit {
         { name: '幼小衔接识字', icon: '📖' }, { name: '思维数学启蒙', icon: '📐' }
       ];
     }
+    if (s === 'senior' || s.includes('高中')) {
+      return [
+        { name: '语文', icon: '📖' }, { name: '数学', icon: '📐' }, { name: '英语', icon: '🔤' },
+        { name: '物理', icon: '⚡' }, { name: '化学', icon: '🧪' }, { name: '生物学', icon: '🧬' },
+        { name: '思想政治', icon: '⚖️' }, { name: '历史', icon: '📜' }, { name: '地理', icon: '🌍' },
+        { name: '信息技术', icon: '💻' }, { name: '音乐', icon: '🎵' }, { name: '美术', icon: '🎨' }
+      ];
+    }
+    if (s === 'junior' || s.includes('初中')) {
+      return [
+        { name: '语文', icon: '📖' }, { name: '数学', icon: '📐' }, { name: '英语', icon: '🔤' },
+        { name: '物理', icon: '⚡' }, { name: '化学', icon: '🧪' }, { name: '生物学', icon: '🧬' },
+        { name: '道德与法治', icon: '⚖️' }, { name: '历史', icon: '📜' }, { name: '地理', icon: '🌍' },
+        { name: '科学', icon: '🔬' }, { name: '音乐', icon: '🎵' }, { name: '美术', icon: '🎨' }
+      ];
+    }
     return [
-      { name: '数学', icon: '📐' }, { name: '语文', icon: '📖' }, { name: '英语', icon: '🔤' },
-      { name: '科学', icon: '🔬' }, { name: '道德与法治', icon: '⚖️' }, { name: '通用/全科', icon: '📚' }
+      { name: '语文', icon: '📖' }, { name: '数学', icon: '📐' }, { name: '英语', icon: '🔤' },
+      { name: '科学', icon: '🔬' }, { name: '道德与法治', icon: '⚖️' }, { name: '音乐', icon: '🎵' },
+      { name: '美术', icon: '🎨' }, { name: '书法', icon: '🖋️' }
     ];
   });
 
@@ -217,6 +255,7 @@ export class BookShelfComponent implements OnInit {
       this.subjectParam.set(params['subject'] || '');
       this.editionParam.set(params['edition'] || '');
       this.queryParam.set(params['q'] || '');
+      this.searchKeyword.set(params['q'] || '');
       this.page.set(parseInt(params['page'] || '1', 10) || 1);
       this.loadBooks();
     });
@@ -237,7 +276,39 @@ export class BookShelfComponent implements OnInit {
     this.router.navigate([], { relativeTo: this.route, queryParams: qp, queryParamsHandling: 'merge' });
   }
 
+  // 书架内快捷关键词搜索
+  onSearchSubmit() {
+    const q = this.searchKeyword().trim();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { q: q || null, page: '1' },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  // 清空搜索框
+  clearSearch() {
+    this.searchKeyword.set('');
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { q: null, page: '1' },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  // 2024新版教材快捷筛选开关
+  toggleOnly2024() {
+    const is2024 = this.queryParam() === '2024';
+    this.searchKeyword.set(is2024 ? '' : '2024');
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { q: is2024 ? null : '2024', page: '1' },
+      queryParamsHandling: 'merge'
+    });
+  }
+
   resetAllFilters() {
+    this.searchKeyword.set('');
     this.router.navigate([], { relativeTo: this.route, queryParams: { page: '1' } });
   }
 
