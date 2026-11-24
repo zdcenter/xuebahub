@@ -42,7 +42,7 @@ func (s *SeoService) GetConfig() (*model.SeoConfig, error) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			cfg = model.SeoConfig{
 				ID:                "global",
-				SiteDomain:        "https://xuebaw.com",
+				SiteDomain:        "https://www.xuebaw.com",
 				BaiduToken:        "",
 				BaiduActive:       true,
 				BingApiKey:        "7f8a9b2c3d4e5f60718293a4b5c6d7e8",
@@ -279,7 +279,7 @@ func (s *SeoService) BatchPush(engine string, resourceIDs []uuid.UUID, manualURL
 
 	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
 	if sitePrefix == "" {
-		sitePrefix = "https://xuebaw.com"
+		sitePrefix = "https://www.xuebaw.com"
 	}
 
 	urlMap := make(map[string]bool)
@@ -432,7 +432,7 @@ func (s *SeoService) BatchDelist(resourceIDs []uuid.UUID, manualURLs []string) (
 
 	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
 	if sitePrefix == "" {
-		sitePrefix = "https://xuebaw.com"
+		sitePrefix = "https://www.xuebaw.com"
 	}
 
 	urlMap := make(map[string]bool)
@@ -686,7 +686,7 @@ func (s *SeoService) GenerateBookSitemapXML() (string, error) {
 	}
 	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
 	if sitePrefix == "" {
-		sitePrefix = "https://xuebaw.com"
+		sitePrefix = "https://www.xuebaw.com"
 	}
 
 	var resources []model.Resource
@@ -825,7 +825,7 @@ func (s *SeoService) PurgeForResource(res *model.Resource) {
 
 	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
 	if sitePrefix == "" {
-		sitePrefix = "https://xuebaw.com"
+		sitePrefix = "https://www.xuebaw.com"
 	}
 
 	urls := []string{
@@ -864,7 +864,7 @@ func (s *SeoService) PurgeForResources(resources []model.Resource) {
 
 	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
 	if sitePrefix == "" {
-		sitePrefix = "https://xuebaw.com"
+		sitePrefix = "https://www.xuebaw.com"
 	}
 
 	urlMap := make(map[string]bool)
