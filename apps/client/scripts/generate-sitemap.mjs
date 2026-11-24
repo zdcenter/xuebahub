@@ -80,8 +80,8 @@ async function generateSitemap() {
     fs.writeFileSync(eduSitemapPath, eduSitemapXml, 'utf8');
     const eduCount = (eduSitemapXml.match(/<url>/g) || []).length;
     console.log(`[Sitemap] Generated sitemap_edu.xml with ${eduCount} URLs.`);
-  } else {
-    // 静态兜底
+  } else if (!fs.existsSync(eduSitemapPath) || fs.readFileSync(eduSitemapPath, 'utf8').length < 200) {
+    // 静态兜底 (仅当本地完全不存在 sitemap_edu.xml 时才生成极简兜底，防止 CI 环境因网络原因覆盖已有完整资源)
     const fallbackEduXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${staticPages.map(page => `  <url>
@@ -93,6 +93,8 @@ ${staticPages.map(page => `  <url>
 </urlset>`;
     fs.writeFileSync(eduSitemapPath, fallbackEduXml, 'utf8');
     console.log(`[Sitemap] Generated base sitemap_edu.xml with ${staticPages.length} URLs.`);
+  } else {
+    console.log(`[Sitemap] Preserved existing sitemap_edu.xml with all edu resources.`);
   }
 
   // 2. 电子课本专区专属地图 (sitemap_books.xml，纯2032本课本 + /book)
