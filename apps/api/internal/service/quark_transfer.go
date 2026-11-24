@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -192,22 +193,28 @@ func (s *QuarkTransferService) VerifyCookie(cookie string) (*QuarkAccountInfo, e
 		}
 	}
 
-	// 2. 若仍未获取到昵称或数字 UID，补充请求个人账号核心接口 (https://pan.quark.cn/account/info?fr=pc&platform=pc)
+	// 2. 补充请求个人账号核心接口 (https://pan.quark.cn/account/info?fr=pc&platform=pc)
 	if realNickname == "" || parsedUID == "" {
 		accountInfoURL := "https://pan.quark.cn/account/info?fr=pc&platform=pc"
 		if accReq, err := s.newRequest("GET", accountInfoURL, nil, cookie); err == nil {
-			if accResp, err := s.client.Do(accReq); err == nil {
+			if accResp, err := s.client.Do(accReq); err != nil {
+				log.Printf("[Quark Info] 请求 pan.quark.cn/account/info 异常: %v", err)
+			} else {
 				defer accResp.Body.Close()
-				if accResp.StatusCode == 200 {
+				if accResp.StatusCode != 200 {
+					log.Printf("[Quark Info] 请求 pan.quark.cn/account/info 状态码异常: %d (若为403通常因服务器海外IP或数据中心IP受限)", accResp.StatusCode)
+				} else {
 					var infoRes struct {
-						Status int                    `json:"status"`
-						Code   int                    `json:"code"`
-						Data   map[string]interface{} `json:"data"`
+						Success bool                   `json:"success"`
+						Code    interface{}            `json:"code"`
+						Status  interface{}            `json:"status"`
+						Data    map[string]interface{} `json:"data"`
 					}
-					if err := json.NewDecoder(accResp.Body).Decode(&infoRes); err == nil && (infoRes.Code == 0 || infoRes.Status == 200) && infoRes.Data != nil {
+					if err := json.NewDecoder(accResp.Body).Decode(&infoRes); err == nil && infoRes.Data != nil {
 						if realNickname == "" {
 							if n, ok := infoRes.Data["nickname"].(string); ok && strings.TrimSpace(n) != "" {
 								realNickname = strings.TrimSpace(n)
+								log.Printf("[Quark Info] 成功获取真实夸克用户名: %s", realNickname)
 							}
 						}
 						if parsedUID == "" {
@@ -221,6 +228,8 @@ func (s *QuarkTransferService) VerifyCookie(cookie string) (*QuarkAccountInfo, e
 								parsedUID = uid
 							}
 						}
+					} else {
+						log.Printf("[Quark Info] 解析 account/info JSON 响应失败: %v", err)
 					}
 				}
 			}
@@ -281,24 +290,8 @@ func (s *QuarkTransferService) VerifyCookie(cookie string) (*QuarkAccountInfo, e
 		return nil, errors.New(msg)
 	}
 
-	// 智能识别会员等级与状态称号
-	vipName := "夸克用户"
-	switch strings.ToUpper(memRes.Data.MemberType) {
-	case "SUPER_VIP":
-		vipName = "夸克超级会员 SVIP"
-	case "VIP":
-		vipName = "夸克VIP会员"
-	case "NORMAL":
-		vipName = "夸克普通用户"
-	}
-
+	// 真实网盘昵称：未获取到时严格保持为空，坚决不使用任何默认占位词或自拟文本，避免误解
 	nickname := realNickname
-	if nickname == "" {
-		nickname = vipName
-		if memRes.Data.MemberInfo.FileSaveToRemains > 0 {
-			nickname = fmt.Sprintf("%s (转存剩余:%d次)", vipName, memRes.Data.MemberInfo.FileSaveToRemains)
-		}
-	}
 
 	totalCap := formatCapacityBytes(memRes.Data.TotalCapacity)
 	usedCap := formatCapacityBytes(memRes.Data.UseCapacity)

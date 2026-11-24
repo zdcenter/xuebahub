@@ -1607,6 +1607,23 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  batchCleanDraftTitles() {
+    const ids = this.selectedDraftIds();
+    if (ids.length === 0) {
+      this.showToast('请先勾选要净化标题的草稿');
+      return;
+    }
+    this.resService.batchCrawlerDraftsAction('clean_titles', ids).subscribe({
+      next: (res) => {
+        this.showToast(res.message || '✅ 已成功净化选中的草稿标题', 'success');
+        this.loadCrawlerDrafts();
+      },
+      error: (err) => {
+        this.showToast('净化标题失败: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
+
   batchIgnoreDrafts() {
     const ids = this.selectedDraftIds();
     if (ids.length === 0) return;

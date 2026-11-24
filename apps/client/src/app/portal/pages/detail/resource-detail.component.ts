@@ -1107,8 +1107,12 @@ export class ResourceDetailComponent implements OnInit {
     const slug = res?.slug || res?.id || '';
 
     // 无论前置校验结果，第一时间同步将提取码写入剪贴板（符合浏览器安全策略）
-    if (link.extract_code && typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(link.extract_code).catch(() => {});
+    if (link.extract_code) {
+      this.copiedCode.set(link.extract_code);
+      setTimeout(() => this.copiedCode.set(null), 3000);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(link.extract_code).catch(() => {});
+      }
     }
 
     this.memberService.consumeQuota(slug).subscribe({
@@ -1230,6 +1234,25 @@ export class ResourceDetailComponent implements OnInit {
     if (['MP3', 'WAV', 'FLAC'].includes(e)) return 'bg-teal-50 text-teal-700 border-teal-200';
     if (['JPG', 'JPEG', 'PNG', 'WEBP'].includes(e)) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
     return 'bg-slate-100 text-slate-600 border-slate-200';
+  }
+
+  // 识别文件特殊属性徽章 (答案解析 / 听力音频 / 讲义课件 / 高清原卷)
+  getFileHighlightBadge(name: string): { label: string; class: string } | null {
+    if (!name) return null;
+    const lower = name.toLowerCase();
+    if (lower.includes('答案') || lower.includes('解析') || lower.includes('详析') || lower.includes('参考答案') || lower.includes('答题卡')) {
+      return { label: '含答案解析', class: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    }
+    if (lower.includes('音频') || lower.includes('听力') || lower.includes('mp3') || lower.includes('录音')) {
+      return { label: '含听力音频', class: 'bg-teal-50 text-teal-700 border-teal-200' };
+    }
+    if (lower.includes('课件') || lower.includes('ppt') || lower.includes('讲义') || lower.includes('教案')) {
+      return { label: '讲义课件', class: 'bg-amber-50 text-amber-700 border-amber-200' };
+    }
+    if (lower.includes('答题卷') || lower.includes('真题卷') || lower.includes('原卷') || lower.includes('试卷') || lower.includes('空白卷')) {
+      return { label: '高清试卷', class: 'bg-blue-50 text-blue-700 border-blue-200' };
+    }
+    return null;
   }
 
   private normalizeFileTree(list: any[]): any[] {

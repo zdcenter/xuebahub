@@ -933,7 +933,7 @@ export class ResourceService {
     return this.http.delete(`${this.baseUrl}/api/v1/admin/crawler/drafts/${id}`);
   }
 
-  batchCrawlerDraftsAction(action: 'ignore' | 'delete', ids: string[]): Observable<any> {
+  batchCrawlerDraftsAction(action: 'ignore' | 'delete' | 'clean_titles', ids: string[]): Observable<any> {
     return this.http.post(`${this.baseUrl}/api/v1/admin/crawler/drafts/batch`, { action, ids });
   }
 

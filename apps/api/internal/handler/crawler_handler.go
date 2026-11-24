@@ -462,6 +462,21 @@ func (h *CrawlerHandler) BatchDraftAction(c fiber.Ctx) error {
 	} else if req.Action == "delete" {
 		h.db.Where("id IN ?", req.IDs).Delete(&model.ResourceDraft{})
 		return c.JSON(fiber.Map{"message": fmt.Sprintf("已彻底删除 %d 条草稿", len(req.IDs))})
+	} else if req.Action == "clean_titles" {
+		var drafts []model.ResourceDraft
+		h.db.Where("id IN ?", req.IDs).Find(&drafts)
+		cleanedCount := 0
+		for _, d := range drafts {
+			newTitle := d.Title
+			if h.smartMeta != nil {
+				newTitle = h.smartMeta.CleanTitle(d.Title)
+			}
+			if newTitle != d.Title && strings.TrimSpace(newTitle) != "" {
+				h.db.Model(&model.ResourceDraft{}).Where("id = ?", d.ID).Update("title", newTitle)
+				cleanedCount++
+			}
+		}
+		return c.JSON(fiber.Map{"message": fmt.Sprintf("已成功为 %d 条草稿净化标题中的广告与引流信息", cleanedCount)})
 	} else if req.Action == "approve" {
 		return h.BatchApproveDrafts(c)
 	}

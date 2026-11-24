@@ -200,10 +200,16 @@ func (h *NetdiskAccountHandler) SaveAccount(c fiber.Ctx) error {
 		acc.Status = "valid"
 		if verifiedInfo.Nickname != "" {
 			acc.Nickname = verifiedInfo.Nickname
+		} else if strings.Contains(acc.Nickname, "转存剩余") || strings.Contains(acc.Nickname, "夸克用户") || strings.Contains(acc.Nickname, "夸克普通用户") {
+			// 若接口未返回真实昵称，且当前是旧版占位名，自动清理为空，绝不假造
+			acc.Nickname = ""
 		}
-		// 若获取到了真实数字 UID，且当前账号 UID 为空或旧的非数字乱码，自动同步为真实数字 UID
-		if verifiedInfo.UID != "" && (acc.UID == "" || !isAllDigits(acc.UID)) {
+		// 若获取到了真实数字 UID，自动同步
+		if verifiedInfo.UID != "" {
 			acc.UID = verifiedInfo.UID
+		} else if !isAllDigits(acc.UID) {
+			// 若当前保留的是旧版非数字密文字符串（如 AARr...），清理掉，避免误导
+			acc.UID = ""
 		}
 		acc.TotalCapacity = verifiedInfo.TotalCapacity
 		acc.UsedCapacity = verifiedInfo.UsedCapacity
@@ -334,9 +340,14 @@ func (h *NetdiskAccountHandler) VerifyAccount(c fiber.Ctx) error {
 	acc.Status = "valid"
 	if verifiedInfo.Nickname != "" {
 		acc.Nickname = verifiedInfo.Nickname
+	} else if strings.Contains(acc.Nickname, "转存剩余") || strings.Contains(acc.Nickname, "夸克用户") || strings.Contains(acc.Nickname, "夸克普通用户") {
+		// 若接口未返回真实昵称，且当前是旧版占位名，自动清理为空，绝不假造
+		acc.Nickname = ""
 	}
 	if verifiedInfo.UID != "" {
 		acc.UID = verifiedInfo.UID
+	} else if !isAllDigits(acc.UID) {
+		acc.UID = ""
 	}
 	acc.TotalCapacity = verifiedInfo.TotalCapacity
 	acc.UsedCapacity = verifiedInfo.UsedCapacity
@@ -401,9 +412,13 @@ func (h *NetdiskAccountHandler) verifyAllAccountsInternal() int {
 			acc.Status = "valid"
 			if verifiedInfo.Nickname != "" {
 				acc.Nickname = verifiedInfo.Nickname
+			} else if strings.Contains(acc.Nickname, "转存剩余") || strings.Contains(acc.Nickname, "夸克用户") || strings.Contains(acc.Nickname, "夸克普通用户") {
+				acc.Nickname = ""
 			}
 			if verifiedInfo.UID != "" {
 				acc.UID = verifiedInfo.UID
+			} else if !isAllDigits(acc.UID) {
+				acc.UID = ""
 			}
 			acc.TotalCapacity = verifiedInfo.TotalCapacity
 			acc.UsedCapacity = verifiedInfo.UsedCapacity

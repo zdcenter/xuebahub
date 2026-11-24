@@ -3128,6 +3128,15 @@
                   <button 
                     type="button" 
                     class="btn btn-sm" 
+                    (click)="batchCleanDraftTitles()"
+                    title="批量剔除标题中的微信引流、公众号、防失联等广告词"
+                    style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; cursor: pointer; border-radius: 6px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                    <span>🧹</span>
+                    <span>一键净化标题(去广告)</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn btn-sm" 
                     (click)="batchIgnoreDrafts()"
                     style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; cursor: pointer; border-radius: 6px; font-size: 12px;">
                     {{ i18n.t('crawler.batchIgnore') }}
@@ -9006,8 +9015,8 @@
                 <span style="display: flex; align-items: center; gap: 6px;">
                   <span>✨</span> 夸克网盘账号身份信息 (自动获取 & 可微调)
                 </span>
-                <span style="font-size: 11px; font-weight: normal; color: #10b981;">
-                  {{ accountForm.nickname ? '🟢 已获取用户名' : '⚪ 输入Cookie后自动解析' }}
+                <span style="font-size: 11px; font-weight: normal;" [style.color]="accountForm.nickname ? '#10b981' : '#64748b'">
+                  {{ accountForm.nickname ? '🟢 已同步网盘昵称' : '⚪ 未同步昵称（可手动填写）' }}
                 </span>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">

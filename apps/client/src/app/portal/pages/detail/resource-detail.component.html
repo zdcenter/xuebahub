@@ -692,6 +692,11 @@
                         [ngClass]="getFileBadgeClass(node.ext)">
                     {{ node.ext }}
                   </span>
+                  <span *ngIf="getFileHighlightBadge(node.name) as hb"
+                        class="text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap shadow-2xs"
+                        [ngClass]="hb.class">
+                    {{ hb.label }}
+                  </span>
                 </div>
 
                 <div class="flex items-center space-x-2.5 sm:space-x-3 text-right pr-2 shrink-0">

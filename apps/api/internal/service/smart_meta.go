@@ -67,29 +67,41 @@ func (s *SmartMetaService) InferMeta(title string) InferredResourceMeta {
 	}
 }
 
-// CleanTitle 清洗标题噪声（去除提取码、格式后缀、广告语等）
+// CleanTitle 清洗标题噪声（去除提取码、格式后缀、广告语、微信引流等）
 func (s *SmartMetaService) CleanTitle(title string) string {
 	t := strings.TrimSpace(title)
 	if t == "" {
 		return ""
 	}
 
-	// 去除多余营销前缀
+	// 1. 去除引流微信、公众号、群聊、防失联、淘宝闲鱼等括号标签
+	reSpamBracket := regexp.MustCompile(`(?i)[\[\(\{\【\（][^\]\)\}\】\）]*(?:加[v微V]|微信|vx|VX|关注公众号|防失联|进群|代找|淘宝|闲鱼|免费领|私信|首发|独家首发|一手资源|备用群)[^\]\)\}\】\）]*[\]\)\}\】\）]`)
+	t = reSpamBracket.ReplaceAllString(t, "")
+
+	// 2. 去除多余营销前缀
 	reAd1 := regexp.MustCompile(`【(?:全网首发|独家|精选|完整版|最新|免费|无水印|高清|秒发|秒下|提取码[^】]*|网盘[^】]*|备用[^】]*)】`)
 	t = reAd1.ReplaceAllString(t, "")
 	reAd2 := regexp.MustCompile(`\[(?:全网首发|独家|精选|完整版|最新|免费|无水印|高清|秒发|提取码[^\]]*)\]`)
 	t = reAd2.ReplaceAllString(t, "")
 
-	// 去除文件后缀
+	// 3. 去除独立微信号/公众号引流后缀: 如 "加微xxx", "微信xxx", "公众号xxx"
+	reContact := regexp.MustCompile(`(?i)(?:加[v微V]|微信|vx|VX|公众号|防失联)[:：\s]*[a-zA-Z0-9_\-\+]{4,25}`)
+	t = reContact.ReplaceAllString(t, "")
+
+	// 4. 去除常见外链网址 (如 t.cn/xxx, pan.quark.cn, http...)
+	reURL := regexp.MustCompile(`(?i)(?:https?://|www\.)[^\s]+`)
+	t = reURL.ReplaceAllString(t, "")
+
+	// 5. 去除文件后缀
 	reExt := regexp.MustCompile(`(?i)\.(pdf|zip|rar|7z|mp4|doc|docx|ppt|pptx|xlsx|xls|epub|mobi|azw3)$`)
 	t = reExt.ReplaceAllString(t, "")
 
-	// 去除提取码说明
+	// 6. 去除提取码说明
 	rePwd := regexp.MustCompile(`(?i)[(（]?(?:提取码|密码|pwd|code)[:：\s]*[a-zA-Z0-9]{4,8}[)）]?`)
 	t = rePwd.ReplaceAllString(t, "")
 
-	// 去除首尾杂字符与多余空格
-	t = strings.Trim(t, " _-—#[]【】()")
+	// 7. 去除首尾杂字符与多余空格
+	t = strings.Trim(t, " _-—#[]【】()|:：")
 	reSpaces := regexp.MustCompile(`[\s_]{2,}`)
 	t = reSpaces.ReplaceAllString(t, " ")
 
