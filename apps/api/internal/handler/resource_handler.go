@@ -103,6 +103,61 @@ func ExpandGradeAliases(grade string) []string {
 	}
 }
 
+// CleanEditionName 清理版本字符串中的括号、英文字母及补充说明（如 "人教版 (教育部统编)" -> "人教版"）
+func CleanEditionName(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "all" {
+		return ""
+	}
+	re := regexp.MustCompile(`[\(（\[【].*?[\)）\]】]`)
+	cleaned := re.ReplaceAllString(raw, "")
+	cleaned = strings.TrimSpace(cleaned)
+	if cleaned == "" {
+		cleaned = raw
+	}
+	return cleaned
+}
+
+// ExpandEditionAliases 针对主流教材版本构建语义互通的别名列表并实现自适应双向兼容
+func ExpandEditionAliases(raw string) (string, []string) {
+	clean := CleanEditionName(raw)
+	if clean == "" {
+		return "", nil
+	}
+
+	aliasMap := map[string][]string{
+		"人教版":   {"人教版", "统编版", "人教", "教育部统编", "人音版", "人美版", "配套人教版"},
+		"统编版":   {"统编版", "人教版", "人教", "教育部统编"},
+		"北师大版": {"北师大版", "北师大", "北京师范大学版"},
+		"苏教版":   {"苏教版", "苏教", "江苏凤凰", "苏少版", "苏科版"},
+		"外研版":   {"外研版", "外研社版", "外研社", "外研"},
+		"外研社版": {"外研社版", "外研版", "外研社", "外研"},
+		"沪教版":   {"沪教版", "沪科版", "上海教育", "沪科技版", "沪音版", "沪书画版", "沪科教版"},
+		"鲁教版":   {"鲁教版", "鲁科版", "鲁美版", "山东教育", "配套鲁教版"},
+		"冀教版":   {"冀教版", "冀美版", "冀少版", "冀人版", "河北教育"},
+		"教科版":   {"教科版", "教育科学", "教科"},
+		"粤教版":   {"粤教版", "粤教花城版", "粤教科技版", "广东教育"},
+		"湘教版":   {"湘教版", "湘科版", "湘美版", "湘文艺版", "湘少版", "湖南教育"},
+		"青岛版":   {"青岛版", "青岛"},
+		"译林版":   {"译林版", "译林"},
+		"浙教版":   {"浙教版", "浙科版", "浙人美版", "浙江教育"},
+	}
+
+	var aliases []string
+	for mainName, list := range aliasMap {
+		if strings.Contains(clean, mainName) || strings.Contains(mainName, clean) {
+			aliases = list
+			break
+		}
+	}
+
+	if len(aliases) == 0 {
+		aliases = []string{clean}
+	}
+
+	return clean, aliases
+}
+
 // ListPublicResources 前台公开资源列表，支持多维条件筛选
 func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 	stage := c.Query("stage")       // primary, junior, senior, cert, exam
@@ -161,7 +216,18 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 	}
 	edition := c.Query("edition")
 	if edition != "" && edition != "all" {
-		query = query.Where("(edition = ? OR edition ILIKE ?)", edition, "%"+edition+"%")
+		cleanEd, aliases := ExpandEditionAliases(edition)
+		if len(aliases) > 0 {
+			var orConds []string
+			var orVals []interface{}
+			for _, a := range aliases {
+				orConds = append(orConds, "edition = ?", "edition ILIKE ?", "title ILIKE ?")
+				orVals = append(orVals, a, "%"+a+"%", "%"+a+"%")
+			}
+			query = query.Where("("+strings.Join(orConds, " OR ")+")", orVals...)
+		} else if cleanEd != "" {
+			query = query.Where("(edition = ? OR edition ILIKE ? OR title ILIKE ?)", cleanEd, "%"+cleanEd+"%", "%"+cleanEd+"%")
+		}
 	}
 	term := c.Query("term")
 	if term != "" && term != "all" {
@@ -797,11 +863,18 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 		query = query.Where("(subject = ? OR subject ILIKE ?)", subject, "%"+subject+"%")
 	}
 	if edition != "" && edition != "all" {
-		cleanEd := strings.Split(edition, " ")[0]
-		if cleanEd == "" {
-			cleanEd = edition
+		cleanEd, aliases := ExpandEditionAliases(edition)
+		if len(aliases) > 0 {
+			var orConds []string
+			var orVals []interface{}
+			for _, a := range aliases {
+				orConds = append(orConds, "edition = ?", "edition ILIKE ?", "title ILIKE ?")
+				orVals = append(orVals, a, "%"+a+"%", "%"+a+"%")
+			}
+			query = query.Where("("+strings.Join(orConds, " OR ")+")", orVals...)
+		} else if cleanEd != "" {
+			query = query.Where("(edition = ? OR edition ILIKE ? OR title ILIKE ?)", cleanEd, "%"+cleanEd+"%", "%"+cleanEd+"%")
 		}
-		query = query.Where("(edition = ? OR edition ILIKE ? OR edition ILIKE ?)", edition, "%"+cleanEd+"%", "%"+edition+"%")
 	}
 	if school != "" && school != "all" {
 		query = query.Where("(school = ? OR school ILIKE ?)", school, "%"+school+"%")

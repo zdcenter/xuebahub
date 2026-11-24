@@ -188,10 +188,14 @@ export class BookShelfComponent implements OnInit {
       }));
     }
     return [
-      { name: '人教版 (教育部统编)', icon: '📚', is_hot: true },
-      { name: '北师大版 (BNU)', icon: '📚', is_hot: true },
-      { name: '苏教版 (江苏凤凰)', icon: '📚', is_hot: true },
-      { name: '外研版 (英语)', icon: '🔤', is_hot: true }
+      { name: '人教版/统编版', icon: '📚', is_hot: true },
+      { name: '北师大版', icon: '📚', is_hot: true },
+      { name: '苏教版', icon: '📚', is_hot: true },
+      { name: '外研版', icon: '🔤', is_hot: true },
+      { name: '沪教版', icon: '📚', is_hot: true },
+      { name: '鲁教版', icon: '📚', is_hot: true },
+      { name: '教科版', icon: '🔬', is_hot: true },
+      { name: '冀教版', icon: '📚', is_hot: true }
     ];
   });
 

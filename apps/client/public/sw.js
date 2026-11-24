@@ -100,7 +100,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkRes;
         })
-        .catch(() => cachedRes);
+        .catch(() => cachedRes || new Response('', { status: 504, statusText: 'Gateway Timeout' }));
 
       return cachedRes || fetchPromise;
     })

@@ -555,8 +555,57 @@ export class ResourceDetailComponent implements OnInit {
     return d ? d.substring(0, 10) : '2026-10-18';
   }
 
-  // 文件树规范化
+  // 是否为正版统编电子教材专区资源
+  isBookResource = computed(() => {
+    const r = this.resource();
+    return r?.channel_slug === 'book' || r?.stage === 'book';
+  });
+
+  // 电子教材专用：将章节目录字符串数组智能解析为结构化【单元 -> 课文】列表
+  bookChapterUnits = computed(() => {
+    const r = this.resource();
+    if (!r || !Array.isArray(r.file_tree) || r.file_tree.length === 0) return [];
+
+    const units: { unitTitle: string; lessons: string[] }[] = [];
+    let currentUnit = { unitTitle: '第一单元 / 核心导读', lessons: [] as string[] };
+
+    for (const rawItem of r.file_tree) {
+      const text = (typeof rawItem === 'string' ? rawItem : (rawItem?.name || '')).trim();
+      if (!text) continue;
+
+      const isHeader = text.includes('单元') ||
+                       (text.includes('第') && (text.includes('章') || text.includes('模块') || text.includes('篇'))) ||
+                       text.startsWith('模块') ||
+                       text.startsWith('专题') ||
+                       text.startsWith('附录');
+
+      if (isHeader) {
+        if (currentUnit.lessons.length > 0 || (currentUnit.unitTitle !== '第一单元 / 核心导读' && currentUnit.unitTitle !== '全书课文目录')) {
+          units.push(currentUnit);
+        }
+        currentUnit = { unitTitle: text, lessons: [] };
+      } else {
+        currentUnit.lessons.push(text);
+      }
+    }
+    if (currentUnit.lessons.length > 0 || units.length === 0) {
+      if (units.length === 0 && currentUnit.unitTitle === '第一单元 / 核心导读') {
+        currentUnit.unitTitle = '全书课文目录';
+      }
+      units.push(currentUnit);
+    }
+    return units;
+  });
+
+  // 电子教材课文总数
+  totalLessonCount = computed(() => {
+    const units = this.bookChapterUnits();
+    return units.reduce((acc, u) => acc + u.lessons.length, 0);
+  });
+
+  // 文件树规范化 (非教材类教辅/微课使用)
   displayTree = computed(() => {
+    if (this.isBookResource()) return [];
     const res = this.resource();
     const tree = res?.file_tree;
     if (!Array.isArray(tree) || tree.length === 0) return [];
@@ -1255,6 +1304,16 @@ export class ResourceDetailComponent implements OnInit {
     return null;
   }
 
+  // 快捷触发主网盘链接转存
+  triggerPrimaryLinkDownload(event?: MouseEvent) {
+    const res = this.resource();
+    const link = this.primaryLink || (res && res.links && res.links.length > 0 ? res.links[0] : null);
+    if (link) {
+      const e = event || ({ preventDefault: () => {} } as any);
+      this.onDownloadClick(link, e);
+    }
+  }
+
   private normalizeFileTree(list: any[]): any[] {
     if (!Array.isArray(list)) return [];
     const hasNested = list.some(i => i.is_dir && Array.isArray(i.children));
@@ -1266,7 +1325,12 @@ export class ResourceDetailComponent implements OnInit {
     const rootItems: any[] = [];
 
     for (const item of list) {
-      const name = item.name || '';
+      const isStr = typeof item === 'string';
+      const name = (isStr ? item : (item.name || '')).trim();
+      if (!name) continue;
+
+      const nodeObj = isStr ? { name, is_dir: false, ext: name.split('.').pop() || 'PDF' } : item;
+
       if (name.includes('/') || name.includes('\\')) {
         const parts = name.split(/[/\\]/);
         const folderName = parts[0];
@@ -1282,11 +1346,11 @@ export class ResourceDetailComponent implements OnInit {
           });
         }
         folderMap.get(folderName).children.push({
-          ...item,
+          ...nodeObj,
           name: fileName
         });
       } else {
-        rootItems.push(item);
+        rootItems.push(nodeObj);
       }
     }
 

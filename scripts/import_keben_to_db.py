@@ -214,6 +214,30 @@ def main():
     ON CONFLICT (slug) DO UPDATE SET is_active = true, name = EXCLUDED.name;
     """)
 
+    # 2. 规范化教材版本字典 (确保前台版本按钮大方清爽且能精准匹配)
+    sql_lines.append("""
+    UPDATE categories SET name = '人教版/统编版' WHERE slug = 'edition-renjiao';
+    UPDATE categories SET name = '北师大版' WHERE slug = 'edition-beishida';
+    UPDATE categories SET name = '苏教版' WHERE slug = 'edition-sujiao';
+    UPDATE categories SET name = '外研版' WHERE slug = 'edition-waiyan';
+    UPDATE categories SET name = '译林版' WHERE slug = 'edition-yilin';
+    UPDATE categories SET name = '沪教版' WHERE slug = 'edition-hujiao';
+    UPDATE categories SET name = '鲁教版' WHERE slug = 'edition-lujiao';
+    UPDATE categories SET name = '冀教版' WHERE slug = 'edition-jijiao';
+    UPDATE categories SET name = '湘教版' WHERE slug = 'edition-xiangjiao';
+    UPDATE categories SET name = '粤教版' WHERE slug = 'edition-yuejiao';
+    UPDATE categories SET name = '教科版' WHERE slug = 'edition-jiaoke';
+    UPDATE categories SET name = '浙教版' WHERE slug = 'edition-zhejiao';
+    UPDATE categories SET name = '仁爱版' WHERE slug = 'edition-renai';
+    INSERT INTO categories (name, slug, type, sort_order, is_hot, icon)
+    VALUES ('青岛版', 'edition-qingdao', 'edition', 14, true, '📚')
+    ON CONFLICT (slug) DO UPDATE SET name = '青岛版';
+    UPDATE categories SET is_hot = true WHERE slug IN (
+      'edition-renjiao', 'edition-beishida', 'edition-sujiao', 'edition-waiyan',
+      'edition-hujiao', 'edition-lujiao', 'edition-jiaoke', 'edition-qingdao'
+    );
+    """)
+
     resource_count = 0
     link_count = 0
     matched_level_stats = {}

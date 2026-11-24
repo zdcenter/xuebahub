@@ -260,11 +260,13 @@ export class ChannelComponent implements OnInit {
       return dbEditions.map(e => ({ name: e.name, icon: e.icon || '📚' }));
     }
     return [
-      { name: '人教版 (教育部统编)', icon: '📚' },
-      { name: '北师大版 (BNU)', icon: '📚' },
-      { name: '苏教版 (江苏凤凰)', icon: '📚' },
-      { name: '外研版 (英语)', icon: '🔤' },
+      { name: '人教版/统编版', icon: '📚' },
+      { name: '北师大版', icon: '📚' },
+      { name: '苏教版', icon: '📚' },
+      { name: '外研版', icon: '🔤' },
       { name: '沪教版', icon: '📚' },
+      { name: '鲁教版', icon: '📚' },
+      { name: '教科版', icon: '🔬' },
       { name: '冀教版', icon: '📚' }
     ];
   });

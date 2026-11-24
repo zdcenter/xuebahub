@@ -518,8 +518,82 @@
 
       </div>
 
-      <!-- 📁 核心亮点：网盘内含文件清单与目录结构 (SEO 搜索引擎高权重大杀器) -->
-      <div *ngIf="displayTree().length > 0" class="p-5 sm:p-6 lg:p-8 border-t border-slate-100 space-y-4">
+      <!-- 📖 电子教材专属模块：正版教材完整章节目录与课文大纲导航 -->
+      <div *ngIf="isBookResource() && bookChapterUnits().length > 0" class="p-5 sm:p-6 lg:p-8 border-t border-slate-100 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 shadow-2xs flex items-center justify-center text-xl">
+              📖
+            </span>
+            <div>
+              <h3 class="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2.5">
+                <span>正版教材章节目录与课文导航</span>
+                <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  教育部统编审定 · 官方原版大纲
+                </span>
+              </h3>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2 text-xs sm:text-sm font-bold text-slate-700 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 shadow-2xs shrink-0">
+            <span>共 <strong class="text-emerald-700 font-mono">{{ totalLessonCount() }}</strong> 节课文/课题</span>
+            <span class="text-slate-300">•</span>
+            <span>全书 <strong class="text-slate-800 font-mono">{{ resource()?.page_count || 120 }}</strong> 页高清全彩</span>
+          </div>
+        </div>
+
+        <!-- 章节单元卡片网格 -->
+        <div class="space-y-4">
+          <div *ngFor="let unit of bookChapterUnits(); let idx = index" 
+               class="rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs transition-all hover:border-emerald-300">
+            <!-- 单元标题栏 -->
+            <div class="bg-gradient-to-r from-emerald-50/90 to-teal-50/40 border-b border-emerald-100/80 px-4 py-2.5 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center font-mono">
+                  {{ idx + 1 }}
+                </span>
+                <span class="font-bold text-slate-900 text-sm sm:text-[15px]">{{ unit.unitTitle }}</span>
+              </div>
+              <span class="text-xs font-bold text-emerald-800 bg-white/90 px-2.5 py-0.5 rounded-full border border-emerald-200 shadow-2xs">
+                含 {{ unit.lessons.length }} 篇课文/专题
+              </span>
+            </div>
+
+            <!-- 课文课题条目网格 -->
+            <div class="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 bg-slate-50/30">
+              <div *ngFor="let lesson of unit.lessons; let lIdx = index"
+                   (click)="triggerPrimaryLinkDownload()"
+                   class="flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200/80 hover:border-emerald-400 hover:bg-emerald-50/30 hover:shadow-2xs transition-all cursor-pointer group">
+                <div class="flex items-center gap-2 min-w-0 pr-2">
+                  <span class="text-slate-400 group-hover:text-emerald-600 text-xs font-mono shrink-0">
+                    {{ lIdx + 1 }}.
+                  </span>
+                  <span class="text-sm font-medium text-slate-800 group-hover:text-emerald-700 truncate" [title]="lesson">
+                    {{ lesson }}
+                  </span>
+                </div>
+                <span class="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition">
+                  翻阅 ↗
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部正版阅读承诺条 -->
+        <div class="bg-emerald-50/60 border border-emerald-200/70 rounded-xl p-3 flex items-center justify-between text-xs text-emerald-800">
+          <div class="flex items-center gap-1.5">
+            <span>🌿</span>
+            <span>本教材为全国中小学统编官方审定高清正版电子书，支持免下载直接在夸克网盘手机端翻页全屏阅读与 A4 极清打印。</span>
+          </div>
+          <button type="button" (click)="triggerPrimaryLinkDownload()" class="font-bold underline text-emerald-700 hover:text-emerald-900 cursor-pointer shrink-0">
+            转存全书至网盘 ↗
+          </button>
+        </div>
+      </div>
+
+      <!-- 📁 学习资料/真题微课专属：网盘内含文件清单与目录结构 (SEO 搜索引擎高权重大杀器) -->
+      <div *ngIf="!isBookResource() && displayTree().length > 0" class="p-5 sm:p-6 lg:p-8 border-t border-slate-100 space-y-4">
         
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div class="flex items-center gap-2.5">
