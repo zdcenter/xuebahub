@@ -508,19 +508,44 @@ func (h *ResourceHandler) GetPublicRelatedResources(c fiber.Ctx) error {
 	collectedIDs := []uuid.UUID{currentRes.ID}
 	targetCount := 8
 
-	// 1. 核心推荐：以书带卷、以卷带书（跨频道互补）
-	// 如果当前是电子课本 (book)，优先补充同年级同科目的真题试卷/同步教辅 (edu)
-	// 如果当前是真题试卷 (edu)，优先补充同年级同科目的统编正版高清课本 (book)
+	// 1. 课本专属深度推荐：同年级同分册全科配套教材 (看一本带全套)
+	if currentRes.ChannelSlug == "book" && currentRes.Grade != "" {
+		var sameGradeBooks []model.Resource
+		termCond := ""
+		var termVals []interface{}
+		if currentRes.Term != "" {
+			termCond = " AND (term = ? OR term ILIKE ? OR term = '')"
+			termVals = append(termVals, currentRes.Term, "%"+currentRes.Term+"%")
+		}
+		dbQuery := database.DB.Model(&model.Resource{}).
+			Preload("Links").
+			Where("is_published = ? AND channel_slug = ? AND grade = ? AND id NOT IN ?"+termCond,
+				append([]interface{}{true, "book", currentRes.Grade, collectedIDs}, termVals...)...)
+
+		if currentRes.Term != "" {
+			dbQuery = dbQuery.Order("CASE WHEN term = '" + currentRes.Term + "' THEN 0 ELSE 1 END, is_recommended DESC, save_count DESC, created_at DESC")
+		} else {
+			dbQuery = dbQuery.Order("is_recommended DESC, save_count DESC, created_at DESC")
+		}
+
+		dbQuery.Limit(4).Find(&sameGradeBooks)
+		for _, item := range sameGradeBooks {
+			related = append(related, item)
+			collectedIDs = append(collectedIDs, item.ID)
+		}
+	}
+
+	// 2. 核心推荐：以书带卷、以卷带书（跨频道互补）
 	complementChannel := "edu"
 	if currentRes.ChannelSlug == "edu" {
 		complementChannel = "book"
 	}
-	if currentRes.Grade != "" && currentRes.Subject != "" {
+	if currentRes.Grade != "" && currentRes.Subject != "" && len(related) < targetCount {
 		var complementItems []model.Resource
 		database.DB.Model(&model.Resource{}).
 			Preload("Links").
-			Where("is_published = ? AND channel_slug = ? AND grade = ? AND subject = ? AND id NOT IN ?",
-				true, complementChannel, currentRes.Grade, currentRes.Subject, collectedIDs).
+			Where("is_published = ? AND channel_slug = ? AND grade = ? AND (subject = ? OR subject ILIKE ?) AND id NOT IN ?",
+				true, complementChannel, currentRes.Grade, currentRes.Subject, "%"+currentRes.Subject+"%", collectedIDs).
 			Order("is_recommended DESC, save_count DESC, created_at DESC").
 			Limit(3).
 			Find(&complementItems)

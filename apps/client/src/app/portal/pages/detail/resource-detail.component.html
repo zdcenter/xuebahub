@@ -208,6 +208,26 @@
                         </div>
                       </div>
 
+                      <!-- 💡 核心转存价值与体验保障条 (消除用户顾虑，提升转存拉新率) -->
+                      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5 pb-0.5 text-xs">
+                        <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white border border-emerald-100 shadow-2xs text-slate-700">
+                          <span class="text-emerald-600 text-sm">📱</span>
+                          <span class="font-bold text-[11px] sm:text-xs">免下载手机翻页</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white border border-emerald-100 shadow-2xs text-slate-700">
+                          <span class="text-emerald-600 text-sm">🖨️</span>
+                          <span class="font-bold text-[11px] sm:text-xs">A4无水印高清打印</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white border border-emerald-100 shadow-2xs text-slate-700">
+                          <span class="text-emerald-600 text-sm">⚡</span>
+                          <span class="font-bold text-[11px] sm:text-xs">原版矢量级超清</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white border border-emerald-100 shadow-2xs text-slate-700">
+                          <span class="text-emerald-600 text-sm">☁️</span>
+                          <span class="font-bold text-[11px] sm:text-xs">永久保存防丢失</span>
+                        </div>
+                      </div>
+
                       <!-- 夸克行动区：上方大转存主按钮 + 下方地址栏唯一手机扫码悬停入口 -->
                       <div class="space-y-3">
                         <!-- 夸克一键转存主按钮 (单一大按钮，高大醒目，点击感强) -->
@@ -535,16 +555,34 @@
             </div>
           </div>
 
-          <div class="flex items-center space-x-2 text-xs sm:text-sm font-bold text-slate-700 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 shadow-2xs shrink-0">
-            <span>共 <strong class="text-emerald-700 font-mono">{{ totalLessonCount() }}</strong> 节课文/课题</span>
-            <span class="text-slate-300">•</span>
-            <span>全书 <strong class="text-slate-800 font-mono">{{ resource()?.page_count || 120 }}</strong> 页高清全彩</span>
+          <div class="flex items-center gap-2.5 w-full sm:w-auto">
+            <!-- 课文即时检索框 -->
+            <div class="relative flex-1 sm:w-60">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+              <input type="text"
+                     [ngModel]="lessonSearchKeyword()"
+                     (ngModelChange)="lessonSearchKeyword.set($event)"
+                     placeholder="搜索课文（如：第1课、古诗）..."
+                     class="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 outline-none transition" />
+              <button *ngIf="lessonSearchKeyword()"
+                      (click)="lessonSearchKeyword.set('')"
+                      type="button"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer">
+                ✕
+              </button>
+            </div>
+
+            <div class="hidden sm:flex items-center space-x-2 text-xs sm:text-sm font-bold text-slate-700 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs shrink-0">
+              <span>共 <strong class="text-emerald-700 font-mono">{{ totalLessonCount() }}</strong> 节课文</span>
+              <span class="text-slate-300">•</span>
+              <span>全书 <strong class="text-slate-800 font-mono">{{ resource()?.page_count || 120 }}</strong> 页</span>
+            </div>
           </div>
         </div>
 
         <!-- 章节单元卡片网格 -->
         <div class="space-y-4">
-          <div *ngFor="let unit of bookChapterUnits(); let idx = index" 
+          <div *ngFor="let unit of filteredBookChapterUnits(); let idx = index" 
                class="rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs transition-all hover:border-emerald-300">
             <!-- 单元标题栏 -->
             <div class="bg-gradient-to-r from-emerald-50/90 to-teal-50/40 border-b border-emerald-100/80 px-4 py-2.5 flex items-center justify-between">
@@ -831,27 +869,43 @@
 
     </div>
 
-    <!-- 📚 核心转化模块：猜你还需要 · 同学科/同阶段精品备考推荐 (大杀器，提升连环转存率与留存) -->
+    <!-- 📚 核心转化模块：猜你还需要 · 同年级配套教材 / 同学科备考推荐 (大杀器，提升连环转存率与留存) -->
     <div *ngIf="relatedResources().length > 0" class="mt-8 bg-white rounded-3xl border border-slate-200/90 shadow-xs p-5 sm:p-7 space-y-5">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 border-b border-slate-100">
         <div class="flex items-center gap-2.5">
-          <span class="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 shadow-2xs text-xl flex items-center justify-center">
-            🎯
+          <span [class]="isBookResource() ? 'p-2.5 bg-emerald-50 text-emerald-600 border-emerald-200' : 'p-2.5 bg-blue-50 text-blue-600 border-blue-200'"
+                class="rounded-xl border shadow-2xs text-xl flex items-center justify-center">
+            {{ isBookResource() ? '🎒' : '🎯' }}
           </span>
           <div>
-            <h3 class="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2.5">
-              <span>猜你还需要 · 备考精选推荐</span>
-              <span class="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+            <h3 class="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2.5 flex-wrap">
+              <span *ngIf="isBookResource()">同年级配套教材 · 完整分册合辑</span>
+              <span *ngIf="!isBookResource()">猜你还需要 · 备考精选推荐</span>
+              <span *ngIf="isBookResource()" class="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                {{ resource()?.grade }} · {{ resource()?.term || '全套课本' }}
+              </span>
+              <span *ngIf="!isBookResource()" class="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                 {{ resource()?.stage ? stageLabel : '精选' }} · {{ resource()?.subject || '热门学科' }}
               </span>
             </h3>
             <p class="text-xs sm:text-sm text-slate-500 mt-1">
-              根据学科与阶段智能匹配，同批家长和考友都在转存的优质资料
+              <span *ngIf="isBookResource()">家长必备：同班级同学段全科配套教材，一键集齐语文、数学、英语等全套高清电子课本</span>
+              <span *ngIf="!isBookResource()">根据学科与阶段智能匹配，同批家长和考友都在转存的优质资料</span>
             </p>
           </div>
         </div>
 
-        <a [routerLink]="stageHref" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-700 transition self-start sm:self-center">
+        <a *ngIf="isBookResource()"
+           [routerLink]="['/book']"
+           [queryParams]="{ stage: resource()?.stage, grade: resource()?.grade }"
+           class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-emerald-600 hover:text-emerald-700 transition self-start sm:self-center">
+          <span>查看 {{ resource()?.grade }} 全部课本</span>
+          <span>→</span>
+        </a>
+
+        <a *ngIf="!isBookResource()"
+           [routerLink]="stageHref"
+           class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-700 transition self-start sm:self-center">
           <span>查看全部 {{ stageLabel }} 资料</span>
           <span>→</span>
         </a>
@@ -861,12 +915,12 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <a *ngFor="let item of relatedResources()"
            [routerLink]="['/resource', item.slug || item.id]"
-           class="group/card flex flex-col justify-between bg-slate-50/70 hover:bg-white rounded-2xl p-4 sm:p-4.5 border border-slate-200/80 hover:border-blue-400/80 hover:shadow-md transition-all duration-200 cursor-pointer">
+           class="group/card flex flex-col justify-between bg-slate-50/70 hover:bg-white rounded-2xl p-4 sm:p-4.5 border border-slate-200/80 hover:border-emerald-400/80 hover:shadow-md transition-all duration-200 cursor-pointer">
           
           <div class="space-y-2.5">
             <!-- 标签行：学科 + 年级 + 频道 -->
             <div class="flex items-center gap-1.5 flex-wrap">
-              <span *ngIf="item.subject" class="text-xs font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-md">
+              <span *ngIf="item.subject" class="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
                 {{ item.subject }}
               </span>
               <span *ngIf="item.grade" class="text-xs font-medium text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
@@ -878,7 +932,7 @@
             </div>
 
             <!-- 标题 -->
-            <h4 class="text-sm sm:text-base font-bold text-slate-900 group-hover/card:text-blue-600 transition-colors line-clamp-2 leading-snug"
+            <h4 class="text-sm sm:text-base font-bold text-slate-900 group-hover/card:text-emerald-600 transition-colors line-clamp-2 leading-snug"
                 [title]="item.title">
               {{ item.title }}
             </h4>
@@ -897,7 +951,7 @@
               <span>次转存</span>
             </span>
 
-            <span class="font-bold text-blue-600 group-hover/card:translate-x-0.5 transition-transform flex items-center gap-1">
+            <span class="font-bold text-emerald-600 group-hover/card:translate-x-0.5 transition-transform flex items-center gap-1">
               <span>立即查阅</span>
               <span>›</span>
             </span>

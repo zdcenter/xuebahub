@@ -603,6 +603,25 @@ export class ResourceDetailComponent implements OnInit {
     return units.reduce((acc, u) => acc + u.lessons.length, 0);
   });
 
+  // 电子教材课文即时搜索过滤词
+  lessonSearchKeyword = signal<string>('');
+
+  // 过滤后的章节单元列表
+  filteredBookChapterUnits = computed(() => {
+    const kw = this.lessonSearchKeyword().trim().toLowerCase();
+    const units = this.bookChapterUnits();
+    if (!kw) return units;
+    return units
+      .map(u => {
+        const matchTitle = u.unitTitle.toLowerCase().includes(kw);
+        const matchingLessons = u.lessons.filter(l => l.toLowerCase().includes(kw));
+        if (matchTitle) return u;
+        if (matchingLessons.length > 0) return { ...u, lessons: matchingLessons };
+        return null;
+      })
+      .filter((u): u is { unitTitle: string; lessons: string[] } => u !== null);
+  });
+
   // 文件树规范化 (非教材类教辅/微课使用)
   displayTree = computed(() => {
     if (this.isBookResource()) return [];
