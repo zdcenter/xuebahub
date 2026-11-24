@@ -739,30 +739,52 @@ export class ResourceDetailComponent implements OnInit {
           const totalFiles = this.countTotalFiles(tree);
 
           // 提取长尾 SEO 关键词与生成富媒体 Schema.org
+          const isBook = resourceItem.channel_slug === 'book' || resourceItem.stage === 'book';
           const subfileKeywords = this.extractSubfileKeywords(tree, 10);
           const editionText = resourceItem.edition ? `【${resourceItem.edition}】` : '';
           const gradeSubject = [resourceItem.grade, resourceItem.subject].filter(Boolean).join('');
-          const seoTitle = `${resourceItem.title}${editionText} - ${gradeSubject ? gradeSubject + ' ' : ''}高清PDF下载与网盘转存 - 学霸网`;
 
-          const keywords = [
-            resourceItem.title,
-            this.stageLabel,
-            resourceItem.subject,
-            resourceItem.grade,
-            resourceItem.edition,
-            gradeSubject,
-            ...subfileKeywords,
-            '试卷真题',
-            '含答案详解',
-            '高清PDF下载',
-            'A4无损打印',
-            '夸克网盘免密直存',
-            '百度网盘',
-            '电子课本教材'
-          ].filter(Boolean).join(', ');
+          // 课本针对性 SEO 黄金长尾词与描述规范化
+          let seoTitle: string;
+          let seoDesc: string;
+          let keywords: string;
 
-          const fileDesc = totalFiles > 0 ? `内含 ${totalFiles} 个真题与教学资料文件` : '全套高清资料整理';
-          const seoDesc = resourceItem.description || `${resourceItem.title}${editionText}，正版高清PDF/视频课件，支持A4无损打印与极速转存。${fileDesc}，含详细解析与答案，免费一键转存至个人网盘。`;
+          if (isBook) {
+            seoTitle = `《${resourceItem.title}》电子课本PDF下载_最新审定版高清课文目录`;
+            seoDesc = `学霸网提供正版《${resourceItem.title}》高清矢量电子课本PDF免费在线阅读与夸克网盘免密下载，涵盖全书完整章节目录与课文导航，支持手机免下载全屏翻页阅读与A4纸张高清双面打印，全国中小学正版教科书数字书架。`;
+            keywords = [
+              resourceItem.title,
+              `${resourceItem.title}电子课本`,
+              `${resourceItem.title}PDF下载`,
+              `${resourceItem.grade || ''}${resourceItem.subject || ''}电子课本`,
+              `${resourceItem.edition || '统编版'}${resourceItem.grade || ''}${resourceItem.term || ''}教材`,
+              '正版中小学电子教材',
+              '统编版电子教科书',
+              '夸克网盘免密直存',
+              '手机免下载翻页阅读',
+              'A4高清打印课本'
+            ].filter(Boolean).join(', ');
+          } else {
+            seoTitle = `${resourceItem.title}${editionText} - ${gradeSubject ? gradeSubject + ' ' : ''}高清PDF下载与网盘转存 - 学霸网`;
+            const fileDesc = totalFiles > 0 ? `内含 ${totalFiles} 个真题与教学资料文件` : '全套高清资料整理';
+            seoDesc = resourceItem.description || `${resourceItem.title}${editionText}，正版高清PDF/视频课件，支持A4无损打印与极速转存。${fileDesc}，含详细解析与答案，免费一键转存至个人网盘。`;
+            keywords = [
+              resourceItem.title,
+              this.stageLabel,
+              resourceItem.subject,
+              resourceItem.grade,
+              resourceItem.edition,
+              gradeSubject,
+              ...subfileKeywords,
+              '试卷真题',
+              '含答案详解',
+              '高清PDF下载',
+              'A4无损打印',
+              '夸克网盘免密直存',
+              '百度网盘',
+              '电子课本教材'
+            ].filter(Boolean).join(', ');
+          }
 
           this.seoService.update({
             title: seoTitle,
@@ -772,49 +794,102 @@ export class ResourceDetailComponent implements OnInit {
           });
 
           // 注入 Schema.org 结构化数据 (LearningResource / Book + BreadcrumbList)
-          const isBook = resourceItem.stage === 'book' || resourceItem.channel === 'book';
           const breadcrumbItems: any[] = [
             {
               '@type': 'ListItem',
               'position': 1,
               'name': '首页',
               'item': 'https://www.xuebaw.com'
-            },
-            {
+            }
+          ];
+
+          if (isBook) {
+            breadcrumbItems.push({
+              '@type': 'ListItem',
+              'position': 2,
+              'name': '电子教材数字书架',
+              'item': 'https://www.xuebaw.com/book'
+            });
+            if (resourceItem.grade) {
+              breadcrumbItems.push({
+                '@type': 'ListItem',
+                'position': 3,
+                'name': `${resourceItem.grade}教材`,
+                'item': `https://www.xuebaw.com/book?stage=${resourceItem.stage || 'primary'}&grade=${encodeURIComponent(resourceItem.grade)}`
+              });
+              breadcrumbItems.push({
+                '@type': 'ListItem',
+                'position': 4,
+                'name': resourceItem.title,
+                'item': this.currentUrl
+              });
+            } else {
+              breadcrumbItems.push({
+                '@type': 'ListItem',
+                'position': 3,
+                'name': resourceItem.title,
+                'item': this.currentUrl
+              });
+            }
+          } else {
+            breadcrumbItems.push({
               '@type': 'ListItem',
               'position': 2,
               'name': this.stageLabel,
               'item': `https://www.xuebaw.com${this.stageHref}`
-            }
-          ];
+            });
 
-          if (resourceItem.subject) {
-            breadcrumbItems.push({
-              '@type': 'ListItem',
-              'position': 3,
-              'name': `${resourceItem.subject}专栏`,
-              'item': `https://www.xuebaw.com${this.stageHref}?subject=${encodeURIComponent(resourceItem.subject)}`
-            });
-            breadcrumbItems.push({
-              '@type': 'ListItem',
-              'position': 4,
-              'name': resourceItem.title,
-              'item': this.currentUrl
-            });
-          } else {
-            breadcrumbItems.push({
-              '@type': 'ListItem',
-              'position': 3,
-              'name': resourceItem.title,
-              'item': this.currentUrl
-            });
+            if (resourceItem.subject) {
+              breadcrumbItems.push({
+                '@type': 'ListItem',
+                'position': 3,
+                'name': `${resourceItem.subject}专栏`,
+                'item': `https://www.xuebaw.com${this.stageHref}?subject=${encodeURIComponent(resourceItem.subject)}`
+              });
+              breadcrumbItems.push({
+                '@type': 'ListItem',
+                'position': 4,
+                'name': resourceItem.title,
+                'item': this.currentUrl
+              });
+            } else {
+              breadcrumbItems.push({
+                '@type': 'ListItem',
+                'position': 3,
+                'name': resourceItem.title,
+                'item': this.currentUrl
+              });
+            }
           }
 
-          this.seoService.setJsonLd({
-            '@context': 'https://schema.org',
-            '@graph': [
-              {
-                '@type': isBook ? 'Book' : 'LearningResource',
+          // 教材专享 Book Schema vs 试卷专享 LearningResource Schema
+          const schemaEntity = isBook
+            ? {
+                '@type': ['Book', 'EducationalResource'],
+                '@id': this.currentUrl,
+                'name': resourceItem.title,
+                'description': seoDesc,
+                'inLanguage': 'zh-CN',
+                'educationalLevel': [resourceItem.grade, resourceItem.stage].filter(Boolean).join(' ') || '基础教育课程',
+                'learningResourceType': '电子课本/教科书',
+                'bookFormat': 'https://schema.org/EBook',
+                'encodingFormat': 'application/pdf',
+                'numberOfPages': resourceItem.page_count || 120,
+                'about': resourceItem.subject || '学科课程',
+                'bookEdition': resourceItem.edition || '统编版',
+                'author': {
+                  '@type': 'Organization',
+                  'name': resourceItem.edition || '教育部统编审定/人民教育出版社'
+                },
+                'datePublished': resourceItem.created_at || '2026-01-01',
+                'provider': {
+                  '@type': 'Organization',
+                  'name': '学霸网',
+                  'url': 'https://www.xuebaw.com'
+                }
+              }
+            : {
+                '@type': 'LearningResource',
                 '@id': this.currentUrl,
                 'name': resourceItem.title,
                 'description': seoDesc,
@@ -827,7 +902,12 @@ export class ResourceDetailComponent implements OnInit {
                   'name': '学霸网',
                   'url': 'https://www.xuebaw.com'
                 }
-              },
+              };
+
+          this.seoService.setJsonLd({
+            '@context': 'https://schema.org',
+            '@graph': [
+              schemaEntity,
               {
                 '@type': 'BreadcrumbList',
                 'itemListElement': breadcrumbItems

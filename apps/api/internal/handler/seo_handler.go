@@ -175,6 +175,18 @@ func (h *SeoHandler) GetPublicSitemap(c fiber.Ctx) error {
 	return c.SendString(xmlContent)
 }
 
+// GetPublicBookSitemap 公开端输出纯电子课本专区专属 XML Sitemap
+func (h *SeoHandler) GetPublicBookSitemap(c fiber.Ctx) error {
+	xmlContent, err := h.seoService.GenerateBookSitemapXML()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("生成 sitemap_books.xml 失败: " + err.Error())
+	}
+
+	c.Set("Content-Type", "application/xml; charset=utf-8")
+	c.Set("Cache-Control", "public, max-age=3600")
+	return c.SendString(xmlContent)
+}
+
 // ServeIndexNowKeyFile 动态响应 IndexNow 密钥验证文件 (/{key}.txt)
 // 微软 Bing IndexNow 协议要求网站根目录存在一个 {key}.txt 文件，内容即为 key 本身
 func (h *SeoHandler) ServeIndexNowKeyFile(c fiber.Ctx) error {

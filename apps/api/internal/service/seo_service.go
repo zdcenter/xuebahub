@@ -636,6 +636,42 @@ func (s *SeoService) GenerateSitemapXML() (string, error) {
 	return sb.String(), nil
 }
 
+// GenerateBookSitemapXML 动态生成纯电子课本专区专属 XML 站点地图 (覆盖全部2032+本教材)
+func (s *SeoService) GenerateBookSitemapXML() (string, error) {
+	cfg, err := s.GetConfig()
+	if err != nil {
+		return "", err
+	}
+	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
+	if sitePrefix == "" {
+		sitePrefix = "https://xuebaw.com"
+	}
+
+	var resources []model.Resource
+	s.db.Where("is_published = ? AND channel_slug = ?", true, "book").
+		Order("updated_at DESC").Find(&resources)
+
+	var sb strings.Builder
+	sb.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
+	sb.WriteString(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
+
+	// 书架入口
+	sb.WriteString(fmt.Sprintf("  <url>\n    <loc>%s/book</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n", sitePrefix))
+
+	for _, r := range resources {
+		lastmod := r.UpdatedAt.Format("2006-01-02")
+		sb.WriteString("  <url>\n")
+		sb.WriteString(fmt.Sprintf("    <loc>%s/resource/%s</loc>\n", sitePrefix, r.Slug))
+		sb.WriteString(fmt.Sprintf("    <lastmod>%s</lastmod>\n", lastmod))
+		sb.WriteString("    <changefreq>weekly</changefreq>\n")
+		sb.WriteString("    <priority>0.9</priority>\n")
+		sb.WriteString("  </url>\n")
+	}
+
+	sb.WriteString(`</urlset>`)
+	return sb.String(), nil
+}
+
 // CloudflarePurgeRequest Cloudflare Cache Purge 请求载荷
 type CloudflarePurgeRequest struct {
 	PurgeEverything bool     `json:"purge_everything,omitempty"`

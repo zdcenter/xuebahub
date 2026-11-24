@@ -102,7 +102,9 @@ func main() {
 	public.Post("/requests/:id/vote", resourceRequestH.VotePublicRequest)
 	public.Post("/telegram/webhook", crawlerH.HandleTelegramWebhook)
 	public.Get("/sitemap.xml", seoH.GetPublicSitemap)
+	public.Get("/sitemap_books.xml", seoH.GetPublicBookSitemap)
 	app.Get("/sitemap.xml", seoH.GetPublicSitemap)
+	app.Get("/sitemap_books.xml", seoH.GetPublicBookSitemap)
 
 	// 会员体系与每日额度流控 (公开与认证端)
 	public.Post("/member/register", memberH.Register)
