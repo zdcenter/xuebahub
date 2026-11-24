@@ -163,11 +163,28 @@ func (h *SeoHandler) GetStats(c fiber.Ctx) error {
 	return c.JSON(stats)
 }
 
-// GetPublicSitemap 公开端输出动态标准 XML Sitemap 站点地图
+// GetPublicSitemap 公开端输出动态标准 XML Sitemap 站点地图 (输出总索引)
 func (h *SeoHandler) GetPublicSitemap(c fiber.Ctx) error {
-	xmlContent, err := h.seoService.GenerateSitemapXML()
+	xmlContent, err := h.seoService.GenerateSitemapIndexXML()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("生成 sitemap.xml 失败: " + err.Error())
+	}
+
+	c.Set("Content-Type", "application/xml; charset=utf-8")
+	c.Set("Cache-Control", "public, max-age=3600")
+	return c.SendString(xmlContent)
+}
+
+// GetPublicSitemapIndex 公开端输出动态标准 XML Sitemap Index 站点地图索引
+func (h *SeoHandler) GetPublicSitemapIndex(c fiber.Ctx) error {
+	return h.GetPublicSitemap(c)
+}
+
+// GetPublicEduSitemap 公开端输出纯学习资料/名校试卷专区专属 XML Sitemap
+func (h *SeoHandler) GetPublicEduSitemap(c fiber.Ctx) error {
+	xmlContent, err := h.seoService.GenerateEduSitemapXML()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("生成 sitemap_edu.xml 失败: " + err.Error())
 	}
 
 	c.Set("Content-Type", "application/xml; charset=utf-8")

@@ -599,41 +599,83 @@ func (s *SeoService) GetStats() (map[string]interface{}, error) {
 	}, nil
 }
 
-// GenerateSitemapXML 动态生成标准 XML 格式站点地图 (Sitemap 协议)
-func (s *SeoService) GenerateSitemapXML() (string, error) {
+// GenerateSitemapIndexXML 动态生成符合 Google/Bing/Baidu 标准的 Sitemap Index 总索引
+func (s *SeoService) GenerateSitemapIndexXML() (string, error) {
 	cfg, err := s.GetConfig()
 	if err != nil {
 		return "", err
 	}
 	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
 	if sitePrefix == "" {
-		sitePrefix = "https://xuebaw.com"
+		sitePrefix = "https://www.xuebaw.com"
 	}
+	now := time.Now().Format("2006-01-02")
+
+	var sb strings.Builder
+	sb.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
+	sb.WriteString(`<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
+	sb.WriteString(fmt.Sprintf("  <sitemap>\n    <loc>%s/sitemap_edu.xml</loc>\n    <lastmod>%s</lastmod>\n  </sitemap>\n", sitePrefix, now))
+	sb.WriteString(fmt.Sprintf("  <sitemap>\n    <loc>%s/sitemap_books.xml</loc>\n    <lastmod>%s</lastmod>\n  </sitemap>\n", sitePrefix, now))
+	sb.WriteString(`</sitemapindex>`)
+	return sb.String(), nil
+}
+
+// GenerateEduSitemapXML 动态生成【名校试卷/真题教辅频道】专属 XML 站点地图 (独立无重复)
+func (s *SeoService) GenerateEduSitemapXML() (string, error) {
+	cfg, err := s.GetConfig()
+	if err != nil {
+		return "", err
+	}
+	sitePrefix := strings.TrimRight(cfg.SiteDomain, "/")
+	if sitePrefix == "" {
+		sitePrefix = "https://www.xuebaw.com"
+	}
+	now := time.Now().Format("2006-01-02")
 
 	var resources []model.Resource
-	s.db.Where("is_published = ?", true).Order("updated_at DESC").Find(&resources)
+	s.db.Where("is_published = ? AND channel_slug = ?", true, "edu").Order("updated_at DESC").Find(&resources)
 
 	var sb strings.Builder
 	sb.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
 	sb.WriteString(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
 
-	// 首页与固定路由
-	sb.WriteString(fmt.Sprintf("  <url>\n    <loc>%s/</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n", sitePrefix))
-	sb.WriteString(fmt.Sprintf("  <url>\n    <loc>%s/requests</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.8</priority>\n  </url>\n", sitePrefix))
+	// 学习资料各学段与求真题固定路由
+	staticRoutes := []struct {
+		path string
+		prio string
+		freq string
+	}{
+		{"/", "1.0", "daily"},
+		{"/primary", "0.9", "daily"},
+		{"/junior", "0.9", "daily"},
+		{"/senior", "0.9", "daily"},
+		{"/cert", "0.8", "daily"},
+		{"/exam", "0.8", "daily"},
+		{"/requests", "0.8", "daily"},
+	}
 
-	// 资料详情页
+	for _, r := range staticRoutes {
+		sb.WriteString(fmt.Sprintf("  <url>\n    <loc>%s%s</loc>\n    <lastmod>%s</lastmod>\n    <changefreq>%s</changefreq>\n    <priority>%s</priority>\n  </url>\n", sitePrefix, r.path, now, r.freq, r.prio))
+	}
+
+	// 试卷与教辅资料详情页
 	for _, r := range resources {
 		lastmod := r.UpdatedAt.Format("2006-01-02")
 		sb.WriteString("  <url>\n")
 		sb.WriteString(fmt.Sprintf("    <loc>%s/resource/%s</loc>\n", sitePrefix, r.Slug))
 		sb.WriteString(fmt.Sprintf("    <lastmod>%s</lastmod>\n", lastmod))
-		sb.WriteString("    <changefreq>weekly</changefreq>\n")
+		sb.WriteString("    <changefreq>daily</changefreq>\n")
 		sb.WriteString("    <priority>0.9</priority>\n")
 		sb.WriteString("  </url>\n")
 	}
 
 	sb.WriteString(`</urlset>`)
 	return sb.String(), nil
+}
+
+// GenerateSitemapXML 动态生成标准 XML 格式站点地图 (默认输出 Index 索引或全量)
+func (s *SeoService) GenerateSitemapXML() (string, error) {
+	return s.GenerateSitemapIndexXML()
 }
 
 // GenerateBookSitemapXML 动态生成纯电子课本专区专属 XML 站点地图 (覆盖全部2032+本教材)
