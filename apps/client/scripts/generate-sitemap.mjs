@@ -23,30 +23,51 @@ const staticPages = [
 ];
 
 async function generateSitemap() {
-  const endpoints = [
-    process.env['API_BASE'] || 'http://127.0.0.1:4001',
-    'https://api.xuebaw.com:8443'
+  const candidateUrls = [
+    {
+      all: 'http://127.0.0.1:4001/api/v1/public/sitemap.xml',
+      books: 'http://127.0.0.1:4001/api/v1/public/sitemap_books.xml'
+    },
+    {
+      all: 'https://api.xuebaw.com:8443/api/v1/public/sitemap.xml',
+      books: 'https://api.xuebaw.com:8443/api/v1/public/sitemap_books.xml'
+    },
+    {
+      all: 'http://127.0.0.1:4001/sitemap.xml',
+      books: 'http://127.0.0.1:4001/sitemap_books.xml'
+    }
   ];
 
   let fullSitemapXml = '';
   let bookSitemapXml = '';
 
-  for (const base of endpoints) {
+  for (const pair of candidateUrls) {
     try {
       const [resAll, resBooks] = await Promise.all([
-        fetch(`${base}/sitemap.xml`, { signal: AbortSignal.timeout(5000) }),
-        fetch(`${base}/sitemap_books.xml`, { signal: AbortSignal.timeout(5000) })
+        fetch(pair.all, { signal: AbortSignal.timeout(8000) }),
+        fetch(pair.books, { signal: AbortSignal.timeout(8000) })
       ]);
 
       if (resAll.ok) {
-        fullSitemapXml = await resAll.text();
+        const text = await resAll.text();
+        if (text.includes('<urlset') && text.includes('<url>')) {
+          fullSitemapXml = text;
+        }
       }
       if (resBooks.ok) {
-        bookSitemapXml = await resBooks.text();
+        const text = await resBooks.text();
+        if (text.includes('<urlset') && text.includes('<url>')) {
+          bookSitemapXml = text;
+        }
       }
 
-      if (fullSitemapXml && bookSitemapXml) break;
-    } catch (err) {}
+      if (fullSitemapXml && bookSitemapXml) {
+        console.log(`[Sitemap] Successfully fetched dynamic sitemaps from: ${pair.all}`);
+        break;
+      }
+    } catch (err) {
+      // ignore and try next candidate
+    }
   }
 
   if (!fs.existsSync(publicDir)) {
