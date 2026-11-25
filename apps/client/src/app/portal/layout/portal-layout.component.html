@@ -22,7 +22,7 @@
         <nav class="hidden md:flex items-center gap-1 lg:gap-2 text-sm lg:text-[15px] font-semibold text-slate-700 shrink-0 whitespace-nowrap">
           <div *ngFor="let item of computedNavItems()" class="relative group/nav">
             <a [routerLink]="item.path"
-               [routerLinkActive]="item.path === '/book' ? '!bg-emerald-700 !text-white !border-emerald-700 shadow-sm' : '!text-slate-900 !font-bold bg-slate-100 shadow-2xs'"
+               [routerLinkActive]="item.path === '/book' ? '!bg-emerald-700 !text-white !border-emerald-700 shadow-sm' : '!bg-blue-600 !text-white !font-bold shadow-sm'"
                [routerLinkActiveOptions]="{ exact: item.path === '/' }"
                [ngClass]="item.path === '/book' 
                  ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100/90 hover:text-emerald-950 border border-emerald-300/80 font-bold shadow-2xs' 
