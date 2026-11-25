@@ -478,12 +478,8 @@
                 </div>
               </div>
 
-              <!-- 底部极简统一辅助栏：打印教程、海报、微信文案与失效报错 (统一胶囊栏，清爽不杂乱，字号清晰易触控) -->
-              <div class="pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm border-t border-slate-100">
-                <div class="text-xs sm:text-sm text-slate-500 flex items-center gap-1.5 font-medium">
-                  <span>💡</span>
-                  <span>免密转存后文件永久归属，手机与电脑随时看</span>
-                </div>
+              <!-- 底部极简统一辅助栏：打印教程、海报、微信文案与失效报错 -->
+              <div class="pt-3 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm border-t border-slate-100">
                 <div class="flex flex-wrap items-center gap-2.5">
                   <button
                     type="button"
@@ -610,17 +606,6 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- 底部正版阅读承诺条 -->
-        <div class="bg-emerald-50/60 border border-emerald-200/70 rounded-xl p-3 flex items-center justify-between text-xs text-emerald-800">
-          <div class="flex items-center gap-1.5">
-            <span>🌿</span>
-            <span>本教材为全国中小学统编官方审定高清正版电子书，支持免下载直接在夸克网盘手机端翻页全屏阅读与 A4 极清打印。</span>
-          </div>
-          <button type="button" (click)="triggerPrimaryLinkDownload()" class="font-bold underline text-emerald-700 hover:text-emerald-900 cursor-pointer shrink-0">
-            转存全书至网盘 ↗
-          </button>
         </div>
       </div>
 

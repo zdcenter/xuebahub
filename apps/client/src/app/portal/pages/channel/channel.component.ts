@@ -275,10 +275,7 @@ export class ChannelComponent implements OnInit {
   availableTerms = [
     { name: '上册 (秋季)' },
     { name: '下册 (春季)' },
-    { name: '全一册' },
-    { name: '必修一' },
-    { name: '必修二' },
-    { name: '选择性必修' }
+    { name: '全一册' }
   ];
 
   // 分页总页数
