@@ -794,6 +794,7 @@ export class ResourceDetailComponent implements OnInit {
             title: seoTitle,
             description: seoDesc,
             keywords,
+            ogImage: resourceItem.cover_url || undefined,
             canonicalUrl: `https://www.xuebaw.com/resource/${resourceItem.slug || resourceItem.id}`
           });
 

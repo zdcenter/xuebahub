@@ -38,15 +38,21 @@ export class SeoService {
       this.meta.updateTag({ name: 'keywords', content: config.keywords });
     }
 
+    const rawOgImage = (config.ogImage || '').trim();
+    const finalOgImage = rawOgImage
+      ? (rawOgImage.startsWith('http') ? rawOgImage : `https://www.xuebaw.com${rawOgImage.startsWith('/') ? '' : '/'}${rawOgImage}`)
+      : 'https://www.xuebaw.com/og-cover.png';
+
     // OpenGraph & Twitter
     this.meta.updateTag({ property: 'og:site_name', content: '学霸网' });
     this.meta.updateTag({ property: 'og:title', content: finalTitle });
     this.meta.updateTag({ property: 'og:description', content: finalDesc });
-    this.meta.updateTag({ property: 'og:image', content: config.ogImage || '/og-cover.png' });
+    this.meta.updateTag({ property: 'og:image', content: finalOgImage });
     this.meta.updateTag({ property: 'og:type', content: 'website' });
     this.meta.updateTag({ name: 'twitter:card', content: 'summary_large_image' });
     this.meta.updateTag({ name: 'twitter:title', content: finalTitle });
     this.meta.updateTag({ name: 'twitter:description', content: finalDesc });
+    this.meta.updateTag({ name: 'twitter:image', content: finalOgImage });
 
     // Canonical link (支持 SSR 服务端预渲染注入与客户端动态变更)
     if (this.doc) {
