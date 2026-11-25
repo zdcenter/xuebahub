@@ -429,6 +429,9 @@ export class ChannelComponent implements OnInit {
       queryParams: { q: q || null, page: '1' },
       queryParamsHandling: 'merge'
     });
+    if (typeof document !== 'undefined') {
+      document.getElementById('channel-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   loadSearchHistory() {

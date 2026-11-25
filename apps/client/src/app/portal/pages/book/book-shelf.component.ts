@@ -38,6 +38,7 @@ export class BookShelfComponent implements OnInit {
   isLoading = signal<boolean>(false);
   categoriesGroup = signal<Record<string, CategoryDto[]>>({});
   mobileFilterExpanded = signal<boolean>(false);
+  searchHistory = signal<string[]>([]);
 
   activeFilterCount = computed(() =>
     [this.gradeParam(), this.termParam(), this.subjectParam(), this.editionParam()].filter(Boolean).length
@@ -267,6 +268,7 @@ export class BookShelfComponent implements OnInit {
     this.portalService.getCategoriesGrouped().subscribe(grp => {
       this.categoriesGroup.set(grp);
     });
+    this.loadSearchHistory();
 
     this.route.queryParams.subscribe(params => {
       this.stageParam.set(params['stage'] || 'all');
@@ -299,11 +301,64 @@ export class BookShelfComponent implements OnInit {
   // 书架内快捷关键词搜索
   onSearchSubmit() {
     const q = this.searchKeyword().trim();
+    if (q) {
+      this.saveSearchKeyword(q);
+    }
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { q: q || null, page: '1' },
       queryParamsHandling: 'merge'
     });
+    if (typeof document !== 'undefined') {
+      document.getElementById('book-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  loadSearchHistory() {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('xuebaw_book_search_history');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            this.searchHistory.set(list.slice(0, 6));
+          }
+        }
+      } catch {}
+    }
+  }
+
+  saveSearchKeyword(keyword: string) {
+    const k = keyword.trim();
+    if (!k || typeof localStorage === 'undefined') return;
+    try {
+      const cur = this.searchHistory().filter(item => item !== k);
+      const next = [k, ...cur].slice(0, 6);
+      this.searchHistory.set(next);
+      localStorage.setItem('xuebaw_book_search_history', JSON.stringify(next));
+    } catch {}
+  }
+
+  clearSearchHistory() {
+    this.searchHistory.set([]);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('xuebaw_book_search_history');
+    }
+  }
+
+  removeSearchHistoryItem(item: string, event: Event) {
+    event.stopPropagation();
+    event.preventDefault();
+    const next = this.searchHistory().filter(i => i !== item);
+    this.searchHistory.set(next);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('xuebaw_book_search_history', JSON.stringify(next));
+    }
+  }
+
+  applyHistorySearch(keyword: string) {
+    this.searchKeyword.set(keyword);
+    this.onSearchSubmit();
   }
 
   // 清空搜索框

@@ -38,10 +38,29 @@
             </button>
           </div>
           <button type="submit"
-                  class="ml-2 px-5 sm:px-6 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-black/20 transition active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer">
-            <span>搜索</span>
+                  [disabled]="isLoading()"
+                  class="ml-2 px-5 sm:px-6 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-75 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-black/20 transition active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer">
+            <svg *ngIf="isLoading()" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span>{{ isLoading() ? '搜索中...' : '搜索' }}</span>
           </button>
         </form>
+
+        <!-- 最近搜索历史 (电子教材独立记录) -->
+        <div *ngIf="searchHistory().length > 0" class="mt-3 flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap text-xs">
+          <span class="text-emerald-200/80 font-medium flex items-center gap-1 text-[11px]">
+            <span>🕒</span> 最近搜索:
+          </span>
+          <span *ngFor="let item of searchHistory()"
+                (click)="applyHistorySearch(item)"
+                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/15 hover:bg-white/25 text-white/95 border border-white/20 backdrop-blur-md transition shadow-2xs text-[11px] cursor-pointer group">
+            <span>{{ item }}</span>
+            <button type="button" (click)="removeSearchHistoryItem(item, $event)" class="text-white/40 group-hover:text-white/90 hover:text-rose-300 ml-0.5 text-[10px]" title="删除此记录">✕</button>
+          </span>
+          <button (click)="clearSearchHistory()" type="button" class="text-[10px] text-emerald-200/70 hover:text-white ml-1 underline cursor-pointer">清空</button>
+        </div>
 
         <!-- 居中快捷标签 -->
         <div class="mt-2.5 flex items-center justify-center gap-2 text-xs">
@@ -216,15 +235,23 @@
   </div>
 
   <!-- 数字书架主列表展示区 -->
-  <main class="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-    <div class="flex items-center justify-between mb-6">
-      <div class="flex items-center gap-2">
+  <main id="book-results" class="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+    <div class="flex items-center justify-between mb-6 flex-wrap gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <span class="text-xl">📚</span>
         <h2 class="text-lg sm:text-xl font-black text-slate-900">
           {{ subjectParam() ? subjectParam() + '课本书架' : '精选正版教材书库' }}
         </h2>
-        <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+        <span *ngIf="!isLoading()" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
           共 {{ totalCount() }} 本在库教材
+        </span>
+        <span *ngIf="isLoading()" class="text-xs text-emerald-700 font-semibold flex items-center gap-1">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <span>正在检索...</span>
+        </span>
+        <span *ngIf="queryParam()" class="text-xs bg-amber-50 text-amber-800 border border-amber-200/80 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1.5">
+          <span>🔍 "{{ queryParam() }}"</span>
+          <button type="button" (click)="clearSearch()" class="text-amber-600 hover:text-amber-900 font-bold cursor-pointer">✕</button>
         </span>
       </div>
     </div>
