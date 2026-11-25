@@ -15,7 +15,7 @@ import { BookCardComponent } from '../../components/book-card/book-card.componen
 })
 export class BookShelfComponent implements OnInit {
   // 状态信号源
-  stageParam = signal<string>('primary');
+  stageParam = signal<string>('all');
   gradeParam = signal<string>('');
   termParam = signal<string>('');
   subjectParam = signal<string>('');
@@ -269,7 +269,7 @@ export class BookShelfComponent implements OnInit {
     });
 
     this.route.queryParams.subscribe(params => {
-      this.stageParam.set(params['stage'] || 'primary');
+      this.stageParam.set(params['stage'] || 'all');
       this.gradeParam.set(params['grade'] || '');
       this.termParam.set(params['term'] || '');
       this.subjectParam.set(params['subject'] || '');
