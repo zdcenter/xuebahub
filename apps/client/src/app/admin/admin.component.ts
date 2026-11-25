@@ -3782,17 +3782,53 @@ export class AdminComponent implements OnInit {
     }
   }
 
-  loadDashboardStats() {
-    this.statsLoading.set(true);
+  statsLastUpdated = signal<string>('');
+  statsAutoRefresh = signal<boolean>(true);
+  private statsRefreshTimer: any = null;
+
+  loadDashboardStats(silent = false) {
+    if (!silent) {
+      this.statsLoading.set(true);
+    }
     this.resService.getDashboardStats().subscribe({
       next: (data) => {
         this.dashboardStats.set(data);
         this.statsLoading.set(false);
+        const now = new Date();
+        this.statsLastUpdated.set(
+          `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+        );
       },
       error: () => {
         this.statsLoading.set(false);
       }
     });
+  }
+
+  toggleStatsAutoRefresh() {
+    this.statsAutoRefresh.update(v => !v);
+    if (this.statsAutoRefresh() && this.currentTab() === 'stats') {
+      this.startStatsAutoRefresh();
+    } else {
+      this.stopStatsAutoRefresh();
+    }
+  }
+
+  private startStatsAutoRefresh() {
+    this.stopStatsAutoRefresh();
+    if (!this.statsAutoRefresh() || typeof window === 'undefined') return;
+    this.statsRefreshTimer = setInterval(() => {
+      if (this.currentTab() === 'stats' && this.statsAutoRefresh()) {
+        this.loadDashboardStats(true);
+      }
+    }, 10000);
+  }
+
+  private stopStatsAutoRefresh() {
+    if (this.statsRefreshTimer) {
+      clearInterval(this.statsRefreshTimer);
+      this.statsRefreshTimer = null;
+    }
   }
 
   initDashboard() {
@@ -4103,10 +4139,14 @@ export class AdminComponent implements OnInit {
 
   switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'settings' | 'requests' | 'members') {
     this.currentTab.set(tab);
+    if (tab === 'stats') {
+      this.loadDashboardStats();
+      this.startStatsAutoRefresh();
+    } else {
+      this.stopStatsAutoRefresh();
+    }
     if (tab === 'list') {
       this.loadResources();
-    } else if (tab === 'stats') {
-      this.loadDashboardStats();
     } else if (tab === 'collector') {
       // 切换至浏览器采集助手独立大屏
     } else if (tab === 'drafts') {

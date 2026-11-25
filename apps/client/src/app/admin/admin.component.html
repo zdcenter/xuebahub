@@ -2605,7 +2605,13 @@
               <h2>📊 网盘转存与网站运营监控中心</h2>
               <p>实时监控拉新转化率、各网盘渠道分布占比、资源链路存活健康度与全网热门搜索需求</p>
             </div>
-            <div class="hero-actions">
+            <div class="hero-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              @if (statsLastUpdated()) {
+                <span style="font-size: 12px; color: #94a3b8;">最后更新: {{ statsLastUpdated() }}</span>
+              }
+              <button type="button" class="btn btn-secondary" (click)="toggleStatsAutoRefresh()">
+                {{ statsAutoRefresh() ? '🟢 10s 自动刷新: 开' : '⏸️ 自动刷新: 关' }}
+              </button>
               <button class="btn btn-primary" (click)="loadDashboardStats()" [disabled]="statsLoading()">
                 @if (statsLoading()) {
                   <span class="loading-spinner"></span> 正在更新数据...

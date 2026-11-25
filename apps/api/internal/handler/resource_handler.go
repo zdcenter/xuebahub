@@ -465,7 +465,15 @@ func (h *ResourceHandler) TrackSaveClick(c fiber.Ctx) error {
 // TrackResourceSave 统计资料或指定网盘链接被转存的点击并原子累加
 func (h *ResourceHandler) TrackResourceSave(c fiber.Ctx) error {
 	identifier := c.Params("id_or_slug")
-	linkIDStr := c.Query("link_id")
+	linkIDStr := strings.TrimSpace(c.Query("link_id"))
+	if linkIDStr == "" {
+		var body struct {
+			LinkID string `json:"link_id"`
+		}
+		if err := c.Bind().Body(&body); err == nil {
+			linkIDStr = strings.TrimSpace(body.LinkID)
+		}
+	}
 
 	var res model.Resource
 	if err := database.DB.First(&res, "slug = ? OR id::text = ?", identifier, identifier).Error; err != nil {

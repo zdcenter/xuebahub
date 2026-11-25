@@ -139,8 +139,9 @@ export class PortalService {
   // 4.2 记录资源转存点击计数
   trackResourceSave(idOrSlug: string, linkId?: string): Observable<{ save_count?: number } | null> {
     if (!idOrSlug) return of(null);
+    const qs = linkId ? `?link_id=${encodeURIComponent(linkId)}` : '';
     return this.http.post<{ code: number; data?: { save_count?: number } }>(
-      `${this.baseUrl}/api/v1/public/resources/${encodeURIComponent(idOrSlug)}/track-save`,
+      `${this.baseUrl}/api/v1/public/resources/${encodeURIComponent(idOrSlug)}/track-save${qs}`,
       linkId ? { link_id: linkId } : {}
     ).pipe(
       map(res => res?.data || null),
