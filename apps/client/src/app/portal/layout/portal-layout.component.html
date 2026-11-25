@@ -18,20 +18,27 @@
           </div>
         </a>
 
-        <!-- 2. 桌面端主导航 (纯净排版，强制不换行，字号升级清晰大气) -->
+        <!-- 2. 桌面端主导航 (纯净排版，强制不换行，字号升级清晰大气；电子教材作为独立专区频道差异化视觉突出) -->
         <nav class="hidden md:flex items-center gap-1 lg:gap-2 text-sm lg:text-[15px] font-semibold text-slate-700 shrink-0 whitespace-nowrap">
           <div *ngFor="let item of computedNavItems()" class="relative group/nav">
             <a [routerLink]="item.path"
-               routerLinkActive="!text-slate-900 !font-bold bg-slate-100 shadow-2xs"
+               [routerLinkActive]="item.path === '/book' ? '!bg-emerald-700 !text-white !border-emerald-700 shadow-sm' : '!text-slate-900 !font-bold bg-slate-100 shadow-2xs'"
                [routerLinkActiveOptions]="{ exact: item.path === '/' }"
-               class="px-3.5 py-1.5 rounded-full hover:bg-slate-100 hover:text-slate-900 transition-colors duration-150 flex items-center gap-1.5 relative cursor-pointer">
+               [ngClass]="item.path === '/book' 
+                 ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100/90 hover:text-emerald-950 border border-emerald-300/80 font-bold shadow-2xs' 
+                 : 'hover:bg-slate-100 hover:text-slate-900 transition-colors duration-150'"
+               class="px-3.5 py-1.5 rounded-full flex items-center gap-1.5 relative cursor-pointer transition-all duration-200">
+              <span *ngIf="item.path === '/book'" class="text-sm">📖</span>
               <span>{{ item.name }}</span>
-              <!-- 仅保留极简低调的小红点或精致微标签 -->
+
+              <!-- 徽章设计 (电子教材专属高光翡翠绿标签) -->
               <span *ngIf="item.badge" class="text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-tight"
-                    [class]="item.badge.includes('HOT') || item.badge.includes('冲刺') ? 'bg-rose-50 text-rose-600 border border-rose-200/60' : 'bg-slate-100 text-slate-500'">
+                    [class]="item.path === '/book'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : (item.badge.includes('HOT') || item.badge.includes('冲刺') ? 'bg-rose-50 text-rose-600 border border-rose-200/60' : 'bg-slate-100 text-slate-500')">
                 {{ item.badge }}
               </span>
-              <span *ngIf="item.highlight && !item.badge" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span *ngIf="item.highlight && !item.badge && item.path !== '/book'" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               <svg *ngIf="item.children?.length" class="w-3.5 h-3.5 text-slate-400 group-hover/nav:rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
@@ -215,14 +222,19 @@
         <a *ngFor="let item of computedNavItems()"
            [routerLink]="item.path"
            (click)="closeMobileMenu()"
-           routerLinkActive="bg-blue-50 text-blue-700 border-blue-200"
+           [routerLinkActive]="item.path === '/book' ? '!bg-emerald-700 !text-white !border-emerald-700 shadow-xs' : 'bg-blue-50 text-blue-700 border-blue-200'"
            [routerLinkActiveOptions]="{ exact: item.path === '/' }"
-           class="p-2.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 flex items-center justify-between">
+           [ngClass]="item.path === '/book' 
+             ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold' 
+             : 'bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100'"
+           class="p-2.5 rounded-xl border flex items-center justify-between transition">
           <div class="flex items-center gap-1.5">
             <span>{{ item.icon }}</span>
             <span>{{ item.name }}</span>
           </div>
-          <span *ngIf="item.badge" class="text-[9px] px-1 bg-white border border-slate-200 rounded text-slate-500">
+          <span *ngIf="item.badge"
+                [class]="item.path === '/book' ? 'bg-emerald-600 text-white font-bold' : 'bg-white border border-slate-200 text-slate-500'"
+                class="text-[9px] px-1.5 py-0.5 rounded-full">
             {{ item.badge }}
           </span>
         </a>
