@@ -272,6 +272,17 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 		})
 	}
 
+	// 记录实际搜索关键词与命中数（排除实时联想 limit=6 的按键中间态）
+	if q := strings.TrimSpace(c.Query("q")); q != "" && page == 1 && pageSize >= 10 {
+		go func(kw, ip string, count int) {
+			database.DB.Create(&model.SearchLog{
+				Keyword:     kw,
+				ClientIP:    ip,
+				ResultCount: count,
+			})
+		}(q, c.IP(), int(total))
+	}
+
 	return c.JSON(fiber.Map{
 		"code": 200,
 		"data": fiber.Map{

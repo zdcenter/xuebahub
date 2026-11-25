@@ -768,6 +768,16 @@ export class ResourceService {
     return this.http.get<{ code: number; data: HotSearchDto[] }>(url).pipe(map(r => r.data || []));
   }
 
+  getAdminSearchLogs(filter: 'missed' | 'all' = 'missed'): Observable<{ keyword: string; search_count: number; result_count: number; last_searched_at: string }[]> {
+    return this.http.get<{ code: number; data: any[] }>(`${this.baseUrl}/api/v1/admin/search-logs?filter=${filter}`).pipe(
+      map(r => r.data || [])
+    );
+  }
+
+  deleteAdminSearchLog(keyword: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/api/v1/admin/search-logs?keyword=${encodeURIComponent(keyword)}`);
+  }
+
   createHotSearch(item: Partial<HotSearchDto>): Observable<HotSearchDto> {
     return this.http.post<{ code: number; data: HotSearchDto }>(`${this.baseUrl}/api/v1/admin/hot-searches`, item).pipe(map(r => r.data));
   }

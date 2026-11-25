@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"strings"
+	"time"
+
 	"github.com/gofiber/fiber/v3"
 
 	"netdisk/api/internal/database"
@@ -52,5 +55,66 @@ func (h *SearchHandler) GlobalSearch(c fiber.Ctx) error {
 			"local_verified":   localItems,      // 本地高可信精品教辅
 			"external_crawled": externalResults, // 全网聚合抓取通道
 		},
+	})
+}
+
+// SearchLogStatRow 后台搜索词聚合统计
+type SearchLogStatRow struct {
+	Keyword        string    `json:"keyword"`
+	SearchCount    int64     `json:"search_count"`
+	ResultCount    int       `json:"result_count"`
+	LastSearchedAt time.Time `json:"last_searched_at"`
+}
+
+// ListAdminSearchLogs 获取用户搜索关键词统计 (支持未命中 0 结果过滤)
+func (h *SearchHandler) ListAdminSearchLogs(c fiber.Ctx) error {
+	filter := c.Query("filter", "missed")
+	var rows []SearchLogStatRow
+
+	q := database.DB.Model(&model.SearchLog{}).
+		Select("keyword, COUNT(*) as search_count, MIN(result_count) as result_count, MAX(created_at) as last_searched_at").
+		Group("keyword")
+
+	if filter == "missed" {
+		q = q.Having("MIN(result_count) = 0")
+	}
+
+	if err := q.Order("search_count DESC, last_searched_at DESC").Limit(100).Scan(&rows).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code":    500,
+			"message": "获取搜索关键词统计失败",
+		})
+	}
+
+	if rows == nil {
+		rows = []SearchLogStatRow{}
+	}
+
+	return c.JSON(fiber.Map{
+		"code": 200,
+		"data": rows,
+	})
+}
+
+// DeleteAdminSearchLog 清理/标记已处理某个搜索关键词
+func (h *SearchHandler) DeleteAdminSearchLog(c fiber.Ctx) error {
+	kw := strings.TrimSpace(c.Query("keyword"))
+	if kw == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"code":    400,
+			"message": "缺少 keyword 参数",
+		})
+	}
+
+	if err := database.DB.Where("keyword = ?", kw).Delete(&model.SearchLog{}).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"code":    500,
+			"message": "删除搜索记录失败",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"code":    200,
+		"message": "已处理并移除该搜索词",
 	})
 }

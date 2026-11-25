@@ -191,6 +191,10 @@ func main() {
 	admin.Patch("/hot-searches/:id/toggle", hotSearchH.ToggleAdminHotSearchStatus)
 	admin.Delete("/hot-searches/:id", hotSearchH.DeleteAdminHotSearch)
 
+	// 用户搜索关键词监控与缺货补库清单
+	admin.Get("/search-logs", searchH.ListAdminSearchLogs)
+	admin.Delete("/search-logs", searchH.DeleteAdminSearchLog)
+
 	// 地区与名校字典库管理
 	admin.Get("/regions", regionSchoolH.ListRegions)
 	admin.Get("/schools", regionSchoolH.ListSchools)

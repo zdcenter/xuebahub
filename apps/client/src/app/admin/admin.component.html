@@ -5470,6 +5470,81 @@
             </div>
           </div>
         </div>
+
+        <!-- 用户搜索词监控（缺货待补库清单） -->
+        <div class="card channel-manager-card" style="margin-top: 20px;">
+          <div class="card-header" style="flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+            <div>
+              <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span>🔍</span> 用户搜索词监控（缺货待补库清单）
+                <span style="font-size: 13px; font-weight: normal; color: #64748b;">({{ searchLogs().length }} 条)</span>
+              </h3>
+              <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">
+                自动记录用户在前台搜索的关键词，优先筛选 0 结果词条，方便针对性找资源上架。
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <select
+                [ngModel]="searchLogFilter()"
+                (ngModelChange)="onSearchLogFilterChange($event)"
+                class="form-control"
+                style="min-width: 160px; margin: 0; padding: 6px 12px; font-size: 13px;">
+                <option value="missed">仅看未命中 (0结果)</option>
+                <option value="all">全部搜索词</option>
+              </select>
+              <button type="button" class="btn btn-secondary" (click)="loadSearchLogs()">🔄 刷新</button>
+            </div>
+          </div>
+
+          <div class="card-body">
+            @if (searchLogsLoading()) {
+              <div style="padding: 24px; text-align: center; color: #64748b;">正在加载用户搜索关键词...</div>
+            } @else if (searchLogs().length === 0) {
+              <div style="padding: 28px; text-align: center; color: #64748b;">
+                暂无{{ searchLogFilter() === 'missed' ? '未命中（0结果）' : '' }}搜索关键词记录
+              </div>
+            } @else {
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>搜索关键词</th>
+                      <th style="text-align: center;">搜索次数</th>
+                      <th style="text-align: center;">站内命中数</th>
+                      <th>最近搜索时间</th>
+                      <th style="text-align: right;">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of searchLogs(); track row.keyword) {
+                      <tr>
+                        <td style="font-weight: 600; color: #0f172a;">{{ row.keyword }}</td>
+                        <td style="text-align: center;">
+                          <span class="badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">{{ row.search_count }} 次</span>
+                        </td>
+                        <td style="text-align: center;">
+                          @if (row.result_count === 0) {
+                            <span class="badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">0 条 (缺货)</span>
+                          } @else {
+                            <span class="badge" style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;">{{ row.result_count }} 条</span>
+                          }
+                        </td>
+                        <td style="font-size: 12px; color: #64748b;">{{ row.last_searched_at | date:'yyyy-MM-dd HH:mm' }}</td>
+                        <td style="text-align: right;">
+                          <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                            <button type="button" class="btn btn-sm btn-secondary" (click)="copySearchKeyword(row.keyword)">📋 复制</button>
+                            <button type="button" class="btn btn-sm btn-primary" (click)="quickPublishFromKeyword(row.keyword)">➕ 去上架</button>
+                            <button type="button" class="btn btn-sm btn-secondary" (click)="dismissSearchLog(row.keyword)">✓ 忽略</button>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        </div>
       }
 
       <!-- 4.1 📧 邮件精准营销推广中枢 (Email Marketing & Resource Promotion Hub) - 独立组件架构 -->

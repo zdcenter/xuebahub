@@ -4124,6 +4124,7 @@ export class AdminComponent implements OnInit {
       this.loadRegions();
     } else if (tab === 'hotsearches') {
       this.loadHotSearches();
+      this.loadSearchLogs();
     } else if (tab === 'settings') {
       this.loadSettings();
     } else if (tab === 'requests') {
@@ -4877,6 +4878,52 @@ export class AdminComponent implements OnInit {
     sort_order: 1,
     is_active: true
   };
+
+  searchLogs = signal<{ keyword: string; search_count: number; result_count: number; last_searched_at: string }[]>([]);
+  searchLogsLoading = signal<boolean>(false);
+  searchLogFilter = signal<'missed' | 'all'>('missed');
+
+  loadSearchLogs() {
+    this.searchLogsLoading.set(true);
+    this.resService.getAdminSearchLogs(this.searchLogFilter()).subscribe({
+      next: (list) => {
+        this.searchLogs.set(list);
+        this.searchLogsLoading.set(false);
+      },
+      error: () => {
+        this.searchLogsLoading.set(false);
+      }
+    });
+  }
+
+  onSearchLogFilterChange(filter: 'missed' | 'all') {
+    this.searchLogFilter.set(filter);
+    this.loadSearchLogs();
+  }
+
+  copySearchKeyword(kw: string) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(kw).then(() => {
+        this.showToast(`已复制关键词「${kw}」`);
+      }).catch(() => {});
+    }
+  }
+
+  quickPublishFromKeyword(kw: string) {
+    this.newResource.title = kw;
+    this.switchTab('add');
+    this.showToast(`已将「${kw}」填入标题，可直接补充网盘链接上架`);
+  }
+
+  dismissSearchLog(kw: string) {
+    this.resService.deleteAdminSearchLog(kw).subscribe({
+      next: () => {
+        this.searchLogs.update(list => list.filter(i => i.keyword !== kw));
+        this.showToast(`已移除「${kw}」`);
+      },
+      error: (err) => this.showToast('移除失败: ' + (err.message || ''), 'error')
+    });
+  }
 
   loadHotSearches() {
     this.hotSearchLoading.set(true);
