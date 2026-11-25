@@ -43,8 +43,17 @@ export class BookShelfComponent implements OnInit {
     [this.gradeParam(), this.termParam(), this.subjectParam(), this.editionParam()].filter(Boolean).length
   );
   activeFilterSummary = computed(() =>
-    [this.gradeParam(), this.termParam(), this.subjectParam(), this.editionParam()].filter(Boolean).join(' · ')
+    [
+      this.gradeParam(),
+      this.termParam(),
+      this.subjectParam(),
+      this.editionParam() ? this.stripParen(this.editionParam()) : ''
+    ].filter(Boolean).join(' · ')
   );
+
+  stripParen(text: string): string {
+    return (text || '').replace(/\s*[（(][^）)]*[）)]\s*/g, '').trim();
+  }
 
   Math = Math;
 
@@ -222,26 +231,29 @@ export class BookShelfComponent implements OnInit {
     const dbEditions = this.categoriesGroup()['edition'] || [];
     if (s === 'cert' || s === 'exam' || s.includes('教师') || s.includes('公考')) {
       return [
-        { name: '国家考试大纲通用', icon: '🏛️' }, { name: '中公教育版', icon: '📘' },
-        { name: '粉笔教育版', icon: '✏️' }, { name: '华图教育版', icon: '📊' }
+        { name: '国家考试大纲通用', label: '国家考试大纲通用', icon: '🏛️' },
+        { name: '中公教育版', label: '中公教育版', icon: '📘' },
+        { name: '粉笔教育版', label: '粉笔教育版', icon: '✏️' },
+        { name: '华图教育版', label: '华图教育版', icon: '📊' }
       ];
     }
     if (dbEditions.length > 0) {
       return dbEditions.map(e => ({
         name: e.name,
+        label: this.stripParen(e.name),
         icon: e.icon || '📚',
         is_hot: e.is_hot
       }));
     }
     return [
-      { name: '人教版/统编版', icon: '📚', is_hot: true },
-      { name: '北师大版', icon: '📚', is_hot: true },
-      { name: '苏教版', icon: '📚', is_hot: true },
-      { name: '外研版', icon: '🔤', is_hot: true },
-      { name: '沪教版', icon: '📚', is_hot: true },
-      { name: '鲁教版', icon: '📚', is_hot: true },
-      { name: '教科版', icon: '🔬', is_hot: true },
-      { name: '冀教版', icon: '📚', is_hot: true }
+      { name: '人教版/统编版', label: '人教版/统编版', icon: '📚', is_hot: true },
+      { name: '北师大版', label: '北师大版', icon: '📚', is_hot: true },
+      { name: '苏教版', label: '苏教版', icon: '📚', is_hot: true },
+      { name: '外研版', label: '外研版', icon: '🔤', is_hot: true },
+      { name: '沪教版', label: '沪教版', icon: '📚', is_hot: true },
+      { name: '鲁教版', label: '鲁教版', icon: '📚', is_hot: true },
+      { name: '教科版', label: '教科版', icon: '🔬', is_hot: true },
+      { name: '冀教版', label: '冀教版', icon: '📚', is_hot: true }
     ];
   });
 
