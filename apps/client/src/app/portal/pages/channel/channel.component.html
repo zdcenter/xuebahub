@@ -236,27 +236,6 @@
             </div>
           </div>
 
-          <!-- 维度 4: 教材版本 (仅在中小学K12阶段展示，平铺直选，消除二次点击) -->
-          <div *ngIf="isK12Stage()" class="flex items-center text-xs gap-3 border-t border-slate-100 pt-3">
-            <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
-              <span>📚</span> 教材版本:
-            </span>
-            <div class="flex-1 flex flex-wrap gap-1.5">
-              <button (click)="setFilter('edition', '')"
-                      [class]="!editionParam() ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                      class="px-2.5 py-1 rounded-lg transition cursor-pointer">
-                全部版本
-              </button>
-              <button *ngFor="let e of availableEditions()"
-                      (click)="setFilter('edition', e.name)"
-                      [class]="editionParam() === e.name ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
-                      class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer">
-                <span>{{ e.icon || '📚' }}</span>
-                <span>{{ e.name }}</span>
-              </button>
-            </div>
-          </div>
-
           <!-- 维度 5: 学期分册 (仅在中小学K12阶段展示，平铺直选) -->
           <div *ngIf="isK12Stage()" class="flex items-center text-xs gap-3 border-t border-slate-100 pt-3">
             <span class="font-extrabold text-slate-700 w-18 shrink-0 flex items-center gap-1.5">
@@ -580,20 +559,6 @@
                     class="px-2.5 py-1.5 rounded-lg flex items-center gap-1">
               <span>{{ s.icon }}</span><span>{{ s.name }}</span>
             </button>
-          </div>
-        </div>
-
-        <!-- 版本 (仅中小学阶段展示) -->
-        <div *ngIf="isK12Stage()">
-          <div class="font-extrabold text-slate-800 mb-2">教材版本:</div>
-          <div class="flex flex-wrap gap-1.5">
-            <button (click)="setFilter('edition', '')"
-                    [class]="!editionParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
-                    class="px-2.5 py-1.5 rounded-lg">全部</button>
-            <button *ngFor="let e of availableEditions()"
-                    (click)="setFilter('edition', e.name)"
-                    [class]="editionParam() === e.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-100 text-slate-700'"
-                    class="px-2.5 py-1.5 rounded-lg">{{ e.name }}</button>
           </div>
         </div>
 
