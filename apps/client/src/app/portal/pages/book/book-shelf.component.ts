@@ -309,9 +309,6 @@ export class BookShelfComponent implements OnInit {
       queryParams: { q: q || null, page: '1' },
       queryParamsHandling: 'merge'
     });
-    if (typeof document !== 'undefined') {
-      document.getElementById('book-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   }
 
   loadSearchHistory() {
