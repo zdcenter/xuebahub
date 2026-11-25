@@ -88,6 +88,25 @@
         </div>
       </div>
 
+      <!-- 移动端折叠筛选开关 (默认收起年级/分册/学科/版本，首屏直接露出课本) -->
+      <div class="flex lg:hidden items-center justify-between border-t border-slate-100 pt-2.5 text-xs">
+        <button type="button"
+                (click)="mobileFilterExpanded.set(!mobileFilterExpanded())"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition cursor-pointer">
+          <span>{{ mobileFilterExpanded() ? '收起筛选条件' : '展开筛选 (年级 / 学科 / 版本)' }}</span>
+          <span *ngIf="activeFilterCount() > 0" class="px-1.5 py-0.2 bg-emerald-600 text-white rounded-full text-[10px]">
+            {{ activeFilterCount() }}
+          </span>
+          <span class="text-[10px] text-slate-500">{{ mobileFilterExpanded() ? '▲' : '▼' }}</span>
+        </button>
+        <span *ngIf="!mobileFilterExpanded() && activeFilterCount() > 0" class="text-[11px] text-emerald-700 font-medium truncate max-w-[140px]">
+          {{ activeFilterSummary() }}
+        </span>
+      </div>
+
+      <!-- 维度 2~5: 桌面端常驻展开，移动端按需折叠 -->
+      <div [class.hidden]="!mobileFilterExpanded()" class="lg:block space-y-3.5">
+
       <!-- 维度 2: 年级 (Grade) - 自适应联动 -->
       <div class="flex items-start sm:items-center text-xs gap-2 border-t border-slate-100 pt-3">
         <span class="font-extrabold text-slate-700 w-16 sm:w-20 shrink-0 flex items-center gap-1 pt-1 sm:pt-0">
@@ -169,6 +188,8 @@
             <span>{{ e.name }}</span>
           </button>
         </div>
+      </div>
+
       </div>
 
       <!-- 当前激活条件指示栏与重置 -->

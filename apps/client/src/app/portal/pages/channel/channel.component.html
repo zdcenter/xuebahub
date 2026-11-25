@@ -8,21 +8,21 @@
     <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-tr from-emerald-500/20 via-teal-500/15 to-blue-600/20 rounded-full blur-[100px] pointer-events-none"></div>
     <div class="absolute top-1/2 -right-32 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8 sm:pt-8 sm:pb-10 relative z-10 text-center">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-5 sm:pt-8 sm:pb-10 relative z-10 text-center">
       
-      <!-- 权威品质徽标 (真实朴素，不浮夸) -->
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 text-emerald-300 border border-emerald-400/30 text-xs font-bold mb-3 backdrop-blur-md shadow-2xs transition-all">
+      <!-- 权威品质徽标 (桌面端展示，移动端省出首屏空间) -->
+      <div class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 text-emerald-300 border border-emerald-400/30 text-xs font-bold mb-3 backdrop-blur-md shadow-2xs transition-all">
         <span>✨</span>
         <span>{{ currentMeta.badge }}</span>
       </div>
 
       <!-- 核心大标题 (紧凑大气，首屏快速露脸) -->
-      <h1 class="text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight">
+      <h1 class="text-lg sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight">
         {{ currentMeta.title }}
       </h1>
 
       <!-- 居中高转化全局搜索框 -->
-      <div class="mt-5 sm:mt-6 max-w-2xl mx-auto">
+      <div class="mt-3 sm:mt-6 max-w-2xl mx-auto">
         <form (ngSubmit)="onSearchSubmit()" class="relative flex items-center">
           <div class="relative flex-1 group">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none">
@@ -113,21 +113,6 @@
                     class="px-3.5 py-1.5 rounded-xl shrink-0 transition flex items-center gap-1">
               <span>{{ st.icon || '📚' }}</span>
               <span>{{ st.name }}</span>
-            </button>
-          </div>
-
-          <!-- 快速年级横向滑块 -->
-          <div class="flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
-            <button (click)="setFilter('grade', '')"
-                    [class]="!gradeParam() ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-50 text-slate-600 border border-slate-200/60'"
-                    class="px-2.5 py-1 rounded-lg shrink-0 transition">
-              全部年级
-            </button>
-            <button *ngFor="let g of availableGrades()"
-                    (click)="setFilter('grade', g.name)"
-                    [class]="gradeParam() === g.name ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-50 text-slate-600 border border-slate-200/60'"
-                    class="px-2.5 py-1 rounded-lg shrink-0 transition">
-              {{ g.name }}
             </button>
           </div>
 

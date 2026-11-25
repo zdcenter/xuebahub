@@ -37,6 +37,14 @@ export class BookShelfComponent implements OnInit {
   totalCount = signal<number>(0);
   isLoading = signal<boolean>(false);
   categoriesGroup = signal<Record<string, CategoryDto[]>>({});
+  mobileFilterExpanded = signal<boolean>(false);
+
+  activeFilterCount = computed(() =>
+    [this.gradeParam(), this.termParam(), this.subjectParam(), this.editionParam()].filter(Boolean).length
+  );
+  activeFilterSummary = computed(() =>
+    [this.gradeParam(), this.termParam(), this.subjectParam(), this.editionParam()].filter(Boolean).join(' · ')
+  );
 
   Math = Math;
 
