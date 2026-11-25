@@ -25,7 +25,12 @@ export class SeoService {
     const finalTitle = config.title
       ? (config.title.includes('学霸网') ? config.title : `${config.title} - 学霸网`)
       : this.defaultTitle;
-    const finalDesc = config.description || this.defaultDesc;
+    const rawDesc = (config.description || '').trim();
+    const finalDesc = !rawDesc
+      ? this.defaultDesc
+      : (rawDesc.length < 70
+          ? `${rawDesc} 学霸网提供高清PDF电子版免费在线预览与夸克网盘免密直存，支持A4无损打印与手机端随时查阅，助力高效复习提分。`
+          : rawDesc);
 
     this.title.setTitle(finalTitle);
     this.meta.updateTag({ name: 'description', content: finalDesc });

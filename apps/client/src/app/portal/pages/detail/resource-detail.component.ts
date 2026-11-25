@@ -767,7 +767,11 @@ export class ResourceDetailComponent implements OnInit {
           } else {
             seoTitle = `${resourceItem.title}${editionText} - ${gradeSubject ? gradeSubject + ' ' : ''}高清PDF下载与网盘转存 - 学霸网`;
             const fileDesc = totalFiles > 0 ? `内含 ${totalFiles} 个真题与教学资料文件` : '全套高清资料整理';
-            seoDesc = resourceItem.description || `${resourceItem.title}${editionText}，正版高清PDF/视频课件，支持A4无损打印与极速转存。${fileDesc}，含详细解析与答案，免费一键转存至个人网盘。`;
+            const fallbackDesc = `${resourceItem.title}${editionText}，正版高清PDF/视频课件，支持A4无损打印与极速转存。${fileDesc}，含详细解析与答案，免费一键转存至个人网盘。`;
+            const rawDesc = (resourceItem.description || '').trim();
+            seoDesc = rawDesc.length >= 70
+              ? rawDesc
+              : (rawDesc ? `${rawDesc}。${fallbackDesc}` : fallbackDesc);
             keywords = [
               resourceItem.title,
               this.stageLabel,
