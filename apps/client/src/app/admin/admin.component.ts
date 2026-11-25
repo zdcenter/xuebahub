@@ -260,7 +260,7 @@ export class AdminComponent implements OnInit {
   dashboardStats = signal<DashboardStatsDto | null>(null);
   statsLoading = signal<boolean>(false);
 
-  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members'>('list');
+  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'settings' | 'requests' | 'members'>('list');
   emailPreselectedResource = signal<any>(null);
 
   // --- 侧边栏折叠/展开系统（支持记忆） ---
@@ -4101,7 +4101,7 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'settings' | 'requests' | 'members') {
+  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'settings' | 'requests' | 'members') {
     this.currentTab.set(tab);
     if (tab === 'list') {
       this.loadResources();
@@ -4124,6 +4124,7 @@ export class AdminComponent implements OnInit {
       this.loadRegions();
     } else if (tab === 'hotsearches') {
       this.loadHotSearches();
+    } else if (tab === 'searchlogs') {
       this.loadSearchLogs();
     } else if (tab === 'settings') {
       this.loadSettings();

@@ -119,6 +119,16 @@
             <span class="nav-pill-badge hot">{{ requestsCounts().pending }}</span>
           }
         </button>
+        <button 
+          type="button"
+          [class.active]="currentTab() === 'searchlogs'" 
+          (click)="switchTab('searchlogs')">
+          <span class="icon">🔍</span>
+          <span class="nav-label">缺货搜索词</span>
+          @if (searchLogs().length > 0) {
+            <span class="nav-pill-badge hot">{{ searchLogs().length }}</span>
+          }
+        </button>
       </div>
 
       <!-- 2. 🌐 自动化采集中枢 -->
@@ -309,6 +319,7 @@
             @if (currentTab() === 'navmenus') { 🧭 网站前台多级导航与专区配置 }
             @if (currentTab() === 'schools') { 🏫 重点名校与所属省市地区字典库 }
             @if (currentTab() === 'hotsearches') { 🔥 {{ i18n.t('hotsearch.title') }} }
+            @if (currentTab() === 'searchlogs') { 🔍 缺货搜索词监控（待补库清单） }
             @if (currentTab() === 'members') { 👑 会员角色、每日额度与卡密核销中台 }
             @if (currentTab() === 'settings') { ⚙️ {{ i18n.t('settings.title') }} }
             @if (currentTab() === 'requests') { 📝 {{ i18n.t('requests.title') }} }
@@ -324,6 +335,7 @@
             @else if (currentTab() === 'navmenus') { 自由配置前台顶部一级学段专区与下拉二级分类、高亮角标与跳转路由，全站实时同步 }
             @else if (currentTab() === 'schools') { 预置全国及柳州本地重点中小学库，发资料时一键匹配，并支持随时自动入库新学校 }
             @else if (currentTab() === 'hotsearches') { {{ i18n.t('hotsearch.subtitle') }} }
+            @else if (currentTab() === 'searchlogs') { 自动统计用户在前台搜不到（0结果）的关键词，支持一键复制找资源或直接填表上架 }
             @else if (currentTab() === 'settings') { {{ i18n.t('settings.subtitle') }} }
             @else if (currentTab() === 'requests') { {{ i18n.t('requests.subtitle') }} }
             @else if (currentTab() === 'seo') { {{ i18n.t('seo.subtitle') }} }
@@ -5470,9 +5482,11 @@
             </div>
           </div>
         </div>
+      }
 
-        <!-- 用户搜索词监控（缺货待补库清单） -->
-        <div class="card channel-manager-card" style="margin-top: 20px;">
+      <!-- 4.0 🔍 缺货搜索词监控独立视图 -->
+      @if (currentTab() === 'searchlogs') {
+        <div class="card channel-manager-card">
           <div class="card-header" style="flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
             <div>
               <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
