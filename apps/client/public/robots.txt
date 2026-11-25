@@ -5,3 +5,5 @@ Disallow: /admin/
 Disallow: /r/
 
 Sitemap: https://www.xuebaw.com/sitemap.xml
+Sitemap: https://www.xuebaw.com/sitemap_books.xml
+Sitemap: https://www.xuebaw.com/sitemap_edu.xml

@@ -22,7 +22,9 @@ export class SeoService {
   private defaultDesc = '学霸网精选全国小学、初中、高中期中期末名校真题密卷，考点精讲视频课与正版统编电子课本。支持夸克网盘与百度网盘高速转存，原版A4无损高清打印，助力提分冲刺。';
 
   update(config: Partial<SeoConfig>) {
-    const finalTitle = config.title ? `${config.title} - 学霸网` : this.defaultTitle;
+    const finalTitle = config.title
+      ? (config.title.includes('学霸网') ? config.title : `${config.title} - 学霸网`)
+      : this.defaultTitle;
     const finalDesc = config.description || this.defaultDesc;
 
     this.title.setTitle(finalTitle);
@@ -31,11 +33,15 @@ export class SeoService {
       this.meta.updateTag({ name: 'keywords', content: config.keywords });
     }
 
-    // OpenGraph
+    // OpenGraph & Twitter
+    this.meta.updateTag({ property: 'og:site_name', content: '学霸网' });
     this.meta.updateTag({ property: 'og:title', content: finalTitle });
     this.meta.updateTag({ property: 'og:description', content: finalDesc });
     this.meta.updateTag({ property: 'og:image', content: config.ogImage || '/og-cover.png' });
     this.meta.updateTag({ property: 'og:type', content: 'website' });
+    this.meta.updateTag({ name: 'twitter:card', content: 'summary_large_image' });
+    this.meta.updateTag({ name: 'twitter:title', content: finalTitle });
+    this.meta.updateTag({ name: 'twitter:description', content: finalDesc });
 
     // Canonical link (支持 SSR 服务端预渲染注入与客户端动态变更)
     if (this.doc) {

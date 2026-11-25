@@ -11,7 +11,7 @@
             <span>统编电子教材与课本数字书架</span>
           </h1>
           <p class="mt-2 text-sm sm:text-base text-emerald-100/90 max-w-2xl leading-relaxed">
-            涵盖小学一年级至高中三年级全学科教材。全网主流版本（人教版、北师大版、苏教版等）矢量级高清 PDF，支持手机 APP 免下载翻页阅读与原版 A4 高清双面打印。
+            汇聚全国小学、初中、高中统编与主流教材高清电子课本，支持在线翻页试读与网盘一键转存。
           </p>
         </div>
 
@@ -216,9 +216,6 @@
           共 {{ totalCount() }} 本在库教材
         </span>
       </div>
-      <div class="text-xs text-slate-400 hidden sm:block">
-        💡 提示：点击任意课本封面即可查阅高清目录试读与获取夸克极速转存链接
-      </div>
     </div>
 
     <!-- 课本卡片网格 -->
@@ -226,7 +223,7 @@
       <app-book-card *ngFor="let b of books()" [resource]="b"></app-book-card>
     </div>
 
-    <!-- 分页导航条 (Pagination) -->
+    <!-- 分页导航条 (Crawlable Pagination Links - 对爬虫友好且SPA无刷跳转) -->
     <div *ngIf="totalPages() > 1" class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200/80 pt-6">
       <div class="text-xs sm:text-sm text-slate-500 font-medium">
         显示第 <span class="text-slate-800 font-bold">{{ (page() - 1) * pageSize() + 1 }}</span> 至 
@@ -236,27 +233,44 @@
       </div>
 
       <div class="flex items-center gap-1.5 flex-wrap">
-        <button (click)="onPageChange(page() - 1)"
-                [disabled]="page() <= 1"
-                class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer">
+        <a *ngIf="page() > 1"
+           [routerLink]="[]"
+           [queryParams]="{ page: page() - 1 }"
+           queryParamsHandling="merge"
+           (click)="onPageChange(page() - 1)"
+           class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition flex items-center gap-1 cursor-pointer">
           <span>‹</span> 上一页
-        </button>
+        </a>
+        <span *ngIf="page() <= 1"
+              class="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-xs sm:text-sm font-semibold opacity-50 cursor-not-allowed flex items-center gap-1">
+          <span>‹</span> 上一页
+        </span>
 
         <ng-container *ngFor="let p of visiblePages()">
           <span *ngIf="p === -1" class="px-2 text-slate-400 font-bold text-xs">...</span>
-          <button *ngIf="p !== -1"
-                  (click)="onPageChange(p)"
-                  [class]="page() === p ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs font-bold' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 font-medium'"
-                  class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border text-xs sm:text-sm transition flex items-center justify-center cursor-pointer">
+          <a *ngIf="p !== -1"
+             [routerLink]="[]"
+             [queryParams]="{ page: p }"
+             queryParamsHandling="merge"
+             (click)="onPageChange(p)"
+             [class]="page() === p ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs font-bold' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 font-medium'"
+             class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border text-xs sm:text-sm transition flex items-center justify-center cursor-pointer">
             {{ p }}
-          </button>
+          </a>
         </ng-container>
 
-        <button (click)="onPageChange(page() + 1)"
-                [disabled]="page() >= totalPages()"
-                class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer">
+        <a *ngIf="page() < totalPages()"
+           [routerLink]="[]"
+           [queryParams]="{ page: page() + 1 }"
+           queryParamsHandling="merge"
+           (click)="onPageChange(page() + 1)"
+           class="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition flex items-center gap-1 cursor-pointer">
           下一页 <span>›</span>
-        </button>
+        </a>
+        <span *ngIf="page() >= totalPages()"
+              class="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-xs sm:text-sm font-semibold opacity-50 cursor-not-allowed flex items-center gap-1">
+          下一页 <span>›</span>
+        </span>
       </div>
     </div>
 

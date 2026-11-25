@@ -1,15 +1,29 @@
 <div class="min-h-screen bg-slate-50/60 pb-28 sm:pb-20 pt-6">
   <div class="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
-    <!-- 面包屑导航 -->
+    <!-- 面包屑导航 (清晰层级回退，对搜索引擎与用户双向友好) -->
     <nav class="flex items-center space-x-2 text-xs sm:text-sm text-slate-600 flex-wrap font-medium">
-      <a routerLink="/" class="hover:text-blue-600 transition">全站首页</a>
+      <a routerLink="/" class="hover:text-blue-600 transition">首页</a>
       <span class="text-slate-400">/</span>
-      <a [routerLink]="stageHref" class="hover:text-blue-600 transition">{{ stageLabel }}</a>
-      <ng-container *ngIf="resource()?.subject">
-        <span class="text-slate-400">/</span>
-        <a [routerLink]="stageHref" [queryParams]="{ subject: resource()?.subject }" class="hover:text-blue-600 transition">{{ resource()?.subject }}专栏</a>
+
+      <!-- 课本专属面包屑 -->
+      <ng-container *ngIf="isBookResource()">
+        <a routerLink="/book" class="hover:text-emerald-700 transition">电子课本</a>
+        <ng-container *ngIf="resource()?.grade">
+          <span class="text-slate-400">/</span>
+          <a routerLink="/book" [queryParams]="{ stage: resource()?.stage || 'primary', grade: resource()?.grade }" class="hover:text-emerald-700 transition">{{ resource()?.grade }}</a>
+        </ng-container>
       </ng-container>
+
+      <!-- 普通教学资料面包屑 -->
+      <ng-container *ngIf="!isBookResource()">
+        <a [routerLink]="stageHref" class="hover:text-blue-600 transition">{{ stageLabel }}</a>
+        <ng-container *ngIf="resource()?.subject">
+          <span class="text-slate-400">/</span>
+          <a [routerLink]="stageHref" [queryParams]="{ subject: resource()?.subject }" class="hover:text-blue-600 transition">{{ resource()?.subject }}专栏</a>
+        </ng-container>
+      </ng-container>
+
       <span class="text-slate-400">/</span>
       <span class="text-slate-900 font-semibold truncate max-w-sm sm:max-w-md">{{ resource()?.title }}</span>
     </nav>
