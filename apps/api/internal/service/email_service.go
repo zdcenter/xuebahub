@@ -214,7 +214,7 @@ func (s *EmailService) SendTestEmail(toEmail string) error {
       <p style="color: #64748b; font-size: 12.5px; margin: 0;">现在您可以通过管理后台一键向目标家长、考生推送最新真题试卷和网盘转存资源。</p>
     </div>
     <div style="padding: 14px 28px; background: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; font-size: 12px; color: #94a3b8;">
-      学霸网 官方网址: <a href="https://xuebaw.com" style="color: #0284c7; text-decoration: none;">https://xuebaw.com</a>
+      学霸网 官方网址: <a href="https://www.xuebaw.com" style="color: #0284c7; text-decoration: none;">https://www.xuebaw.com</a>
     </div>
   </div>
 </body>
@@ -503,7 +503,7 @@ func (s *EmailService) renderCampaignHTML(res model.Resource, customMsg string, 
         </div>`, l.ShareURL, driveName, codeText)
 		}
 
-		resURL := fmt.Sprintf("https://xuebaw.com/resource/%s", res.Slug)
+		resURL := fmt.Sprintf("https://www.xuebaw.com/resource/%s", res.Slug)
 		resBlock = fmt.Sprintf(`
       <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; margin: 18px 0;">
         <div style="font-size: 11.5px; color: #0284c7; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">🎯 重点真题推荐</div>
@@ -557,7 +557,7 @@ func (s *EmailService) renderCampaignHTML(res model.Resource, customMsg string, 
     <!-- 底部保障区 -->
     <div style="padding: 16px 28px; background: #f8fafc; border-top: 1px solid #f1f5f9; font-size: 12px; color: #94a3b8; line-height: 1.6; text-align: center;">
       <div>学霸网 (xuebaw.com) · 中小学名校教辅与网盘真题分享平台</div>
-      <div style="margin-top: 4px;">此邮件为公益学习资料推荐，如需查阅更多初高中期末真题、教辅微课，请访问 <a href="https://xuebaw.com" style="color: #0284c7; text-decoration: none;">xuebaw.com</a></div>
+      <div style="margin-top: 4px;">此邮件为公益学习资料推荐，如需查阅更多初高中期末真题、教辅微课，请访问 <a href="https://www.xuebaw.com" style="color: #0284c7; text-decoration: none;">www.xuebaw.com</a></div>
     </div>
   </div>
 </body>
@@ -711,7 +711,7 @@ func (s *EmailService) SendResourceFulfilledNotification(req *model.ResourceRequ
 	var linksHTML string
 
 	if resource != nil {
-		actionBtnURL = fmt.Sprintf("https://xuebaw.com/resource/%s", resource.Slug)
+		actionBtnURL = fmt.Sprintf("https://www.xuebaw.com/resource/%s", resource.Slug)
 		for _, l := range resource.Links {
 			driveName := "夸克网盘"
 			driveBadgeColor := "#0284c7"
@@ -734,7 +734,7 @@ func (s *EmailService) SendResourceFulfilledNotification(req *model.ResourceRequ
         </div>`, l.ShareURL, driveBadgeColor, driveName, codeText)
 		}
 	} else {
-		actionBtnURL = fmt.Sprintf("https://xuebaw.com/search?q=%s", url.QueryEscape(req.Title))
+		actionBtnURL = fmt.Sprintf("https://www.xuebaw.com/?q=%s", url.QueryEscape(req.Title))
 	}
 
 	noteText := adminNote

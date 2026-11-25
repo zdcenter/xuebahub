@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ResourceService, ResourceItemDto, ResourceTransferPackage, NetdiskAccountDto, TransferShareResultDto, ChannelDto, CategoryDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto, HotSearchDto, SiteSettingDto, ResourceRequestDto, TelegramConfigDto, TelegramChannelDto, TelegramBroadcastChannelDto, ResourceDraftDto, CrawlerStatsDto } from '../services/resource.service';
@@ -83,7 +83,7 @@ import { TransferModalComponent } from '../components/transfer-modal/transfer-mo
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css'
 })
-export class AdminComponent implements OnInit {
+export class AdminComponent implements OnInit, OnDestroy {
   private resService = inject(ResourceService);
   private coverGen = inject(CoverGeneratorService);
   i18n = inject(I18nService);
@@ -3838,8 +3838,13 @@ export class AdminComponent implements OnInit {
     this.loadNavMenus();
     this.loadRegions();
     this.loadDashboardStats();
+    this.loadSearchLogs();
     this.loadCrawlerConfigAndStats();
     this.loadAllCategories();
+  }
+
+  ngOnDestroy() {
+    this.stopStatsAutoRefresh();
   }
 
   onLogin() {
