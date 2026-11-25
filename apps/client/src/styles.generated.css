@@ -1395,6 +1395,10 @@ body {
   animation: spin 1s linear infinite;
 }
 
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+
 .cursor-pointer {
   cursor: pointer;
 }
@@ -1828,11 +1832,6 @@ body {
 
 .border-cyan-300\/60 {
   border-color: rgb(103 232 249 / 0.6);
-}
-
-.border-emerald-100 {
-  --tw-border-opacity: 1;
-  border-color: rgb(209 250 229 / var(--tw-border-opacity, 1));
 }
 
 .border-emerald-100\/80 {
@@ -2962,10 +2961,6 @@ body {
   padding-bottom: 2rem;
 }
 
-.pb-0\.5 {
-  padding-bottom: 0.125rem;
-}
-
 .pb-1 {
   padding-bottom: 0.25rem;
 }
@@ -3609,6 +3604,10 @@ body {
 
 .opacity-20 {
   opacity: 0.2;
+}
+
+.opacity-50 {
+  opacity: 0.5;
 }
 
 .opacity-60 {
@@ -4679,10 +4678,6 @@ body {
 
   .sm\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .sm\:grid-cols-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .sm\:flex-row {
