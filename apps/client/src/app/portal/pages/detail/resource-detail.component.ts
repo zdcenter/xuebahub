@@ -1271,6 +1271,7 @@ export class ResourceDetailComponent implements OnInit {
     this.memberService.consumeQuota(slug).subscribe({
       next: (result) => {
         if (result.allowed) {
+          this.incrementLocalSaveCount(slug, link.id);
           // 若在微信或 QQ 内置浏览器中，拦截并调起右上角蒙层指引 (防链接屏蔽与白屏)
           if (this.isWeChatOrQQ()) {
             this.wechatGuideTargetLink.set(link);
@@ -1298,6 +1299,7 @@ export class ResourceDetailComponent implements OnInit {
       },
       error: () => {
         // 网络兜底
+        this.incrementLocalSaveCount(slug, link.id);
         if (this.isWeChatOrQQ()) {
           this.wechatGuideTargetLink.set(link);
           this.showWechatGuide.set(true);
@@ -1307,6 +1309,15 @@ export class ResourceDetailComponent implements OnInit {
         if (typeof window !== 'undefined') {
           window.open(link.share_url, '_blank');
         }
+      }
+    });
+  }
+
+  private incrementLocalSaveCount(slug: string, linkId?: string) {
+    this.resource.update(r => r ? { ...r, save_count: (r.save_count || 0) + 1 } : r);
+    this.portalService.trackResourceSave(slug, linkId).subscribe(data => {
+      if (data && typeof data.save_count === 'number') {
+        this.resource.update(r => r ? { ...r, save_count: data.save_count } : r);
       }
     });
   }

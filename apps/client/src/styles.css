@@ -33,3 +33,12 @@
 .safe-bottom {
   padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));
 }
+
+/* 隐藏横向滚动条但保留滑动功能 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

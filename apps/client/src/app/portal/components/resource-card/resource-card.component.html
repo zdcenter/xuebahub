@@ -62,8 +62,8 @@
             {{ resource.edition || '精选同步讲义' }}
           </div>
 
-          <!-- 动态直达详情页防伪二维码印章 (白底清爽高对比) -->
-          <div class="mt-2 p-1.5 bg-white/95 rounded-xl border border-white/80 shadow-md flex flex-col items-center group-hover:scale-105 transition-all">
+          <!-- 动态直达详情页防伪二维码印章 (仅平板/PC展示，手机端小卡片保持清爽) -->
+          <div class="hidden sm:flex mt-2 p-1.5 bg-white/95 rounded-xl border border-white/80 shadow-md flex-col items-center group-hover:scale-105 transition-all">
             <div class="w-15 h-15 sm:w-16 sm:h-16 flex items-center justify-center overflow-hidden" [innerHTML]="qrSvg"></div>
             <span class="mt-0.5 text-[8px] font-mono font-bold text-slate-600 flex items-center gap-0.5 whitespace-nowrap">
               <span>📷</span> 微信扫码直达

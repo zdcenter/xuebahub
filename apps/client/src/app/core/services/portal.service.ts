@@ -136,6 +136,18 @@ export class PortalService {
     );
   }
 
+  // 4.2 记录资源转存点击计数
+  trackResourceSave(idOrSlug: string, linkId?: string): Observable<{ save_count?: number } | null> {
+    if (!idOrSlug) return of(null);
+    return this.http.post<{ code: number; data?: { save_count?: number } }>(
+      `${this.baseUrl}/api/v1/public/resources/${encodeURIComponent(idOrSlug)}/track-save`,
+      linkId ? { link_id: linkId } : {}
+    ).pipe(
+      map(res => res?.data || null),
+      catchError(() => of(null))
+    );
+  }
+
   // 5. 热门搜索热词
   getHotSearches(): Observable<HotSearchItem[]> {
     return this.http.get<{ code: number; data: HotSearchItem[] }>(`${this.baseUrl}/api/v1/public/hot-searches`).pipe(

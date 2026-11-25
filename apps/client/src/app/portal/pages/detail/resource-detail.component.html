@@ -52,11 +52,11 @@
         <!-- 2. 主体左右结构 (黄金比例排布：左侧大气质感封面 + 右侧自适应行动中心) -->
         <div class="flex flex-col md:flex-row gap-6 lg:gap-8 xl:gap-10 items-start">
           
-          <!-- 左侧：大尺寸精装封面展示 + 扫码转存合一 (3:4黄金竖版比例，典雅沉稳大气) -->
-          <div class="shrink-0 mx-auto md:mx-0">
+          <!-- 左侧：大尺寸精装封面展示 + 扫码转存合一 (手机端排在行动按钮下方，避免挡住转存按钮) -->
+          <div class="shrink-0 mx-auto md:mx-0 order-2 md:order-1">
             <div (click)="allPreviewImages().length > 0 && openLightbox(0)"
                  [class.cursor-zoom-in]="allPreviewImages().length > 0"
-                 class="w-72 sm:w-80 md:w-[320px] lg:w-[360px] xl:w-[380px] aspect-[3/4] rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-100 relative group select-none transition-shadow hover:shadow-xl">
+                 class="w-56 sm:w-72 md:w-[320px] lg:w-[360px] xl:w-[380px] aspect-[3/4] rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-100 relative group select-none transition-shadow hover:shadow-xl">
               <img *ngIf="resource()?.cover_image"
                    [src]="resource()?.cover_image"
                    [alt]="resource()?.title"
@@ -98,10 +98,10 @@
                     {{ resource()?.edition || '精选同步教材/讲义' }}
                   </div>
 
-                  <!-- 嵌在封面下半部的白底微圆角扫码转存二维码 -->
+                  <!-- 嵌在封面下半部的白底微圆角扫码转存二维码 (仅桌面端展示，手机端直接点上方按钮) -->
                   <div *ngIf="primaryLink as link"
                        (click)="openQrModal(link.share_url, link.drive_type, link.extract_code || ''); $event.stopPropagation()"
-                       class="mt-3 p-2.5 sm:p-3 bg-white/95 rounded-2xl border border-white/90 shadow-md flex flex-col items-center cursor-pointer group/qr hover:scale-103 transition-transform"
+                       class="hidden md:flex mt-3 p-2.5 sm:p-3 bg-white/95 rounded-2xl border border-white/90 shadow-md flex-col items-center cursor-pointer group/qr hover:scale-103 transition-transform"
                        title="点击放大全屏扫码">
                     <div class="w-28 h-28 sm:w-32 sm:h-32 md:w-34 md:h-34 flex items-center justify-center overflow-hidden" [innerHTML]="getQrSvg(link.share_url, 136)"></div>
                     <span class="mt-1.5 text-[10px] sm:text-xs font-mono font-bold text-slate-700 flex items-center gap-1">
@@ -129,8 +129,8 @@
           </div>
         </div>
 
-          <!-- 右侧：元信息面板 + 全宽强转化行动区 (二维码移出后极致舒展大气) -->
-          <div class="flex-1 min-w-0 w-full space-y-5">
+          <!-- 右侧：元信息面板 + 全宽强转化行动区 (手机端排在第一位，一进页面即可点击转存) -->
+          <div class="flex-1 min-w-0 w-full space-y-5 order-1 md:order-2">
             
             <!-- 上部：自适应指标微卡片组 (统一低饱和中性灰蓝基调，极简专业高级，防截断) -->
             <div class="bg-slate-50/90 border border-slate-200/90 rounded-2xl p-3.5 sm:p-5">
