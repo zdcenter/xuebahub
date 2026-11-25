@@ -2105,7 +2105,7 @@ export class AdminComponent implements OnInit {
   newResource = {
     channel_slug: 'edu',
     title: '',
-    subtitle: '',
+    subtitle: (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_subtitle') : '') || '',
     stage: 'primary',
     grade: '通用 (1-6年级通用)',
     subject: '数学',
@@ -2143,7 +2143,7 @@ export class AdminComponent implements OnInit {
     id: '',
     channel_slug: 'edu',
     title: '',
-    subtitle: '',
+    subtitle: (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_subtitle') : '') || '',
     stage: 'primary',
     grade: '通用 (1-6年级通用)',
     subject: '数学',
@@ -4525,8 +4525,11 @@ export class AdminComponent implements OnInit {
           });
           this.currentImportingDraftId = null;
         }
+        if (typeof localStorage !== 'undefined' && this.newResource.subtitle?.trim()) {
+          localStorage.setItem('preferred_subtitle', this.newResource.subtitle.trim());
+        }
         this.newResource.title = '';
-        this.newResource.subtitle = '';
+        this.newResource.subtitle = (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_subtitle') : '') || '';
         this.newResource.description = '';
         this.newResource.region = (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_region') : '') || '';
         this.newResource.school = '';

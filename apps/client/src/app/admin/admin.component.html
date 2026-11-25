@@ -1116,7 +1116,7 @@
             <span class="text-muted">（{{ i18n.t('system.autoSyncFront') }}）</span>
           </div>
 
-          <form (ngSubmit)="saveNewResource()" class="form-grid">
+          <form (ngSubmit)="saveNewResource()" class="form-grid" autocomplete="off">
             <div class="form-group full-width">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
                 <label style="margin-bottom: 0;">资料完整标题 <span class="required">*</span></label>
@@ -1207,6 +1207,7 @@
                 type="text" 
                 [(ngModel)]="newResource.subtitle" 
                 name="subtitle" 
+                autocomplete="off"
                 placeholder="例如：含高清名师精讲视频与手写版详尽解析" 
               />
             </div>
@@ -1481,6 +1482,7 @@
                       [(ngModel)]="newResource.quarkUrl" 
                       (blur)="autoDetectNetdiskInfo('new')"
                       name="quarkUrl" 
+                      autocomplete="off"
                       placeholder="https://pan.quark.cn/s/xxxxxxxx (可贴他人分享)" 
                       class="netdisk-url-input"
                     />
@@ -1577,6 +1579,7 @@
                       [(ngModel)]="newResource.baiduUrl" 
                       (blur)="autoDetectBaiduInfo('new')"
                       name="baiduUrl" 
+                      autocomplete="off"
                       placeholder="https://pan.baidu.com/s/xxxxxxxx" 
                       class="netdisk-url-input"
                     />
@@ -1693,6 +1696,7 @@
                     <span style="font-size: 11px; color: #94a3b8; white-space: nowrap;">🔗 封面直链:</span>
                     <input type="text" 
                            name="new_cover_image" 
+                           autocomplete="off"
                            [ngModel]="newResource.cover_image" 
                            (ngModelChange)="onCoverUrlChange($event, 'new')" 
                            placeholder="输入网络封面图片地址（如 https://...）" 
@@ -1852,7 +1856,7 @@
             </button>
           </div>
 
-          <form (ngSubmit)="saveEdit()" class="form-grid">
+          <form (ngSubmit)="saveEdit()" class="form-grid" autocomplete="off">
           <div class="form-group full-width">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
               <label style="margin-bottom: 0;">资料完整标题 <span class="required">*</span></label>
@@ -1942,6 +1946,7 @@
               type="text" 
               [(ngModel)]="editForm.subtitle" 
               name="edit_subtitle" 
+              autocomplete="off"
             />
           </div>
 
@@ -2215,6 +2220,7 @@
                     [(ngModel)]="editForm.quarkUrl" 
                     (blur)="autoDetectNetdiskInfo('edit')"
                     name="edit_quarkUrl" 
+                    autocomplete="off"
                     placeholder="https://pan.quark.cn/s/xxxxxxxx (可贴他人分享)" 
                     class="netdisk-url-input"
                   />
@@ -2311,6 +2317,7 @@
                     [(ngModel)]="editForm.baiduUrl" 
                     (blur)="autoDetectBaiduInfo('edit')"
                     name="edit_baiduUrl" 
+                    autocomplete="off"
                     placeholder="https://pan.baidu.com/s/xxxxxxxx"
                     class="netdisk-url-input"
                   />
@@ -2427,6 +2434,7 @@
                     <span style="font-size: 11px; color: #94a3b8; white-space: nowrap;">🔗 封面直链:</span>
                     <input type="text" 
                            name="edit_cover_image" 
+                           autocomplete="off"
                            [ngModel]="editForm.cover_image" 
                            (ngModelChange)="onCoverUrlChange($event, 'edit')" 
                            placeholder="输入网络封面图片地址（如 https://...）" 
@@ -8892,6 +8900,7 @@
                   <input 
                     type="text" 
                     [(ngModel)]="link.share_url"
+                    autocomplete="off"
                     placeholder="https://pan.quark.cn/s/... 或 https://pan.baidu.com/s/..."
                     style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; font-family: monospace; color: #0f172a;"
                   />
