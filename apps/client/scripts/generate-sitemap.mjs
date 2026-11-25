@@ -12,6 +12,7 @@ const sitemapIndexPath = path.join(publicDir, 'sitemap_index.xml');
 
 const siteUrl = 'https://www.xuebaw.com';
 const now = new Date().toISOString().split('T')[0];
+const normalizeDomain = (xml) => xml.replace(/https?:\/\/(?:www\.)?xuebaw\.com/g, siteUrl);
 
 const staticPages = [
   { loc: `${siteUrl}/`, changefreq: 'daily', priority: '1.0' },
@@ -52,13 +53,13 @@ async function generateSitemap() {
       if (resEdu.ok) {
         const text = await resEdu.text();
         if (text.includes('<urlset') && text.includes('<url>')) {
-          eduSitemapXml = text;
+          eduSitemapXml = normalizeDomain(text);
         }
       }
       if (resBooks.ok) {
         const text = await resBooks.text();
         if (text.includes('<urlset') && text.includes('<url>')) {
-          bookSitemapXml = text;
+          bookSitemapXml = normalizeDomain(text);
         }
       }
 
