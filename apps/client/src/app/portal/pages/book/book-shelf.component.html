@@ -67,14 +67,14 @@
   <div class="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 -mt-4 relative z-20">
     <div class="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200/90 p-4 sm:p-6 space-y-3.5 backdrop-blur-md">
       
-      <!-- 维度 1: 学段 (Stage) - 手机端单行横向滚动，桌面端平铺 -->
+      <!-- 维度 1: 学段分类 (Stage) - 手机端单行横向滚动，桌面端平铺 -->
       <div class="flex items-center text-xs gap-2">
         <span class="hidden sm:flex font-extrabold text-slate-700 w-20 shrink-0 items-center gap-1">
-          <span>🎓</span> 学段专区:
+          <span>🎓</span> 学段分类:
         </span>
         <div class="flex-1 flex flex-nowrap sm:flex-wrap overflow-x-auto no-scrollbar gap-1.5 pb-0.5 sm:pb-0">
           <button (click)="setFilter('stage', 'all')"
-                  [class]="stageParam() === 'all' ? 'bg-emerald-700 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+                  [class]="stageParam() === 'all' ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
                   class="px-3 py-1.5 sm:py-1 rounded-xl sm:rounded-lg shrink-0 transition cursor-pointer">
             全部学段
           </button>

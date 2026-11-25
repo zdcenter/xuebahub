@@ -103,13 +103,13 @@
           <!-- 学段横向无滚条滑块 -->
           <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar scroll-smooth">
             <button (click)="setFilter('stage', 'all')"
-                    [class]="stageParam() === 'all' ? 'bg-slate-900 text-white font-extrabold shadow-sm' : 'bg-slate-100 text-slate-600'"
+                    [class]="stageParam() === 'all' ? 'bg-emerald-600 text-white font-bold shadow-sm' : 'bg-slate-100 text-slate-600'"
                     class="px-3.5 py-1.5 rounded-xl shrink-0 transition">
               全部学段
             </button>
             <button *ngFor="let st of stages()"
                     (click)="setFilter('stage', st.slug)"
-                    [class]="stageParam() === st.slug ? 'bg-slate-900 text-white font-extrabold shadow-sm' : 'bg-slate-100 text-slate-600'"
+                    [class]="stageParam() === st.slug ? 'bg-emerald-600 text-white font-bold shadow-sm' : 'bg-slate-100 text-slate-600'"
                     class="px-3.5 py-1.5 rounded-xl shrink-0 transition flex items-center gap-1">
               <span>{{ st.icon || '📚' }}</span>
               <span>{{ st.name }}</span>
@@ -161,13 +161,13 @@
             </span>
             <div class="flex-1 flex flex-wrap gap-1.5">
               <button (click)="setFilter('stage', 'all')"
-                      [class]="stageParam() === 'all' ? 'bg-slate-900 text-white shadow-sm font-extrabold' : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600'"
+                      [class]="stageParam() === 'all' ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600'"
                       class="px-3.5 py-1.5 rounded-xl transition cursor-pointer">
                 全部学段
               </button>
               <button *ngFor="let st of stages()"
                       (click)="setFilter('stage', st.slug)"
-                      [class]="stageParam() === st.slug ? 'bg-slate-900 text-white shadow-sm font-extrabold' : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600'"
+                      [class]="stageParam() === st.slug ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'bg-slate-100/90 hover:bg-slate-200 text-slate-600'"
                       class="px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
                 <span>{{ st.icon || '📚' }}</span>
                 <span>{{ st.name }}</span>
