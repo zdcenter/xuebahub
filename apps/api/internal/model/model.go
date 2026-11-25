@@ -361,7 +361,7 @@ type EmailCampaignLog struct {
 // SeoConfig 搜索引擎主动收录与索引配置模型 (支持百度普通收录 API 与微软必应 IndexNow)
 type SeoConfig struct {
 	ID                string     `gorm:"type:varchar(50);primaryKey" json:"id"` // "global"
-	SiteDomain        string     `gorm:"type:varchar(200);default:'https://xuebaw.com'" json:"site_domain"`
+	SiteDomain        string     `gorm:"type:varchar(200);default:'https://www.xuebaw.com'" json:"site_domain"`
 	BaiduToken        string     `gorm:"type:varchar(100)" json:"baidu_token"`        // 百度搜索资源平台准入密钥 token
 	BaiduActive       bool       `gorm:"default:true" json:"baidu_active"`             // 是否开启百度收录推送
 	BingApiKey        string     `gorm:"type:varchar(100)" json:"bing_api_key"`       // 必应/IndexNow API Key (32位十六进制)

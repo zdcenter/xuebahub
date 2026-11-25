@@ -737,7 +737,7 @@ func (s *TelegramCrawlerService) BroadcastResource(res *model.Resource, customCh
 	if slugOrID == "" {
 		slugOrID = res.ID.String()
 	}
-	landingURL := fmt.Sprintf("https://xuebaw.com/resource/%s", slugOrID)
+	landingURL := fmt.Sprintf("https://www.xuebaw.com/resource/%s", slugOrID)
 	sb.WriteString(fmt.Sprintf("🌐 <b>学霸网全套真题与微课在线预览与A4打印</b>：\n👉 <a href=\"%s\">%s</a>\n\n", landingURL, landingURL))
 	sb.WriteString("⚡ <i>学霸网 (xuebaw.com) · 每日精选名校试卷与课件实时更新</i>")
 
@@ -797,7 +797,7 @@ func (s *TelegramCrawlerService) SendTestBroadcast(targetChannel string) error {
 	testMsg := "🎉 <b>学霸网资源发布机器人 · 广播通道连接成功！</b>\n\n" +
 		"✅ 本频道已成功与【学霸网资源中台】建立专属推送链路。\n" +
 		"⚡ 后续在管理后台审核发布新资料或从采集草稿池一键入库时，将自动秒级广播到本频道，向全体订阅者推送最新试卷与网盘转存直达链接！\n\n" +
-		"🌐 官方主站：<a href=\"https://xuebaw.com\">https://xuebaw.com</a>"
+		"🌐 官方主站：<a href=\"https://www.xuebaw.com\">https://www.xuebaw.com</a>"
 
 	var successCount int
 	var lastErr error

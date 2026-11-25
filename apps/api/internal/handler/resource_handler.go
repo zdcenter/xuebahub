@@ -328,7 +328,7 @@ func (h *ResourceHandler) HandleSmartRedirect(c fiber.Ctx) error {
 			if strings.Contains(host, "localhost") || strings.Contains(host, "127.0.0.1") {
 				siteBase = fmt.Sprintf("%s://%s", c.Protocol(), host)
 			} else {
-				siteBase = "https://xuebaw.com"
+				siteBase = "https://www.xuebaw.com"
 			}
 		}
 	}

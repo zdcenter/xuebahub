@@ -559,7 +559,7 @@ func seedInitialData(db *gorm.DB) {
 	if seoConfigCount == 0 {
 		defaultSeoConfig := model.SeoConfig{
 			ID:                "global",
-			SiteDomain:        "https://xuebaw.com",
+			SiteDomain:        "https://www.xuebaw.com",
 			BaiduToken:        "",
 			BaiduActive:       true,
 			BingApiKey:        "7f8a9b2c3d4e5f60718293a4b5c6d7e8",
@@ -570,6 +570,10 @@ func seedInitialData(db *gorm.DB) {
 		}
 		db.Create(&defaultSeoConfig)
 		log.Println("Seeded default SeoConfig successfully!")
+	} else {
+		db.Model(&model.SeoConfig{}).
+			Where("site_domain IN ?", []string{"https://xuebaw.com", "http://xuebaw.com", "http://www.xuebaw.com", ""}).
+			Update("site_domain", "https://www.xuebaw.com")
 	}
 
 	// 12. 自动检查并同步标准化全国 K12 电子教材全套分类体系
