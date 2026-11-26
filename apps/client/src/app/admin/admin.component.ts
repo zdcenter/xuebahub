@@ -4974,6 +4974,12 @@ export class AdminComponent implements OnInit, OnDestroy {
   collectionsLoading = signal<boolean>(false);
   isCollectionModalOpen = signal<boolean>(false);
   collectionAssignMode: 'new' | 'edit' | null = null;
+  isCollectionOrderModalOpen = signal<boolean>(false);
+  orderingCollection = signal<CollectionDto | null>(null);
+  collectionOrderItems = signal<ResourceItemDto[]>([]);
+  collectionOrderLoading = signal<boolean>(false);
+  collectionOrderSaving = signal<boolean>(false);
+  draggedOrderIndex = signal<number | null>(null);
   collectionForm = {
     id: '',
     title: '',
@@ -5500,6 +5506,105 @@ export class AdminComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.loading.set(false);
         this.showToast('批量设置专辑失败: ' + (err.message || '网络错误'), 'error');
+      }
+    });
+  }
+
+  // 行内一键将单个资源移出所属专辑
+  removeResourceFromCollection(res: ResourceItemDto) {
+    if (!res.collection) return;
+    const colTitle = res.collection.title;
+    this.resService.batchAssignCollection([res.id], 'none').subscribe({
+      next: () => {
+        this.showToast(`已将「${res.title}」移出专辑【${colTitle}】`);
+        this.loadResources();
+        this.loadCollections();
+      },
+      error: (err) => this.showToast('移出专辑失败: ' + (err.message || '网络错误'), 'error')
+    });
+  }
+
+  // 打开专辑成员排序与管理弹窗（支持鼠标拖拽 + 移动端上下按钮）
+  openCollectionOrderModal(col: CollectionDto) {
+    this.orderingCollection.set(col);
+    this.collectionOrderItems.set([]);
+    this.collectionOrderLoading.set(true);
+    this.isCollectionOrderModalOpen.set(true);
+
+    this.resService.getCollectionItems(col.id).subscribe({
+      next: (data) => {
+        this.collectionOrderItems.set(data.items || []);
+        this.collectionOrderLoading.set(false);
+      },
+      error: (err) => {
+        this.collectionOrderLoading.set(false);
+        this.showToast('加载专辑成员失败: ' + (err.message || '网络错误'), 'error');
+      }
+    });
+  }
+
+  closeCollectionOrderModal() {
+    this.isCollectionOrderModalOpen.set(false);
+    this.orderingCollection.set(null);
+    this.draggedOrderIndex.set(null);
+  }
+
+  moveCollectionOrderItem(index: number, direction: -1 | 1) {
+    const list = [...this.collectionOrderItems()];
+    const target = index + direction;
+    if (target < 0 || target >= list.length) return;
+    const [moved] = list.splice(index, 1);
+    list.splice(target, 0, moved);
+    this.collectionOrderItems.set(list);
+  }
+
+  onCollectionDragStart(index: number) {
+    this.draggedOrderIndex.set(index);
+  }
+
+  onCollectionDragOver(event: DragEvent) {
+    event.preventDefault();
+  }
+
+  onCollectionDrop(targetIndex: number) {
+    const fromIndex = this.draggedOrderIndex();
+    this.draggedOrderIndex.set(null);
+    if (fromIndex === null || fromIndex === targetIndex) return;
+    const list = [...this.collectionOrderItems()];
+    const [moved] = list.splice(fromIndex, 1);
+    list.splice(targetIndex, 0, moved);
+    this.collectionOrderItems.set(list);
+  }
+
+  removeMemberInOrderModal(item: ResourceItemDto) {
+    const col = this.orderingCollection();
+    if (!col) return;
+    this.resService.batchAssignCollection([item.id], 'none').subscribe({
+      next: () => {
+        this.collectionOrderItems.set(this.collectionOrderItems().filter(x => x.id !== item.id));
+        this.loadCollections();
+        this.loadResources();
+        this.showToast(`已从专辑移出「${item.title}」`);
+      },
+      error: (err) => this.showToast('移出失败: ' + (err.message || '网络错误'), 'error')
+    });
+  }
+
+  saveCollectionOrder() {
+    const col = this.orderingCollection();
+    if (!col) return;
+    const itemIds = this.collectionOrderItems().map(i => i.id);
+    this.collectionOrderSaving.set(true);
+    this.resService.reorderCollectionItems(col.id, itemIds).subscribe({
+      next: () => {
+        this.collectionOrderSaving.set(false);
+        this.showToast('专辑成员排序已保存（已自动切换为手动排序模式）');
+        this.closeCollectionOrderModal();
+        this.loadCollections();
+      },
+      error: (err) => {
+        this.collectionOrderSaving.set(false);
+        this.showToast('保存排序失败: ' + (err.message || '网络错误'), 'error');
       }
     });
   }

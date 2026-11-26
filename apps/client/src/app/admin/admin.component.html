@@ -703,83 +703,86 @@
                 <span>☑️</span>
                 <span>已选中 <strong>{{ selectedResourceIds().length }}</strong> 套资料</span>
               </div>
-              <div class="batch-action-buttons">
-                <button 
-                  type="button" 
-                  class="btn btn-sm" 
-                  style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border: none; font-weight: 700; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);" 
-                  (click)="copySelectedResourcesPackage()" 
-                  title="一键将勾选的所有资料完整元数据打包复制到剪贴板，可前往新服务器直接粘贴导入">
-                  {{ i18n.t('transfer.copyPackage') }}
-                </button>
-                <button type="button" class="btn btn-sm btn-batch-share" (click)="openBatchCopyModal()">
-                  📢 {{ i18n.t('copyWriter.batchCopy') }}
-                </button>
-                <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #ea580c 0%, #d97706 100%); color: #ffffff; border: none; font-weight: 600; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);" (click)="openBatchPosterModal()" title="为选中的资料一键生成多套合辑营销海报">
-                  🎨 {{ i18n.t('poster.batchBtn') }}
-                </button>
-                <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #ffffff; border: none; font-weight: 600; box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);" (click)="openBatchVideoModal()" title="为选中的资料一键生成多套合辑短视频脚本与置顶词">
-                  🎬 {{ i18n.t('videoScript.batchBtn') }}
-                </button>
-                <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff; border: none; font-weight: 600; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);" (click)="batchPushSelectedToSeo()" title="将选中的资料批量推送到百度与必应搜索引擎加快收录">
-                  ⚡ 百度/必应主动收录
-                </button>
-                <button 
-                  type="button" 
-                  class="btn btn-sm" 
-                  style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: 600;" 
-                  [disabled]="isPushingDeadLinks()"
-                  (click)="batchPushSelectedDeadLinksToBaidu()" 
-                  title="将选中的失效或下架资料批量向百度站长平台死链接口提交下线删除，防止网站权重受损">
-                  @if (isPushingDeadLinks()) {
-                    <span>⏳ 提交中...</span>
-                  } @else {
-                    <span>🧹 百度死链下线</span>
-                  }
-                </button>
+              <div class="batch-action-buttons" style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                <!-- 第一行：高频状态、归类与专辑操作 -->
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                  <select 
+                    #batchCollectionSelect
+                    style="width: auto; max-width: 185px; height: 30px; flex: 0 0 auto; padding: 0 10px; border-radius: 6px; font-size: 12px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-weight: 700; cursor: pointer;"
+                    (change)="batchAssignCollection(batchCollectionSelect.value); batchCollectionSelect.value = ''">
+                    <option value="">📚 加入/移出专辑...</option>
+                    <option *ngFor="let col of collections()" [value]="col.id">加入: {{ col.title }}</option>
+                    <option value="none">移出所属专辑</option>
+                  </select>
 
-                <!-- 批量指定归属网盘账号 -->
-                <select 
-                  #batchAccSelect
-                  style="padding: 4px 8px; border-radius: 6px; font-size: 12px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer;"
-                  (change)="batchAssignAccount(batchAccSelect.value); batchAccSelect.value = ''">
-                  <option value="">👤 批量改归属网盘...</option>
-                  <option *ngFor="let acc of accounts()" [value]="acc.id">归属到: {{ acc.account_name }}</option>
-                  <option value="none">解除网盘归属</option>
-                </select>
+                  <select 
+                    #batchChannelSelect
+                    style="width: auto; max-width: 165px; height: 30px; flex: 0 0 auto; padding: 0 10px; border-radius: 6px; font-size: 12px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer;"
+                    (change)="batchAssignChannel(batchChannelSelect.value); batchChannelSelect.value = ''">
+                    <option value="">📁 调整频道...</option>
+                    <option value="edu">刚需学习资料 (edu)</option>
+                    <option value="book">统编电子教材 (book)</option>
+                  </select>
 
-                <!-- 批量划转所属频道 -->
-                <select 
-                  #batchChannelSelect
-                  style="padding: 4px 8px; border-radius: 6px; font-size: 12px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer;"
-                  (change)="batchAssignChannel(batchChannelSelect.value); batchChannelSelect.value = ''">
-                  <option value="">📁 批量调整频道...</option>
-                  <option value="edu">划入: 刚需教材与学习资料 (edu)</option>
-                  <option value="book">划入: 统编电子教材专区 (book)</option>
-                </select>
+                  <select 
+                    #batchAccSelect
+                    style="width: auto; max-width: 165px; height: 30px; flex: 0 0 auto; padding: 0 10px; border-radius: 6px; font-size: 12px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer;"
+                    (change)="batchAssignAccount(batchAccSelect.value); batchAccSelect.value = ''">
+                    <option value="">👤 改归属网盘...</option>
+                    <option *ngFor="let acc of accounts()" [value]="acc.id">归属: {{ acc.account_name }}</option>
+                    <option value="none">解除网盘归属</option>
+                  </select>
 
-                <!-- 批量加入/移出专辑 -->
-                <select 
-                  #batchCollectionSelect
-                  style="padding: 4px 8px; border-radius: 6px; font-size: 12px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer;"
-                  (change)="batchAssignCollection(batchCollectionSelect.value); batchCollectionSelect.value = ''">
-                  <option value="">📚 批量加入专辑...</option>
-                  <option *ngFor="let col of collections()" [value]="col.id">加入: {{ col.title }}</option>
-                  <option value="none">移出所属专辑</option>
-                </select>
+                  <button type="button" class="btn btn-sm btn-batch-enable" (click)="batchToggleResources(true)">
+                    {{ i18n.t('resource.batchPublish') }}
+                  </button>
+                  <button type="button" class="btn btn-sm btn-batch-disable" (click)="batchToggleResources(false)">
+                    {{ i18n.t('resource.batchUnpublish') }}
+                  </button>
+                  <button type="button" class="btn btn-sm btn-batch-delete" (click)="batchDeleteResources()">
+                    {{ i18n.t('resource.batchDelete') }}
+                  </button>
+                  <button type="button" class="btn btn-sm btn-batch-cancel" (click)="clearResourceSelection()">
+                    ✕ {{ i18n.t('resource.clearSelection') }}
+                  </button>
+                </div>
 
-                <button type="button" class="btn btn-sm btn-batch-enable" (click)="batchToggleResources(true)">
-                  {{ i18n.t('resource.batchPublish') }}
-                </button>
-                <button type="button" class="btn btn-sm btn-batch-disable" (click)="batchToggleResources(false)">
-                  {{ i18n.t('resource.batchUnpublish') }}
-                </button>
-                <button type="button" class="btn btn-sm btn-batch-delete" (click)="batchDeleteResources()">
-                  {{ i18n.t('resource.batchDelete') }}
-                </button>
-                <button type="button" class="btn btn-sm btn-batch-cancel" (click)="clearResourceSelection()">
-                  ✕ {{ i18n.t('resource.clearSelection') }}
-                </button>
+                <!-- 第二行：推广与 SEO 工具 -->
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                  <button 
+                    type="button" 
+                    class="btn btn-sm" 
+                    style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border: none; font-weight: 700; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);" 
+                    (click)="copySelectedResourcesPackage()" 
+                    title="一键将勾选的所有资料完整元数据打包复制到剪贴板，可前往新服务器直接粘贴导入">
+                    {{ i18n.t('transfer.copyPackage') }}
+                  </button>
+                  <button type="button" class="btn btn-sm btn-batch-share" (click)="openBatchCopyModal()">
+                    📢 {{ i18n.t('copyWriter.batchCopy') }}
+                  </button>
+                  <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #ea580c 0%, #d97706 100%); color: #ffffff; border: none; font-weight: 600;" (click)="openBatchPosterModal()" title="为选中的资料一键生成多套合辑营销海报">
+                    🎨 {{ i18n.t('poster.batchBtn') }}
+                  </button>
+                  <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #ffffff; border: none; font-weight: 600;" (click)="openBatchVideoModal()" title="为选中的资料一键生成多套合辑短视频脚本与置顶词">
+                    🎬 {{ i18n.t('videoScript.batchBtn') }}
+                  </button>
+                  <button type="button" class="btn btn-sm" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff; border: none; font-weight: 600;" (click)="batchPushSelectedToSeo()" title="将选中的资料批量推送到百度与必应搜索引擎加快收录">
+                    ⚡ 百度/必应主动收录
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn btn-sm" 
+                    style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: 600;" 
+                    [disabled]="isPushingDeadLinks()"
+                    (click)="batchPushSelectedDeadLinksToBaidu()" 
+                    title="将选中的失效或下架资料批量向百度站长平台死链接口提交下线删除，防止网站权重受损">
+                    @if (isPushingDeadLinks()) {
+                      <span>⏳ 提交中...</span>
+                    } @else {
+                      <span>🧹 百度死链下线</span>
+                    }
+                  </button>
+                </div>
               </div>
             </div>
           }
@@ -860,10 +863,9 @@
                           }
                           @if (res.collection) {
                             <span 
-                              (click)="filterByCollection(res.collection.id)"
-                              title="点击按此专辑筛选"
-                              style="font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; cursor: pointer; white-space: nowrap;">
-                              📚 {{ res.collection.title }}
+                              style="font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;">
+                              <span (click)="filterByCollection(res.collection.id)" style="cursor: pointer;" title="点击按此专辑筛选">📚 {{ res.collection.title }}</span>
+                              <button type="button" (click)="removeResourceFromCollection(res); $event.stopPropagation()" title="一键从该专辑移出" style="border: none; background: transparent; color: #dc2626; font-weight: 800; cursor: pointer; padding: 0 2px; line-height: 1; font-size: 12px;">×</button>
                             </span>
                           }
                           <a [href]="'/resource/' + res.slug" target="_blank" class="res-title-link" title="点击在前台新窗口打开预览">
@@ -5704,7 +5706,8 @@
                         </td>
                         <td style="text-align: right;">
                           <div style="display: flex; gap: 6px; justify-content: flex-end;">
-                            <button type="button" class="btn btn-sm btn-secondary" (click)="viewCollectionMembers(col)" title="在资料库中查看并管理该专辑成员">📂 查看成员</button>
+                            <button type="button" class="btn btn-sm btn-secondary" (click)="openCollectionOrderModal(col)" title="拖拽或上下调整专辑内资料顺序，支持直接移出">↕️ 排序/成员</button>
+                            <button type="button" class="btn btn-sm btn-secondary" (click)="viewCollectionMembers(col)" title="在资料库中筛选查看该专辑成员">📂 查看成员</button>
                             <button type="button" class="btn btn-sm btn-secondary" (click)="openCollectionModal(col)">✏️ 编辑</button>
                             <button type="button" class="btn btn-sm btn-danger" (click)="deleteCollectionItem(col)">🗑️ 删除</button>
                           </div>
@@ -9500,6 +9503,7 @@
           <div class="form-group">
             <label>专辑内资源排序方式</label>
             <select [(ngModel)]="collectionForm.sort_mode" name="col_sort_mode" class="form-control">
+              <option value="manual">手动自定义排序（支持拖拽 / 上下移动）</option>
               <option value="created_asc">按录入顺序正序（适合第1册→第12册）</option>
               <option value="title_asc">按资料标题正序（适合按名称/编号排序）</option>
               <option value="created_desc">按最新录入倒序（适合名校真题，最新年份在前）</option>
@@ -9514,6 +9518,65 @@
         <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
           <button type="button" class="btn btn-secondary" (click)="closeCollectionModal()">取消</button>
           <button type="button" class="btn btn-primary" (click)="saveCollection()">保存专辑</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ↕️ 专辑成员排序与管理弹窗（PC 拖拽 + 移动端上下按钮） -->
+  @if (isCollectionOrderModalOpen()) {
+    <div class="modal-backdrop" (click)="closeCollectionOrderModal()">
+      <div class="modal-box" style="max-width: 680px; width: 95%;" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div>
+            <h3 style="margin: 0;">↕️ 专辑成员排序：{{ orderingCollection()?.title }}</h3>
+            <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">PC端可直接鼠标拖动排序，移动端可点击「⬆️ / ⬇️」调整顺序，点击「×」可直接移出专辑</p>
+          </div>
+          <button type="button" class="btn-close" (click)="closeCollectionOrderModal()">✕</button>
+        </div>
+
+        <div class="modal-body" style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          @if (collectionOrderLoading()) {
+            <div style="padding: 32px; text-align: center; color: #64748b;">正在加载专辑成员...</div>
+          } @else if (collectionOrderItems().length === 0) {
+            <div style="padding: 32px; text-align: center; color: #64748b;">该专辑暂无成员，请在资料管理库勾选资料后批量加入。</div>
+          } @else {
+            @for (item of collectionOrderItems(); track item.id; let idx = $index) {
+              <div
+                draggable="true"
+                (dragstart)="onCollectionDragStart(idx)"
+                (dragover)="onCollectionDragOver($event)"
+                (drop)="onCollectionDrop(idx)"
+                [style.opacity]="draggedOrderIndex() === idx ? '0.5' : '1'"
+                style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; cursor: grab;">
+                <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                  <span style="color: #94a3b8; font-size: 16px; user-select: none;" title="按住拖动排序">⋮⋮</span>
+                  <span style="width: 24px; height: 24px; border-radius: 6px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    {{ idx + 1 }}
+                  </span>
+                  <div style="min-width: 0; flex: 1;">
+                    <div style="font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ item.title }}</div>
+                    <div style="font-size: 11px; color: #64748b;">{{ item.subject || '综合' }} · {{ item.file_size || 'PDF' }}</div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                  <button type="button" class="btn btn-sm btn-secondary" [disabled]="idx === 0" (click)="moveCollectionOrderItem(idx, -1)" style="padding: 3px 7px; font-size: 12px;" title="上移">⬆️</button>
+                  <button type="button" class="btn btn-sm btn-secondary" [disabled]="idx === collectionOrderItems().length - 1" (click)="moveCollectionOrderItem(idx, 1)" style="padding: 3px 7px; font-size: 12px;" title="下移">⬇️</button>
+                  <button type="button" class="btn btn-sm btn-danger" (click)="removeMemberInOrderModal(item)" style="padding: 3px 8px; font-size: 12px;" title="从该专辑移出">✕ 移出</button>
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+          <span style="font-size: 12px; color: #64748b;">共 {{ collectionOrderItems().length }} 份资料</span>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary" (click)="closeCollectionOrderModal()">关闭</button>
+            <button type="button" class="btn btn-primary" [disabled]="collectionOrderSaving() || collectionOrderItems().length === 0" (click)="saveCollectionOrder()">
+              {{ collectionOrderSaving() ? '正在保存...' : '💾 保存排序' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>

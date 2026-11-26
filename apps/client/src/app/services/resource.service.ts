@@ -473,6 +473,25 @@ export class ResourceService {
     );
   }
 
+  // 获取指定专辑下的成员列表（按自定义排序）
+  getCollectionItems(collectionId: string): Observable<{ collection: CollectionDto; items: ResourceItemDto[] }> {
+    return this.http.get<{ code: number; data: { collection: CollectionDto; items: ResourceItemDto[] } }>(
+      `${this.apiUrl.replace('/resources', '/collections')}/${collectionId}/items`
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  // 保存专辑成员自定义排序
+  reorderCollectionItems(collectionId: string, itemIds: string[]): Observable<void> {
+    return this.http.put<{ code: number; message: string }>(
+      `${this.apiUrl.replace('/resources', '/collections')}/${collectionId}/reorder`,
+      { item_ids: itemIds }
+    ).pipe(
+      map(() => void 0)
+    );
+  }
+
   // 跨站资料包批量导入并直接上架
   batchImport(resources: Partial<ResourceItemDto>[], autoPublish: boolean = true): Observable<{ total: number; imported: number }> {
     return this.http.post<{ code: number; message: string; data: { total: number; imported: number } }>(

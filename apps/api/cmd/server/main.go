@@ -202,6 +202,8 @@ func main() {
 	admin.Get("/collections", collectionH.ListAdminCollections)
 	admin.Post("/collections", collectionH.CreateAdminCollection)
 	admin.Post("/collections/assign", collectionH.BatchAssignCollection)
+	admin.Get("/collections/:id/items", collectionH.GetAdminCollectionItems)
+	admin.Put("/collections/:id/reorder", collectionH.ReorderAdminCollectionItems)
 	admin.Put("/collections/:id", collectionH.UpdateAdminCollection)
 	admin.Delete("/collections/:id", collectionH.DeleteAdminCollection)
 

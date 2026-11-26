@@ -77,8 +77,9 @@ type Resource struct {
 	School        string         `gorm:"type:varchar(100);index" json:"school"`                // 目标名校，如 柳州十二中
 	CategoryID    *uint          `json:"category_id"`
 	Category      *Category      `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
-	CollectionID  *uuid.UUID     `gorm:"type:uuid;index" json:"collection_id"`
-	Collection    *Collection    `gorm:"foreignKey:CollectionID" json:"collection,omitempty"`
+	CollectionID    *uuid.UUID     `gorm:"type:uuid;index" json:"collection_id"`
+	Collection      *Collection    `gorm:"foreignKey:CollectionID" json:"collection,omitempty"`
+	CollectionOrder int            `gorm:"default:0;index" json:"collection_order"`
 	CoverImage    string         `gorm:"type:text" json:"cover_image"`
 	PosterImage   string         `gorm:"type:text" json:"poster_image"`
 	PreviewImages datatypes.JSON `gorm:"type:jsonb;default:'[]'" json:"preview_images"` // 试卷前1~3页高清无水印图

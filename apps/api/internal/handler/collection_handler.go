@@ -90,6 +90,8 @@ func (h *CollectionHandler) GetPublicCollectionDetail(c fiber.Ctx) error {
 
 	orderExpr := "created_at ASC, title ASC"
 	switch col.SortMode {
+	case "manual":
+		orderExpr = "collection_order ASC, created_at ASC"
 	case "title_asc":
 		orderExpr = "title ASC, created_at ASC"
 	case "created_desc":
@@ -313,4 +315,67 @@ func (h *CollectionHandler) BatchAssignCollection(c fiber.Ctx) error {
 			"affected": res.RowsAffected,
 		},
 	})
+}
+
+// GetAdminCollectionItems 后台获取指定专辑下的成员列表（按 collection_order 排序）
+func (h *CollectionHandler) GetAdminCollectionItems(c fiber.Ctx) error {
+	colUUID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效专辑ID"})
+	}
+
+	var col model.Collection
+	if err := database.DB.First(&col, "id = ?", colUUID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "专辑不存在"})
+	}
+
+	var items []model.Resource
+	database.DB.Select("id, slug, title, channel_slug, subject, grade, file_size, is_published, collection_order, created_at").
+		Where("collection_id = ?", colUUID).
+		Order("collection_order ASC, created_at ASC").
+		Find(&items)
+
+	return c.JSON(fiber.Map{
+		"code": 200,
+		"data": fiber.Map{
+			"collection": col,
+			"items":      items,
+		},
+	})
+}
+
+// ReorderAdminCollectionItems 后台保存专辑成员自定义排序，并自动切换专辑为 manual 排序模式
+func (h *CollectionHandler) ReorderAdminCollectionItems(c fiber.Ctx) error {
+	colUUID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效专辑ID"})
+	}
+
+	var req struct {
+		ItemIDs []string `json:"item_ids"`
+	}
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
+	}
+
+	tx := database.DB.Begin()
+	for idx, idStr := range req.ItemIDs {
+		resUUID, err := uuid.Parse(strings.TrimSpace(idStr))
+		if err != nil {
+			continue
+		}
+		if err := tx.Model(&model.Resource{}).
+			Where("id = ? AND collection_id = ?", resUUID, colUUID).
+			Update("collection_order", idx).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "保存排序失败"})
+		}
+	}
+	if err := tx.Model(&model.Collection{}).Where("id = ?", colUUID).Update("sort_mode", "manual").Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "更新排序模式失败"})
+	}
+	tx.Commit()
+
+	return c.JSON(fiber.Map{"code": 200, "message": "排序已保存"})
 }
