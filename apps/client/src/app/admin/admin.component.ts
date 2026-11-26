@@ -4973,7 +4973,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   collections = signal<CollectionDto[]>([]);
   collectionsLoading = signal<boolean>(false);
   isCollectionModalOpen = signal<boolean>(false);
-  collectionAssignMode: 'new' | 'edit' | null = null;
+  collectionAssignMode: 'new' | 'edit' | 'batch' | null = null;
   isCollectionOrderModalOpen = signal<boolean>(false);
   orderingCollection = signal<CollectionDto | null>(null);
   collectionOrderItems = signal<ResourceItemDto[]>([]);
@@ -5001,7 +5001,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
-  openCollectionModal(col?: CollectionDto, assignMode: 'new' | 'edit' | null = null) {
+  openCollectionModal(col?: CollectionDto, assignMode: 'new' | 'edit' | 'batch' | null = null) {
     this.collectionAssignMode = assignMode;
     if (col) {
       this.collectionForm = {
@@ -5035,11 +5035,30 @@ export class AdminComponent implements OnInit, OnDestroy {
 
     req$.subscribe({
       next: (saved) => {
-        this.showToast(this.collectionForm.id ? '专辑已更新' : '专辑已创建');
-        if (this.collectionAssignMode === 'new' && saved?.id) {
+        const mode = this.collectionAssignMode;
+        if (mode === 'new' && saved?.id) {
           this.newResource.collection_id = saved.id;
-        } else if (this.collectionAssignMode === 'edit' && saved?.id) {
+          this.showToast('专辑已创建并自动选中');
+        } else if (mode === 'edit' && saved?.id) {
           this.editForm.collection_id = saved.id;
+          this.showToast('专辑已创建并自动选中');
+        } else if (mode === 'batch' && saved?.id) {
+          const ids = this.selectedResourceIds();
+          if (ids.length > 0) {
+            this.resService.batchAssignCollection(ids, saved.id).subscribe({
+              next: (res) => {
+                this.clearResourceSelection();
+                this.loadResources();
+                this.loadCollections();
+                this.showToast(`已新建专辑【${saved.title}】并将 ${res.affected} 篇资料加入`);
+              },
+              error: () => this.showToast('专辑已创建，但批量加入失败，请手动勾选加入', 'error')
+            });
+          } else {
+            this.showToast('专辑已创建');
+          }
+        } else {
+          this.showToast(this.collectionForm.id ? '专辑已更新' : '专辑已创建');
         }
         this.closeCollectionModal();
         this.loadCollections();
@@ -5474,6 +5493,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   async batchAssignCollection(collectionId: string) {
     const ids = this.selectedResourceIds();
     if (ids.length === 0 || !collectionId) return;
+
+    if (collectionId === '__create__') {
+      this.openCollectionModal(undefined, 'batch');
+      return;
+    }
 
     const colName = collectionId === 'none'
       ? '移出所属专辑'

@@ -708,9 +708,10 @@
                 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
                   <select 
                     #batchCollectionSelect
-                    style="width: auto; max-width: 185px; height: 30px; flex: 0 0 auto; padding: 0 10px; border-radius: 6px; font-size: 12px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-weight: 700; cursor: pointer;"
+                    style="width: auto; max-width: 195px; height: 30px; flex: 0 0 auto; padding: 0 10px; border-radius: 6px; font-size: 12px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-weight: 700; cursor: pointer;"
                     (change)="batchAssignCollection(batchCollectionSelect.value); batchCollectionSelect.value = ''">
                     <option value="">📚 加入/移出专辑...</option>
+                    <option value="__create__">➕ 新建专辑并批量加入...</option>
                     <option *ngFor="let col of collections()" [value]="col.id">加入: {{ col.title }}</option>
                     <option value="none">移出所属专辑</option>
                   </select>
@@ -9479,10 +9480,10 @@
     </div>
   }
 
-  <!-- 📚 新建/编辑专辑弹窗 -->
+  <!-- 📚 新建/编辑专辑弹窗（禁止点击遮罩误关，避免框选文字时丢失输入） -->
   @if (isCollectionModalOpen()) {
-    <div class="modal-backdrop" (click)="closeCollectionModal()">
-      <div class="modal-box" style="max-width: 520px;" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop">
+      <div class="modal-box" style="max-width: 520px;">
         <div class="modal-header">
           <h3>{{ collectionForm.id ? '✏️ 编辑专辑合集' : '📚 新建专辑合集' }}</h3>
           <button type="button" class="btn-close" (click)="closeCollectionModal()">✕</button>
@@ -9525,8 +9526,8 @@
 
   <!-- ↕️ 专辑成员排序与管理弹窗（PC 拖拽 + 移动端上下按钮） -->
   @if (isCollectionOrderModalOpen()) {
-    <div class="modal-backdrop" (click)="closeCollectionOrderModal()">
-      <div class="modal-box" style="max-width: 680px; width: 95%;" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop">
+      <div class="modal-box" style="max-width: 680px; width: 95%;">
         <div class="modal-header">
           <div>
             <h3 style="margin: 0;">↕️ 专辑成员排序：{{ orderingCollection()?.title }}</h3>
