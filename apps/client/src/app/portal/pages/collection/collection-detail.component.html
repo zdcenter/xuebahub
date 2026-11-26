@@ -5,7 +5,7 @@
     <nav class="flex items-center gap-1.5 text-xs text-slate-500">
       <a routerLink="/" class="hover:text-emerald-700 transition">首页</a>
       <span>/</span>
-      <span class="text-slate-400">专题专辑</span>
+      <a routerLink="/collections" class="hover:text-emerald-700 transition">精选专辑</a>
       <span *ngIf="collection()">/</span>
       <span *ngIf="collection()" class="text-slate-800 font-semibold truncate">{{ collection()?.title }}</span>
     </nav>
