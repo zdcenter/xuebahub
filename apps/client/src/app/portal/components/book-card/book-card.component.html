@@ -71,13 +71,16 @@
       </h3>
     </div>
 
-    <div class="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-      <span>💾 {{ resource.file_size || '35.8 MB' }}</span>
+    <div class="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px] text-slate-400">
+      <div class="flex items-center gap-2 min-w-0 truncate">
+        <span>💾 {{ resource.file_size || '35.8 MB' }}</span>
+        <span class="text-slate-500 font-medium" title="转存次数">📥 {{ resource.save_count || 0 }}</span>
+      </div>
       <a *ngIf="primaryLink"
          [href]="downloadUrl"
          target="_blank"
          rel="noopener noreferrer"
-         class="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-0.5">
+         class="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-0.5 shrink-0">
         <span>⚡ 夸克转存</span>
       </a>
     </div>
