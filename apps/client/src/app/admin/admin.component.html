@@ -748,6 +748,30 @@
                   </button>
                 </div>
 
+                <!-- 批量栏内联新建专辑表单（无需弹窗） -->
+                @if (isCollectionModalOpen() && collectionAssignMode === 'batch') {
+                  <div style="padding: 12px 14px; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="font-size: 13px; font-weight: 700; color: #065f46;">➕ 新建专辑并立即加入已选 {{ selectedResourceIds().length }} 份资料</span>
+                      <button type="button" (click)="closeCollectionModal()" style="border: none; background: transparent; color: #065f46; font-weight: 700; cursor: pointer;">✕ 取消</button>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                      <input type="text" [(ngModel)]="collectionForm.title" name="batch_col_title" autocomplete="off" placeholder="专辑名称（必填，如：成都七中真题合集）" class="form-control" style="flex: 2; min-width: 220px;" />
+                      <input type="text" [(ngModel)]="collectionForm.slug" name="batch_col_slug" autocomplete="off" placeholder="Slug 英文标识（选填，留空自动生成）" class="form-control" style="flex: 1; min-width: 180px;" />
+                      <select [(ngModel)]="collectionForm.sort_mode" name="batch_col_sort" class="form-control" style="width: auto; min-width: 170px;">
+                        <option value="created_asc">按录入正序</option>
+                        <option value="title_asc">按标题正序</option>
+                        <option value="created_desc">按最新录入倒序</option>
+                        <option value="save_desc">按转存热度倒序</option>
+                      </select>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <input type="text" [(ngModel)]="collectionForm.description" name="batch_col_desc" autocomplete="off" placeholder="专辑简介（选填）" class="form-control" style="flex: 1;" />
+                      <button type="button" class="btn btn-sm btn-primary" (click)="saveCollection()" style="white-space: nowrap;">✅ 创建并批量加入</button>
+                    </div>
+                  </div>
+                }
+
                 <!-- 第二行：推广与 SEO 工具 -->
                 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
                   <button 
@@ -1292,6 +1316,22 @@
                 </select>
                 <button type="button" class="btn btn-secondary" style="white-space: nowrap;" (click)="openCollectionModal(undefined, 'new')">+ 新建专辑</button>
               </div>
+              @if (isCollectionModalOpen() && collectionAssignMode === 'new') {
+                <div style="margin-top: 10px; padding: 12px 14px; border-radius: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; display: flex; flex-direction: column; gap: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 12px; font-weight: 700; color: #065f46;">➕ 内联新建专辑（保存后自动选中）</span>
+                    <button type="button" (click)="closeCollectionModal()" style="border: none; background: transparent; color: #065f46; cursor: pointer; font-size: 12px;">✕ 取消</button>
+                  </div>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <input type="text" [(ngModel)]="collectionForm.title" name="inline_new_col_title" autocomplete="off" placeholder="专辑名称 *" class="form-control" style="flex: 2; min-width: 180px;" />
+                    <input type="text" [(ngModel)]="collectionForm.slug" name="inline_new_col_slug" autocomplete="off" placeholder="Slug（选填）" class="form-control" style="flex: 1; min-width: 140px;" />
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="text" [(ngModel)]="collectionForm.description" name="inline_new_col_desc" autocomplete="off" placeholder="专辑简介（选填）" class="form-control" style="flex: 1;" />
+                    <button type="button" class="btn btn-sm btn-primary" (click)="saveCollection()">💾 创建并选中</button>
+                  </div>
+                </div>
+              }
             </div>
 
             <!-- 所属频道选择 -->
@@ -2043,6 +2083,22 @@
               </select>
               <button type="button" class="btn btn-secondary" style="white-space: nowrap;" (click)="openCollectionModal(undefined, 'edit')">+ 新建专辑</button>
             </div>
+            @if (isCollectionModalOpen() && collectionAssignMode === 'edit') {
+              <div style="margin-top: 10px; padding: 12px 14px; border-radius: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 12px; font-weight: 700; color: #065f46;">➕ 内联新建专辑（保存后自动选中）</span>
+                  <button type="button" (click)="closeCollectionModal()" style="border: none; background: transparent; color: #065f46; cursor: pointer; font-size: 12px;">✕ 取消</button>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <input type="text" [(ngModel)]="collectionForm.title" name="inline_edit_col_title" autocomplete="off" placeholder="专辑名称 *" class="form-control" style="flex: 2; min-width: 180px;" />
+                  <input type="text" [(ngModel)]="collectionForm.slug" name="inline_edit_col_slug" autocomplete="off" placeholder="Slug（选填）" class="form-control" style="flex: 1; min-width: 140px;" />
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" [(ngModel)]="collectionForm.description" name="inline_edit_col_desc" autocomplete="off" placeholder="专辑简介（选填）" class="form-control" style="flex: 1;" />
+                  <button type="button" class="btn btn-sm btn-primary" (click)="saveCollection()">💾 创建并选中</button>
+                </div>
+              </div>
+            }
           </div>
 
           <!-- 所属频道选择 -->
@@ -5669,6 +5725,52 @@
             </div>
           </div>
           <div class="card-body">
+            <!-- 内联新建/编辑专辑面板（无需弹窗，防止任何按键或框选误关） -->
+            @if (isCollectionModalOpen() && !collectionAssignMode) {
+              <div style="margin-bottom: 18px; padding: 16px 18px; border-radius: 12px; background: #f8fafc; border: 1.5px solid #10b981; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <h4 style="margin: 0; font-size: 15px; font-weight: 800; color: #065f46;">
+                    {{ collectionForm.id ? '✏️ 编辑专辑合集' : '📚 新建专辑合集' }}
+                  </h4>
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="closeCollectionModal()">✕ 收起</button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+                  <div class="form-group" style="margin: 0;">
+                    <label>专辑名称 <span class="required">*</span></label>
+                    <input type="text" [(ngModel)]="collectionForm.title" name="col_title" autocomplete="off" placeholder="例如：The Art of Problem Solving (AoPS) 全12册" class="form-control" />
+                  </div>
+                  <div class="form-group" style="margin: 0;">
+                    <label>英文短链接标识 (Slug，选填)</label>
+                    <input type="text" [(ngModel)]="collectionForm.slug" name="col_slug" autocomplete="off" placeholder="例如：aops-solutions（留空自动生成）" class="form-control" />
+                  </div>
+                  <div class="form-group" style="margin: 0;">
+                    <label>专辑内资源排序方式</label>
+                    <select [(ngModel)]="collectionForm.sort_mode" name="col_sort_mode" class="form-control">
+                      <option value="manual">手动自定义排序（支持拖拽 / 上下移动）</option>
+                      <option value="created_asc">按录入顺序正序（适合第1册→第12册）</option>
+                      <option value="title_asc">按资料标题正序（适合按名称/编号排序）</option>
+                      <option value="created_desc">按最新录入倒序（适合名校真题，最新年份在前）</option>
+                      <option value="save_desc">按转存热度倒序（最热门资料排最前）</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label>专辑简介 (选填，用于合集页顶部展示与 SEO 收录)</label>
+                  <textarea [(ngModel)]="collectionForm.description" name="col_desc" rows="2" placeholder="简要介绍该系列合集内容..." class="form-control"></textarea>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                  <label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; font-size: 13px;">
+                    <input type="checkbox" [(ngModel)]="collectionForm.is_active" name="col_active" />
+                    <span>在前台公开展示该专辑合集</span>
+                  </label>
+                  <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-secondary" (click)="closeCollectionModal()">取消</button>
+                    <button type="button" class="btn btn-primary" (click)="saveCollection()">💾 保存专辑</button>
+                  </div>
+                </div>
+              </div>
+            }
+
             @if (collectionsLoading()) {
               <div style="padding: 24px; text-align: center; color: #64748b;">正在加载专辑列表...</div>
             } @else if (collections().length === 0) {
@@ -9475,50 +9577,6 @@
               {{ batchImportSubmitting() ? '🚀 正在批量建档生成中...' : '🚀 导入【' + batchImportFolderName() + '】全部文件' }}
             </button>
           </div>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- 📚 新建/编辑专辑弹窗（禁止点击遮罩误关，避免框选文字时丢失输入） -->
-  @if (isCollectionModalOpen()) {
-    <div class="modal-backdrop">
-      <div class="modal-box" style="max-width: 520px;">
-        <div class="modal-header">
-          <h3>{{ collectionForm.id ? '✏️ 编辑专辑合集' : '📚 新建专辑合集' }}</h3>
-          <button type="button" class="btn-close" (click)="closeCollectionModal()">✕</button>
-        </div>
-        <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
-          <div class="form-group">
-            <label>专辑名称 <span class="required">*</span></label>
-            <input type="text" [(ngModel)]="collectionForm.title" name="col_title" autocomplete="off" placeholder="例如：The Art of Problem Solving (AoPS) 全12册" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>英文短链接标识 (Slug，选填)</label>
-            <input type="text" [(ngModel)]="collectionForm.slug" name="col_slug" autocomplete="off" placeholder="例如：aops-solutions（留空自动生成）" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>专辑简介 (选填，用于合集页顶部展示与 SEO 收录)</label>
-            <textarea [(ngModel)]="collectionForm.description" name="col_desc" rows="3" placeholder="简要介绍该系列合集内容..." class="form-control"></textarea>
-          </div>
-          <div class="form-group">
-            <label>专辑内资源排序方式</label>
-            <select [(ngModel)]="collectionForm.sort_mode" name="col_sort_mode" class="form-control">
-              <option value="manual">手动自定义排序（支持拖拽 / 上下移动）</option>
-              <option value="created_asc">按录入顺序正序（适合第1册→第12册）</option>
-              <option value="title_asc">按资料标题正序（适合按名称/编号排序）</option>
-              <option value="created_desc">按最新录入倒序（适合名校真题，最新年份在前）</option>
-              <option value="save_desc">按转存热度倒序（最热门资料排最前）</option>
-            </select>
-          </div>
-          <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" [(ngModel)]="collectionForm.is_active" name="col_active" id="col_active_cb" />
-            <label for="col_active_cb" style="margin: 0; cursor: pointer;">在前台公开展示该专辑合集</label>
-          </div>
-        </div>
-        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
-          <button type="button" class="btn btn-secondary" (click)="closeCollectionModal()">取消</button>
-          <button type="button" class="btn btn-primary" (click)="saveCollection()">保存专辑</button>
         </div>
       </div>
     </div>
