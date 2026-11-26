@@ -4980,6 +4980,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   collectionOrderLoading = signal<boolean>(false);
   collectionOrderSaving = signal<boolean>(false);
   draggedOrderIndex = signal<number | null>(null);
+  private slugPreviewTimer: any = null;
+  private slugManuallyEdited = false;
   collectionForm = {
     id: '',
     title: '',
@@ -5016,7 +5018,25 @@ export class AdminComponent implements OnInit, OnDestroy {
     } else {
       this.collectionForm = { id: '', title: '', slug: '', description: '', sort_order: 0, sort_mode: 'created_asc', is_active: true };
     }
+    this.slugManuallyEdited = !!col?.slug;
     this.isCollectionModalOpen.set(true);
+  }
+
+  onCollectionTitleInput(title: string) {
+    if (this.collectionForm.id || this.slugManuallyEdited) return;
+    const trimmed = (title || '').trim();
+    if (!trimmed) {
+      this.collectionForm.slug = '';
+      return;
+    }
+    if (this.slugPreviewTimer) clearTimeout(this.slugPreviewTimer);
+    this.slugPreviewTimer = setTimeout(() => {
+      this.autoFillCollectionSlug(true);
+    }, 300);
+  }
+
+  onCollectionSlugManualInput(val: string) {
+    this.slugManuallyEdited = (val || '').trim().length > 0;
   }
 
   closeCollectionModal() {
