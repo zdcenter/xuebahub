@@ -522,10 +522,25 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   viewCollectionMembers(col: CollectionDto) {
     this.currentTab.set('list');
+    this.currentChannelFilter.set('all');
+    this.currentStageFilter.set('all');
+    this.currentGradeFilter.set('all');
+    this.currentTermFilter.set('all');
+    this.currentSubjectFilter.set('all');
+    this.currentEditionFilter.set('all');
+    this.currentSchoolFilter.set('');
+    this.currentAccountFilter.set('all');
+    this.adminKeyword.set('');
+    this.listFilter.set('all');
     this.currentCollectionFilter.set(col.id);
     this.currentPage.set(1);
     this.jumpPageInput.set('1');
     this.loadResources();
+  }
+
+  getCollectionTitle(collectionId: string): string {
+    if (collectionId === 'none') return '未归入任何专辑';
+    return this.collections().find(c => c.id === collectionId)?.title || '指定专辑';
   }
 
   channelCount(channelSlug: string): number {

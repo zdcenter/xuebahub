@@ -654,7 +654,7 @@
               <!-- 所属专辑筛选 -->
               <div class="filter-school-box">
                 <span class="school-label">📚 所属专辑:</span>
-                <select [value]="currentCollectionFilter()" (change)="filterByCollection($any($event.target).value)" class="school-select">
+                <select [ngModel]="currentCollectionFilter()" (ngModelChange)="filterByCollection($event)" class="school-select">
                   <option value="all">全部专辑</option>
                   <option value="none">未归入任何专辑</option>
                   @for (col of collections(); track col.id) {
@@ -781,6 +781,18 @@
                   ✕ {{ i18n.t('resource.clearSelection') }}
                 </button>
               </div>
+            </div>
+          }
+
+          @if (currentCollectionFilter() !== 'all') {
+            <div style="margin: 0 0 12px 0; padding: 10px 14px; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+              <div style="font-size: 13px; font-weight: 700; color: #065f46; display: flex; align-items: center; gap: 6px;">
+                <span>📚</span>
+                <span>当前正在查看专辑筛选：{{ getCollectionTitle(currentCollectionFilter()) }}（共 {{ totalCount() }} 份）</span>
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary" (click)="filterByCollection('all')" style="padding: 4px 10px; font-size: 12px;">
+                ✕ 退出专辑筛选
+              </button>
             </div>
           }
 
