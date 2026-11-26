@@ -54,6 +54,7 @@ type Collection struct {
 	Description string    `gorm:"type:text" json:"description"`
 	CoverImage  string    `gorm:"type:text" json:"cover_image"`
 	SortOrder   int       `gorm:"default:0" json:"sort_order"`
+	SortMode    string    `gorm:"type:varchar(30);default:'created_asc'" json:"sort_mode"` // created_asc, created_desc, title_asc, save_desc
 	IsActive    bool      `gorm:"default:true" json:"is_active"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`

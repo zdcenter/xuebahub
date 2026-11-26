@@ -391,6 +391,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   currentEditionFilter = signal<string>('all');
   currentSchoolFilter = signal<string>('');
   currentAccountFilter = signal<string>('all');
+  currentCollectionFilter = signal<string>('all');
   adminKeyword = signal<string>('');
 
   // 📚 动态年级选项：跟随选中的学段严格物理隔离（数据库驱动）
@@ -512,6 +513,21 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.loadResources();
   }
 
+  filterByCollection(collectionId: string) {
+    this.currentCollectionFilter.set(collectionId);
+    this.currentPage.set(1);
+    this.jumpPageInput.set('1');
+    this.loadResources();
+  }
+
+  viewCollectionMembers(col: CollectionDto) {
+    this.currentTab.set('list');
+    this.currentCollectionFilter.set(col.id);
+    this.currentPage.set(1);
+    this.jumpPageInput.set('1');
+    this.loadResources();
+  }
+
   channelCount(channelSlug: string): number {
     if (channelSlug === 'all') return this.channelCounts()['all'] ?? 0;
     return this.channelCounts()[channelSlug] ?? 0;
@@ -526,6 +542,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.currentEditionFilter.set('all');
     this.currentSchoolFilter.set('');
     this.currentAccountFilter.set('all');
+    this.currentCollectionFilter.set('all');
     this.adminKeyword.set('');
     this.listFilter.set('all');
     this.currentPage.set(1);
@@ -4123,6 +4140,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       edition: this.currentEditionFilter(),
       school: this.currentSchoolFilter(),
       account_id: this.currentAccountFilter(),
+      collection_id: this.currentCollectionFilter(),
       q: this.adminKeyword().trim(),
       filter: this.listFilter(),
       page: this.currentPage(),
@@ -4947,6 +4965,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     slug: '',
     description: '',
     sort_order: 0,
+    sort_mode: 'created_asc',
     is_active: true
   };
 
@@ -4970,10 +4989,11 @@ export class AdminComponent implements OnInit, OnDestroy {
         slug: col.slug,
         description: col.description || '',
         sort_order: col.sort_order || 0,
+        sort_mode: col.sort_mode || 'created_asc',
         is_active: col.is_active !== false
       };
     } else {
-      this.collectionForm = { id: '', title: '', slug: '', description: '', sort_order: 0, is_active: true };
+      this.collectionForm = { id: '', title: '', slug: '', description: '', sort_order: 0, sort_mode: 'created_asc', is_active: true };
     }
     this.isCollectionModalOpen.set(true);
   }

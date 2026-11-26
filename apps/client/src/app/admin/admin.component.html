@@ -651,6 +651,18 @@
                 </select>
               </div>
 
+              <!-- 所属专辑筛选 -->
+              <div class="filter-school-box">
+                <span class="school-label">📚 所属专辑:</span>
+                <select [value]="currentCollectionFilter()" (change)="filterByCollection($any($event.target).value)" class="school-select">
+                  <option value="all">全部专辑</option>
+                  <option value="none">未归入任何专辑</option>
+                  @for (col of collections(); track col.id) {
+                    <option [value]="col.id">📚 {{ col.title }} ({{ col.resource_count || 0 }})</option>
+                  }
+                </select>
+              </div>
+
               <!-- 关键词即时搜索框 -->
               <div class="filter-search-box">
                 <div class="search-input-wrapper">
@@ -832,6 +844,14 @@
                             <span 
                               style="font-size: 11px; font-weight: 500; padding: 1px 6px; border-radius: 4px; background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd;">
                               📍 {{ res.region }}
+                            </span>
+                          }
+                          @if (res.collection) {
+                            <span 
+                              (click)="filterByCollection(res.collection.id)"
+                              title="点击按此专辑筛选"
+                              style="font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; cursor: pointer; white-space: nowrap;">
+                              📚 {{ res.collection.title }}
                             </span>
                           }
                           <a [href]="'/resource/' + res.slug" target="_blank" class="res-title-link" title="点击在前台新窗口打开预览">
@@ -5672,6 +5692,7 @@
                         </td>
                         <td style="text-align: right;">
                           <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                            <button type="button" class="btn btn-sm btn-secondary" (click)="viewCollectionMembers(col)" title="在资料库中查看并管理该专辑成员">📂 查看成员</button>
                             <button type="button" class="btn btn-sm btn-secondary" (click)="openCollectionModal(col)">✏️ 编辑</button>
                             <button type="button" class="btn btn-sm btn-danger" (click)="deleteCollectionItem(col)">🗑️ 删除</button>
                           </div>
@@ -9463,6 +9484,15 @@
           <div class="form-group">
             <label>专辑简介 (选填，用于合集页顶部展示与 SEO 收录)</label>
             <textarea [(ngModel)]="collectionForm.description" name="col_desc" rows="3" placeholder="简要介绍该系列合集内容..." class="form-control"></textarea>
+          </div>
+          <div class="form-group">
+            <label>专辑内资源排序方式</label>
+            <select [(ngModel)]="collectionForm.sort_mode" name="col_sort_mode" class="form-control">
+              <option value="created_asc">按录入顺序正序（适合第1册→第12册）</option>
+              <option value="title_asc">按资料标题正序（适合按名称/编号排序）</option>
+              <option value="created_desc">按最新录入倒序（适合名校真题，最新年份在前）</option>
+              <option value="save_desc">按转存热度倒序（最热门资料排最前）</option>
+            </select>
           </div>
           <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
             <input type="checkbox" [(ngModel)]="collectionForm.is_active" name="col_active" id="col_active_cb" />

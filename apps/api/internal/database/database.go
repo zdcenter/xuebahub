@@ -71,6 +71,9 @@ func Init(dsn string) (*gorm.DB, error) {
 	if err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_resources_collection_id ON resources (collection_id);`).Error; err != nil {
 		log.Printf("Ensure idx_resources_collection_id index error: %v", err)
 	}
+	if err := db.Exec(`ALTER TABLE collections ADD COLUMN IF NOT EXISTS sort_mode VARCHAR(30) DEFAULT 'created_asc';`).Error; err != nil {
+		log.Printf("Ensure collections.sort_mode column error: %v", err)
+	}
 
 	DB = db
 	seedInitialData(db)

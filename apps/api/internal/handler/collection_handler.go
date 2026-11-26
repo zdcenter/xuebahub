@@ -53,6 +53,15 @@ func (h *CollectionHandler) ListPublicCollections(c fiber.Ctx) error {
 		database.DB.Model(&model.Resource{}).
 			Where("collection_id = ? AND is_published = ?", col.ID, true).
 			Count(&cnt)
+		if strings.TrimSpace(col.CoverImage) == "" && cnt > 0 {
+			var firstWithCover model.Resource
+			if err := database.DB.Select("cover_image").
+				Where("collection_id = ? AND is_published = ? AND cover_image <> ''", col.ID, true).
+				Order("created_at ASC").
+				First(&firstWithCover).Error; err == nil {
+				col.CoverImage = firstWithCover.CoverImage
+			}
+		}
 		result = append(result, CollectionWithCount{
 			Collection:    col,
 			ResourceCount: cnt,
@@ -79,11 +88,30 @@ func (h *CollectionHandler) GetPublicCollectionDetail(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "专辑不存在或已下线"})
 	}
 
+	orderExpr := "created_at ASC, title ASC"
+	switch col.SortMode {
+	case "title_asc":
+		orderExpr = "title ASC, created_at ASC"
+	case "created_desc":
+		orderExpr = "created_at DESC, title ASC"
+	case "save_desc":
+		orderExpr = "save_count DESC, created_at DESC"
+	}
+
 	var items []model.Resource
 	database.DB.Preload("Links").
 		Where("collection_id = ? AND is_published = ?", col.ID, true).
-		Order("created_at ASC, title ASC").
+		Order(orderExpr).
 		Find(&items)
+
+	if strings.TrimSpace(col.CoverImage) == "" {
+		for _, it := range items {
+			if strings.TrimSpace(it.CoverImage) != "" {
+				col.CoverImage = it.CoverImage
+				break
+			}
+		}
+	}
 
 	return c.JSON(fiber.Map{
 		"code": 200,
@@ -124,6 +152,7 @@ func (h *CollectionHandler) CreateAdminCollection(c fiber.Ctx) error {
 		Description string `json:"description"`
 		CoverImage  string `json:"cover_image"`
 		SortOrder   int    `json:"sort_order"`
+		SortMode    string `json:"sort_mode"`
 		IsActive    *bool  `json:"is_active"`
 	}
 	if err := c.Bind().JSON(&req); err != nil {
@@ -146,12 +175,18 @@ func (h *CollectionHandler) CreateAdminCollection(c fiber.Ctx) error {
 		active = *req.IsActive
 	}
 
+	sortMode := strings.TrimSpace(req.SortMode)
+	if sortMode == "" {
+		sortMode = "created_asc"
+	}
+
 	col := model.Collection{
 		Slug:        slug,
 		Title:       req.Title,
 		Description: strings.TrimSpace(req.Description),
 		CoverImage:  strings.TrimSpace(req.CoverImage),
 		SortOrder:   req.SortOrder,
+		SortMode:    sortMode,
 		IsActive:    active,
 	}
 	if err := database.DB.Create(&col).Error; err != nil {
@@ -183,6 +218,7 @@ func (h *CollectionHandler) UpdateAdminCollection(c fiber.Ctx) error {
 		Description string `json:"description"`
 		CoverImage  string `json:"cover_image"`
 		SortOrder   int    `json:"sort_order"`
+		SortMode    string `json:"sort_mode"`
 		IsActive    *bool  `json:"is_active"`
 	}
 	if err := c.Bind().JSON(&req); err != nil {
@@ -198,6 +234,9 @@ func (h *CollectionHandler) UpdateAdminCollection(c fiber.Ctx) error {
 	col.Description = strings.TrimSpace(req.Description)
 	col.CoverImage = strings.TrimSpace(req.CoverImage)
 	col.SortOrder = req.SortOrder
+	if strings.TrimSpace(req.SortMode) != "" {
+		col.SortMode = strings.TrimSpace(req.SortMode)
+	}
 	if req.IsActive != nil {
 		col.IsActive = *req.IsActive
 	}

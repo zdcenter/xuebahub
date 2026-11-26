@@ -873,6 +873,7 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 	keyword := strings.TrimSpace(c.Query("q"))
 	statusFilter := c.Query("filter") // all | invalid | reported
 	accountID := strings.TrimSpace(c.Query("account_id"))
+	collectionID := strings.TrimSpace(c.Query("collection_id"))
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	pageSize, _ := strconv.Atoi(c.Query("limit", "20"))
@@ -938,6 +939,11 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 	}
 	if accountID != "" && accountID != "all" {
 		query = query.Where("EXISTS (SELECT 1 FROM resource_links WHERE resource_links.resource_id = resources.id AND resource_links.account_id::text = ?)", accountID)
+	}
+	if collectionID == "none" {
+		query = query.Where("collection_id IS NULL")
+	} else if collectionID != "" && collectionID != "all" {
+		query = query.Where("collection_id::text = ?", collectionID)
 	}
 
 	var total int64

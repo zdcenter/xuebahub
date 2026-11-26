@@ -29,6 +29,7 @@ export interface CollectionDto {
   description?: string;
   cover_image?: string;
   sort_order?: number;
+  sort_mode?: string;
   is_active?: boolean;
   resource_count?: number;
   created_at?: string;
@@ -286,6 +287,7 @@ export class ResourceService {
       edition?: string;
       school?: string;
       account_id?: string;
+      collection_id?: string;
       q?: string;
       filter?: string;
       page?: number;
@@ -304,12 +306,15 @@ export class ResourceService {
         queryParams.push(`stage=${encodeURIComponent(stageParam)}`);
       }
     } else if (paramsOrChannel && typeof paramsOrChannel === 'object') {
-      const { channel, stage, grade, term, subject, edition, school, account_id, q, filter, page, limit } = paramsOrChannel;
+      const { channel, stage, grade, term, subject, edition, school, account_id, collection_id, q, filter, page, limit } = paramsOrChannel;
       if (channel && channel !== 'all') {
         queryParams.push(`channel=${encodeURIComponent(channel)}`);
       }
       if (account_id && account_id !== 'all') {
         queryParams.push(`account_id=${encodeURIComponent(account_id)}`);
+      }
+      if (collection_id && collection_id !== 'all') {
+        queryParams.push(`collection_id=${encodeURIComponent(collection_id)}`);
       }
       if (stage && stage !== 'all') {
         queryParams.push(`stage=${encodeURIComponent(stage)}`);
