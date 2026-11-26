@@ -46,6 +46,19 @@ type Channel struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// Collection 资源专辑/丛书合集模型 (如 AoPS 全12册系列)
+type Collection struct {
+	ID          uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	Slug        string    `gorm:"type:varchar(150);uniqueIndex;not null" json:"slug"`
+	Title       string    `gorm:"type:varchar(200);not null" json:"title"`
+	Description string    `gorm:"type:text" json:"description"`
+	CoverImage  string    `gorm:"type:text" json:"cover_image"`
+	SortOrder   int       `gorm:"default:0" json:"sort_order"`
+	IsActive    bool      `gorm:"default:true" json:"is_active"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 // Resource 核心学习资源主模型
 type Resource struct {
 	ID            uuid.UUID      `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
@@ -63,6 +76,8 @@ type Resource struct {
 	School        string         `gorm:"type:varchar(100);index" json:"school"`                // 目标名校，如 柳州十二中
 	CategoryID    *uint          `json:"category_id"`
 	Category      *Category      `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
+	CollectionID  *uuid.UUID     `gorm:"type:uuid;index" json:"collection_id"`
+	Collection    *Collection    `gorm:"foreignKey:CollectionID" json:"collection,omitempty"`
 	CoverImage    string         `gorm:"type:text" json:"cover_image"`
 	PosterImage   string         `gorm:"type:text" json:"poster_image"`
 	PreviewImages datatypes.JSON `gorm:"type:jsonb;default:'[]'" json:"preview_images"` // 试卷前1~3页高清无水印图

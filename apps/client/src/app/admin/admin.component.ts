@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ResourceService, ResourceItemDto, ResourceTransferPackage, NetdiskAccountDto, TransferShareResultDto, ChannelDto, CategoryDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto, HotSearchDto, SiteSettingDto, ResourceRequestDto, TelegramConfigDto, TelegramChannelDto, TelegramBroadcastChannelDto, ResourceDraftDto, CrawlerStatsDto } from '../services/resource.service';
+import { ResourceService, ResourceItemDto, ResourceTransferPackage, NetdiskAccountDto, TransferShareResultDto, ChannelDto, CategoryDto, NavMenuDto, RegionDto, SchoolDto, DashboardStatsDto, HotSearchDto, SiteSettingDto, ResourceRequestDto, TelegramConfigDto, TelegramChannelDto, TelegramBroadcastChannelDto, ResourceDraftDto, CrawlerStatsDto, CollectionDto } from '../services/resource.service';
 import { MemberService, MemberLevelDto, ActivationCodeDto, FrontUserDto } from '../services/member.service';
 import { CoverGeneratorService } from '../services/cover-generator.service';
 import { I18nService } from '../services/i18n.service';
@@ -260,7 +260,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   dashboardStats = signal<DashboardStatsDto | null>(null);
   statsLoading = signal<boolean>(false);
 
-  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'settings' | 'requests' | 'members'>('list');
+  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'collections' | 'settings' | 'requests' | 'members'>('list');
   emailPreselectedResource = signal<any>(null);
 
   // --- 侧边栏折叠/展开系统（支持记忆） ---
@@ -2113,6 +2113,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     term: '',
     region: (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_region') : '') || '',
     school: '',
+    collection_id: '',
     file_type: 'PDF',
     file_size: '',
     page_count: 0,
@@ -2151,6 +2152,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     term: '',
     region: '',
     school: '',
+    collection_id: '',
     file_type: 'PDF',
     file_size: '',
     page_count: 0,
@@ -3839,6 +3841,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.loadRegions();
     this.loadDashboardStats();
     this.loadSearchLogs();
+    this.loadCollections();
     this.loadCrawlerConfigAndStats();
     this.loadAllCategories();
   }
@@ -3981,6 +3984,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       edition: item.edition,
       region: item.region || '',
       school: item.school || '',
+      collection_id: item.collection_id || '',
       file_type: item.file_type || 'PDF',
       file_size: item.file_size || '',
       page_count: item.page_count || 0,
@@ -4077,6 +4081,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     const payload: Partial<ResourceItemDto> = {
       channel_slug: this.editForm.channel_slug || 'edu',
       title: this.editForm.title,
+      collection_id: this.editForm.collection_id || null,
       cover_image: finalCover || undefined,
       poster_image: (this.editForm.poster_image || '').trim() || undefined,
       subtitle: this.editForm.subtitle || (this.editForm.has_video ? '【含高清精讲视频】' : '【含手写解析】'),
@@ -4142,7 +4147,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
-  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'settings' | 'requests' | 'members') {
+  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'collections' | 'settings' | 'requests' | 'members') {
     this.currentTab.set(tab);
     if (tab === 'stats') {
       this.loadDashboardStats();
@@ -4171,6 +4176,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.loadHotSearches();
     } else if (tab === 'searchlogs') {
       this.loadSearchLogs();
+    } else if (tab === 'collections') {
+      this.loadCollections();
     } else if (tab === 'settings') {
       this.loadSettings();
     } else if (tab === 'requests') {
@@ -4551,6 +4558,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       edition: this.newResource.edition,
       region: this.newResource.region || '',
       school: this.newResource.school || '',
+      collection_id: this.newResource.collection_id || null,
       file_type: this.newResource.has_video ? 'PDF+MP4视频' : this.newResource.file_type,
       file_size: this.newResource.quarkFileSize || this.newResource.baiduFileSize || this.newResource.file_size || '',
       page_count: Number(this.newResource.page_count) || 0,
@@ -4928,6 +4936,94 @@ export class AdminComponent implements OnInit, OnDestroy {
   searchLogs = signal<{ keyword: string; search_count: number; result_count: number; last_searched_at: string }[]>([]);
   searchLogsLoading = signal<boolean>(false);
   searchLogFilter = signal<'missed' | 'all'>('missed');
+
+  collections = signal<CollectionDto[]>([]);
+  collectionsLoading = signal<boolean>(false);
+  isCollectionModalOpen = signal<boolean>(false);
+  collectionAssignMode: 'new' | 'edit' | null = null;
+  collectionForm = {
+    id: '',
+    title: '',
+    slug: '',
+    description: '',
+    sort_order: 0,
+    is_active: true
+  };
+
+  loadCollections() {
+    this.collectionsLoading.set(true);
+    this.resService.getAdminCollections().subscribe({
+      next: (list) => {
+        this.collections.set(list);
+        this.collectionsLoading.set(false);
+      },
+      error: () => this.collectionsLoading.set(false)
+    });
+  }
+
+  openCollectionModal(col?: CollectionDto, assignMode: 'new' | 'edit' | null = null) {
+    this.collectionAssignMode = assignMode;
+    if (col) {
+      this.collectionForm = {
+        id: col.id,
+        title: col.title,
+        slug: col.slug,
+        description: col.description || '',
+        sort_order: col.sort_order || 0,
+        is_active: col.is_active !== false
+      };
+    } else {
+      this.collectionForm = { id: '', title: '', slug: '', description: '', sort_order: 0, is_active: true };
+    }
+    this.isCollectionModalOpen.set(true);
+  }
+
+  closeCollectionModal() {
+    this.isCollectionModalOpen.set(false);
+    this.collectionAssignMode = null;
+  }
+
+  saveCollection() {
+    if (!this.collectionForm.title.trim()) {
+      this.showToast('请输入专辑名称', 'error');
+      return;
+    }
+    const req$ = this.collectionForm.id
+      ? this.resService.updateCollection(this.collectionForm.id, this.collectionForm)
+      : this.resService.createCollection(this.collectionForm);
+
+    req$.subscribe({
+      next: (saved) => {
+        this.showToast(this.collectionForm.id ? '专辑已更新' : '专辑已创建');
+        if (this.collectionAssignMode === 'new' && saved?.id) {
+          this.newResource.collection_id = saved.id;
+        } else if (this.collectionAssignMode === 'edit' && saved?.id) {
+          this.editForm.collection_id = saved.id;
+        }
+        this.closeCollectionModal();
+        this.loadCollections();
+      },
+      error: (err) => this.showToast('保存专辑失败: ' + (err.error?.message || err.message), 'error')
+    });
+  }
+
+  async deleteCollectionItem(col: CollectionDto) {
+    const ok = await this.confirmDialog({
+      title: '删除专辑',
+      message: `确定删除专辑「${col.title}」吗？不会删除专辑内的资料，仅解除关联。`,
+      confirmText: '确认删除',
+      type: 'danger',
+      icon: '📚'
+    });
+    if (!ok) return;
+    this.resService.deleteCollection(col.id).subscribe({
+      next: () => {
+        this.showToast('专辑已删除');
+        this.loadCollections();
+      },
+      error: (err) => this.showToast('删除失败: ' + (err.error?.message || err.message), 'error')
+    });
+  }
 
   loadSearchLogs() {
     this.searchLogsLoading.set(true);

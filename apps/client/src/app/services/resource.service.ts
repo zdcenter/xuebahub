@@ -22,6 +22,19 @@ export interface ResourceLinkDto {
   updated_at?: string;
 }
 
+export interface CollectionDto {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string;
+  cover_image?: string;
+  sort_order?: number;
+  is_active?: boolean;
+  resource_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface ResourceItemDto {
   id: string;
   slug: string;
@@ -36,6 +49,8 @@ export interface ResourceItemDto {
   edition: string;
   region?: string;
   school?: string;
+  collection_id?: string | null;
+  collection?: CollectionDto;
   file_type?: string;
   file_size?: string;
   page_count?: number;
@@ -776,6 +791,29 @@ export class ResourceService {
 
   deleteAdminSearchLog(keyword: string): Observable<any> {
     return this.http.delete(`${this.baseUrl}/api/v1/admin/search-logs?keyword=${encodeURIComponent(keyword)}`);
+  }
+
+  // --- 📚 专辑/丛书合集管理 ---
+  getAdminCollections(): Observable<CollectionDto[]> {
+    return this.http.get<{ code: number; data: CollectionDto[] }>(`${this.baseUrl}/api/v1/admin/collections`).pipe(
+      map(r => r.data || [])
+    );
+  }
+
+  createCollection(data: Partial<CollectionDto>): Observable<CollectionDto> {
+    return this.http.post<{ code: number; data: CollectionDto }>(`${this.baseUrl}/api/v1/admin/collections`, data).pipe(
+      map(r => r.data)
+    );
+  }
+
+  updateCollection(id: string, data: Partial<CollectionDto>): Observable<CollectionDto> {
+    return this.http.put<{ code: number; data: CollectionDto }>(`${this.baseUrl}/api/v1/admin/collections/${id}`, data).pipe(
+      map(r => r.data)
+    );
+  }
+
+  deleteCollection(id: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/api/v1/admin/collections/${id}`);
   }
 
   createHotSearch(item: Partial<HotSearchDto>): Observable<HotSearchDto> {

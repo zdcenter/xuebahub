@@ -658,6 +658,19 @@ func (s *SeoService) GenerateEduSitemapXML() (string, error) {
 		sb.WriteString(fmt.Sprintf("  <url>\n    <loc>%s%s</loc>\n    <lastmod>%s</lastmod>\n    <changefreq>%s</changefreq>\n    <priority>%s</priority>\n  </url>\n", sitePrefix, r.path, now, r.freq, r.prio))
 	}
 
+	// 专辑合集页
+	var collections []model.Collection
+	s.db.Where("is_active = ?", true).Order("updated_at DESC").Find(&collections)
+	for _, col := range collections {
+		lastmod := col.UpdatedAt.Format("2006-01-02")
+		sb.WriteString("  <url>\n")
+		sb.WriteString(fmt.Sprintf("    <loc>%s/collection/%s</loc>\n", sitePrefix, col.Slug))
+		sb.WriteString(fmt.Sprintf("    <lastmod>%s</lastmod>\n", lastmod))
+		sb.WriteString("    <changefreq>weekly</changefreq>\n")
+		sb.WriteString("    <priority>0.9</priority>\n")
+		sb.WriteString("  </url>\n")
+	}
+
 	// 试卷与教辅资料详情页
 	for _, r := range resources {
 		lastmod := r.UpdatedAt.Format("2006-01-02")

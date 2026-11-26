@@ -300,7 +300,7 @@ func (h *ResourceHandler) GetPublicResourceDetail(c fiber.Ctx) error {
 	identifier := c.Params("id_or_slug")
 
 	var res model.Resource
-	err := database.DB.Preload("Links").
+	err := database.DB.Preload("Links").Preload("Collection").
 		Where("(slug = ? OR id::text = ?) AND is_published = ?", identifier, identifier, true).
 		First(&res).Error
 
@@ -350,7 +350,7 @@ func (h *ResourceHandler) HandleSmartRedirect(c fiber.Ctx) error {
 	}
 
 	var res model.Resource
-	err := database.DB.Preload("Links").
+	err := database.DB.Preload("Links").Preload("Collection").
 		Where("(slug = ? OR id::text = ?) AND is_published = ?", identifier, identifier, true).
 		First(&res).Error
 
@@ -944,7 +944,7 @@ func (h *ResourceHandler) AdminListResources(c fiber.Ctx) error {
 
 	var list []model.Resource
 	offset := (page - 1) * pageSize
-	query.Preload("Links").Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&list)
+	query.Preload("Links").Preload("Collection").Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&list)
 
 	// 统计各频道的总数（Single Source of Truth，供后台顶部频道 Tab 展示真实数量）
 	var channelStats []struct {
@@ -1044,6 +1044,7 @@ func (h *ResourceHandler) AdminUpdateResource(c fiber.Ctx) error {
 	existing.Edition = req.Edition
 	existing.Region = req.Region
 	existing.School = req.School
+	existing.CollectionID = req.CollectionID
 	existing.FileType = req.FileType
 	existing.FileSize = req.FileSize
 	existing.PageCount = req.PageCount

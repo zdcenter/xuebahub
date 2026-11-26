@@ -55,6 +55,10 @@ export const PORTAL_ROUTES: Routes = [
       {
         path: 'resource/:id',
         loadComponent: () => import('./pages/detail/resource-detail.component').then(m => m.ResourceDetailComponent)
+      },
+      {
+        path: 'collection/:slug',
+        loadComponent: () => import('./pages/collection/collection-detail.component').then(m => m.CollectionDetailComponent)
       }
     ]
   }

@@ -63,6 +63,7 @@ func main() {
 	regionSchoolH := handler.NewRegionSchoolHandler(database.DB)
 	statsH := handler.NewStatsHandler()
 	hotSearchH := handler.NewHotSearchHandler()
+	collectionH := handler.NewCollectionHandler()
 	settingsH := handler.NewSettingsHandler()
 	emailService := service.NewEmailService(database.DB)
 	resourceRequestH := handler.NewResourceRequestHandler(emailService)
@@ -88,6 +89,8 @@ func main() {
 	public.Get("/regions", metaCache, regionSchoolH.ListRegions)
 	public.Get("/schools", metaCache, regionSchoolH.ListSchools)
 	public.Get("/hot-searches", metaCache, hotSearchH.ListPublicHotSearches)
+	public.Get("/collections", metaCache, collectionH.ListPublicCollections)
+	public.Get("/collections/:id_or_slug", collectionH.GetPublicCollectionDetail)
 	public.Get("/resources", resH.ListPublicResources)
 	public.Get("/resources/:id_or_slug/cover.png", resH.GetPublicResourceCover)
 	public.Get("/covers/:id_or_slug.png", resH.GetPublicResourceCover)
@@ -194,6 +197,12 @@ func main() {
 	// 用户搜索关键词监控与缺货补库清单
 	admin.Get("/search-logs", searchH.ListAdminSearchLogs)
 	admin.Delete("/search-logs", searchH.DeleteAdminSearchLog)
+
+	// 专辑/丛书合集管理
+	admin.Get("/collections", collectionH.ListAdminCollections)
+	admin.Post("/collections", collectionH.CreateAdminCollection)
+	admin.Put("/collections/:id", collectionH.UpdateAdminCollection)
+	admin.Delete("/collections/:id", collectionH.DeleteAdminCollection)
 
 	// 地区与名校字典库管理
 	admin.Get("/regions", regionSchoolH.ListRegions)

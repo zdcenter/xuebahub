@@ -149,6 +149,22 @@ export class PortalService {
     );
   }
 
+  // 4.3 获取专辑/丛书合集列表与详情
+  getPublicCollections(): Observable<any[]> {
+    return this.http.get<{ code: number; data: any[] }>(`${this.baseUrl}/api/v1/public/collections`).pipe(
+      map(res => res?.data || []),
+      catchError(() => of([]))
+    );
+  }
+
+  getPublicCollectionDetail(idOrSlug: string): Observable<{ collection: any; items: ResourceItemDto[]; total: number } | null> {
+    if (!idOrSlug) return of(null);
+    return this.http.get<{ code: number; data: any }>(`${this.baseUrl}/api/v1/public/collections/${encodeURIComponent(idOrSlug)}`).pipe(
+      map(res => res?.data || null),
+      catchError(() => of(null))
+    );
+  }
+
   // 5. 热门搜索热词
   getHotSearches(): Observable<HotSearchItem[]> {
     return this.http.get<{ code: number; data: HotSearchItem[] }>(`${this.baseUrl}/api/v1/public/hot-searches`).pipe(

@@ -26,6 +26,7 @@ func Init(dsn string) (*gorm.DB, error) {
 	models := []interface{}{
 		&model.Category{},
 		&model.Channel{},
+		&model.Collection{},
 		&model.Resource{},
 		&model.ResourceLink{},
 		&model.SearchLog{},

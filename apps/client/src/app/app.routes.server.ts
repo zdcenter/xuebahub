@@ -61,6 +61,41 @@ export const serverRoutes: ServerRoute[] = [
       return [];
     }
   },
+  {
+    path: 'collection/:slug',
+    renderMode: RenderMode.Prerender,
+    async getPrerenderParams() {
+      const endpoints = [
+        'http://127.0.0.1:4001/api/v1/public/collections?limit=500',
+        'https://api.xuebaw.com:8443/api/v1/public/collections?limit=500'
+      ];
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+          if (res.ok) {
+            const json = await res.json();
+            const items = json?.data?.items || json?.data || [];
+            const params: Record<string, string>[] = [];
+            const seen = new Set<string>();
+            for (const item of items) {
+              if (item.slug && !seen.has(item.slug)) {
+                seen.add(item.slug);
+                params.push({ slug: item.slug });
+              }
+              if (item.id && !seen.has(item.id)) {
+                seen.add(item.id);
+                params.push({ slug: item.id });
+              }
+            }
+            if (params.length > 0) {
+              return params;
+            }
+          }
+        } catch {}
+      }
+      return [];
+    }
+  },
 
   // 4. 前台门户、专区与电子书架均启用全量静态预渲染 (SSG)
   {

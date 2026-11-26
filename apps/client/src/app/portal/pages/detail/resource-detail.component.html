@@ -43,10 +43,18 @@
       <div class="p-5 sm:p-7 lg:p-8 space-y-6">
 
         <!-- 1. 核心标题 (干净舒展，字号大气醒目) -->
-        <div class="pb-3 border-b border-slate-100">
+        <div class="pb-3 border-b border-slate-100 space-y-2">
           <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 leading-snug tracking-tight">
             {{ resource()?.title }}
           </h1>
+          <div *ngIf="resource()?.collection as col" class="flex items-center">
+            <a [routerLink]="['/collection', col.slug]"
+               class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition">
+              <span>📚</span>
+              <span>所属专辑：{{ col.title }}</span>
+              <span class="text-emerald-600">查看全套 →</span>
+            </a>
+          </div>
         </div>
 
         <!-- 2. 主体左右结构 (黄金比例排布：左侧大气质感封面 + 右侧自适应行动中心) -->
