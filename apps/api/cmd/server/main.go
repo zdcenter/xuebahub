@@ -200,6 +200,7 @@ func main() {
 
 	// 专辑/丛书合集管理
 	admin.Get("/collections", collectionH.ListAdminCollections)
+	admin.Get("/collections/slug-preview", collectionH.PreviewCollectionSlug)
 	admin.Post("/collections", collectionH.CreateAdminCollection)
 	admin.Post("/collections/assign", collectionH.BatchAssignCollection)
 	admin.Get("/collections/:id/items", collectionH.GetAdminCollectionItems)

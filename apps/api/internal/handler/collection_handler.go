@@ -5,9 +5,11 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
+	"github.com/mozillazg/go-pinyin"
 
 	"netdisk/api/internal/database"
 	"netdisk/api/internal/model"
@@ -24,20 +26,67 @@ type CollectionWithCount struct {
 	ResourceCount int64 `json:"resource_count"`
 }
 
-var slugSanitizeRe = regexp.MustCompile(`[^a-z0-9-]+`)
+var slugMultiDashRe = regexp.MustCompile(`-+`)
+
+func toPinyinSlug(input string) string {
+	args := pinyin.NewArgs()
+	var b strings.Builder
+	prevASCII := false
+
+	for _, r := range strings.TrimSpace(input) {
+		switch {
+		case (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9'):
+			b.WriteRune(unicode.ToLower(r))
+			prevASCII = true
+		case unicode.Is(unicode.Han, r):
+			if prevASCII {
+				b.WriteByte('-')
+				prevASCII = false
+			}
+			py := pinyin.SinglePinyin(r, args)
+			if len(py) > 0 && py[0] != "" {
+				b.WriteString(strings.ToLower(py[0]))
+				b.WriteByte('-')
+			}
+		default:
+			b.WriteByte('-')
+			prevASCII = false
+		}
+	}
+
+	s := slugMultiDashRe.ReplaceAllString(b.String(), "-")
+	s = strings.Trim(s, "-")
+	if len(s) > 80 {
+		s = strings.Trim(s[:80], "-")
+	}
+	return s
+}
 
 func buildCollectionSlug(rawSlug, title string) string {
-	s := strings.ToLower(strings.TrimSpace(rawSlug))
-	if s == "" {
-		s = strings.ToLower(strings.TrimSpace(title))
+	src := strings.TrimSpace(rawSlug)
+	if src == "" {
+		src = strings.TrimSpace(title)
 	}
-	s = strings.ReplaceAll(s, " ", "-")
-	s = slugSanitizeRe.ReplaceAllString(s, "-")
-	s = strings.Trim(s, "-")
+	s := toPinyinSlug(src)
 	if s == "" {
 		s = fmt.Sprintf("col-%d", time.Now().Unix())
 	}
 	return s
+}
+
+// PreviewCollectionSlug 后台根据专辑名称自动生成拼音/英文短链接预览
+func (h *CollectionHandler) PreviewCollectionSlug(c fiber.Ctx) error {
+	title := strings.TrimSpace(c.Query("title"))
+	slug := ""
+	if title != "" {
+		slug = toPinyinSlug(title)
+	}
+	return c.JSON(fiber.Map{
+		"code": 200,
+		"data": fiber.Map{
+			"slug": slug,
+		},
+	})
 }
 
 // ListPublicCollections 前台获取启用中的专辑列表

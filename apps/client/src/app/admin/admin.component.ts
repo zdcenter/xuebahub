@@ -5024,6 +5024,17 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.collectionAssignMode = null;
   }
 
+  autoFillCollectionSlug(force = false) {
+    const title = (this.collectionForm.title || '').trim();
+    if (!title) return;
+    if (!force && (this.collectionForm.id || (this.collectionForm.slug || '').trim() !== '')) return;
+    this.resService.previewCollectionSlug(title).subscribe({
+      next: (slug) => {
+        if (slug) this.collectionForm.slug = slug;
+      }
+    });
+  }
+
   saveCollection() {
     if (!this.collectionForm.title.trim()) {
       this.showToast('请输入专辑名称', 'error');

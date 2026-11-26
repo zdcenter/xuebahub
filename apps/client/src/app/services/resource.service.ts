@@ -482,6 +482,15 @@ export class ResourceService {
     );
   }
 
+  // 根据专辑名称预览自动生成的拼音/英文短链接
+  previewCollectionSlug(title: string): Observable<string> {
+    return this.http.get<{ code: number; data: { slug: string } }>(
+      `${this.apiUrl.replace('/resources', '/collections')}/slug-preview?title=${encodeURIComponent(title)}`
+    ).pipe(
+      map(res => res.data?.slug || '')
+    );
+  }
+
   // 保存专辑成员自定义排序
   reorderCollectionItems(collectionId: string, itemIds: string[]): Observable<void> {
     return this.http.put<{ code: number; message: string }>(
