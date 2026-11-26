@@ -65,6 +65,12 @@ func Init(dsn string) (*gorm.DB, error) {
 	if err := db.Exec(`ALTER TABLE netdisk_accounts ADD COLUMN IF NOT EXISTS nickname VARCHAR(100);`).Error; err != nil {
 		log.Printf("Ensure netdisk_accounts.nickname column error: %v", err)
 	}
+	if err := db.Exec(`ALTER TABLE resources ADD COLUMN IF NOT EXISTS collection_id UUID;`).Error; err != nil {
+		log.Printf("Ensure resources.collection_id column error: %v", err)
+	}
+	if err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_resources_collection_id ON resources (collection_id);`).Error; err != nil {
+		log.Printf("Ensure idx_resources_collection_id index error: %v", err)
+	}
 
 	DB = db
 	seedInitialData(db)
