@@ -81,6 +81,7 @@
       </div>
       <a *ngIf="primaryLink"
          [href]="downloadUrl"
+         (click)="onQuickSave()"
          target="_blank"
          rel="noopener noreferrer"
          class="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-0.5 shrink-0">
