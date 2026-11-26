@@ -5562,18 +5562,19 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.draggedOrderIndex.set(index);
   }
 
-  onCollectionDragOver(event: DragEvent) {
+  onCollectionDragOver(event: DragEvent, targetIndex: number) {
     event.preventDefault();
-  }
-
-  onCollectionDrop(targetIndex: number) {
     const fromIndex = this.draggedOrderIndex();
-    this.draggedOrderIndex.set(null);
     if (fromIndex === null || fromIndex === targetIndex) return;
     const list = [...this.collectionOrderItems()];
     const [moved] = list.splice(fromIndex, 1);
     list.splice(targetIndex, 0, moved);
     this.collectionOrderItems.set(list);
+    this.draggedOrderIndex.set(targetIndex);
+  }
+
+  onCollectionDragEnd() {
+    this.draggedOrderIndex.set(null);
   }
 
   removeMemberInOrderModal(item: ResourceItemDto) {

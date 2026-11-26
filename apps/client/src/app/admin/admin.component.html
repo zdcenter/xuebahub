@@ -9545,10 +9545,13 @@
               <div
                 draggable="true"
                 (dragstart)="onCollectionDragStart(idx)"
-                (dragover)="onCollectionDragOver($event)"
-                (drop)="onCollectionDrop(idx)"
-                [style.opacity]="draggedOrderIndex() === idx ? '0.5' : '1'"
-                style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; cursor: grab;">
+                (dragover)="onCollectionDragOver($event, idx)"
+                (dragend)="onCollectionDragEnd()"
+                [style.background]="draggedOrderIndex() === idx ? '#ecfdf5' : '#f8fafc'"
+                [style.border]="draggedOrderIndex() === idx ? '2px dashed #10b981' : '1px solid #e2e8f0'"
+                [style.opacity]="draggedOrderIndex() === idx ? '0.65' : '1'"
+                [style.transform]="draggedOrderIndex() === idx ? 'scale(0.99)' : 'none'"
+                style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: grab; transition: all 0.15s ease;">
                 <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
                   <span style="color: #94a3b8; font-size: 16px; user-select: none;" title="按住拖动排序">⋮⋮</span>
                   <span style="width: 24px; height: 24px; border-radius: 6px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
