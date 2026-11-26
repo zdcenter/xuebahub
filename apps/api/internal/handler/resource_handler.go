@@ -179,7 +179,8 @@ func (h *ResourceHandler) ListPublicResources(c fiber.Ctx) error {
 	query := database.DB.Model(&model.Resource{}).
 		Where("is_published = ?", true).
 		Where("channel_slug IN (SELECT slug FROM channels WHERE is_active = true)").
-		Preload("Links")
+		Preload("Links").
+		Preload("Collection")
 
 	// 频道隔离与全局搜索联动逻辑：
 	// 1. 若显式指定了频道 (如 channel=book 或 channel=edu)，严格按指定频道精准筛选

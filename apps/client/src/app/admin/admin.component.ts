@@ -5429,6 +5429,46 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
+  // 批量将资料加入/移出专辑
+  async batchAssignCollection(collectionId: string) {
+    const ids = this.selectedResourceIds();
+    if (ids.length === 0 || !collectionId) return;
+
+    const colName = collectionId === 'none'
+      ? '移出所属专辑'
+      : (this.collections().find(c => c.id === collectionId)?.title || '指定专辑');
+
+    const ok = await this.confirmDialog({
+      title: '批量设置所属专辑',
+      message: collectionId === 'none'
+        ? `确定要将选中的 ${ids.length} 篇资料移出当前专辑吗？`
+        : `确定要将选中的 ${ids.length} 篇资料批量加入专辑【${colName}】吗？`,
+      confirmText: '确定设置',
+      type: 'info',
+      icon: '📚'
+    });
+    if (!ok) return;
+
+    this.loading.set(true);
+    this.resService.batchAssignCollection(ids, collectionId).subscribe({
+      next: (res) => {
+        this.loading.set(false);
+        this.clearResourceSelection();
+        this.loadResources();
+        this.loadCollections();
+        this.showToast(
+          collectionId === 'none'
+            ? `已将 ${res.affected} 篇资料移出专辑`
+            : `成功将 ${res.affected} 篇资料加入专辑【${colName}】`
+        );
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.showToast('批量设置专辑失败: ' + (err.message || '网络错误'), 'error');
+      }
+    });
+  }
+
   // --- 系统全局配置 (Site Settings) ---
   siteSettings = signal<SiteSettingDto>({
     site_name: '学霸网',

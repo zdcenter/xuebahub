@@ -133,6 +133,13 @@
             class="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold border border-amber-200/60">
         🔥 热门
       </span>
+      <a *ngIf="resource.collection as col"
+         [routerLink]="['/collection', col.slug]"
+         (click)="$event.stopPropagation()"
+         class="px-1.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200/80 transition truncate max-w-[140px]"
+         [title]="'查看所属专辑：' + col.title">
+        📚 {{ col.title }}
+      </a>
     </div>
 
     <!-- 资料标题 (优雅 2 行截断，固定最小两行高度，确保同排卡片高度严丝合缝) -->
@@ -257,6 +264,13 @@
               class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80 text-[10px]">
           ✓ {{ highlightFeature }}
         </span>
+        <a *ngIf="resource.collection as col"
+           [routerLink]="['/collection', col.slug]"
+           (click)="$event.stopPropagation()"
+           class="px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200/80 text-[10px] transition truncate max-w-[160px]"
+           [title]="'查看所属专辑：' + col.title">
+          📚 {{ col.title }}
+        </a>
         <span class="px-1.5 py-0.5 text-emerald-700 bg-emerald-50 border border-emerald-200/70 rounded text-[10px] font-medium ml-auto sm:ml-0">
           ● 存活秒存
         </span>

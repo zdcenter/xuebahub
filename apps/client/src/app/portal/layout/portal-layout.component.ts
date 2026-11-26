@@ -123,6 +123,16 @@ export class PortalLayoutComponent implements OnInit {
       });
     }
 
+    // 若后端菜单未包含精选专辑入口，自动追加
+    const hasCollections = menus.some(m => m.link_url === '/collections' || m.title.includes('专辑'));
+    if (!hasCollections) {
+      items.push({
+        name: '精选专辑',
+        path: '/collections',
+        icon: '📚'
+      });
+    }
+
     return items;
   });
 

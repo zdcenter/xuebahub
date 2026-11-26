@@ -458,6 +458,16 @@ export class ResourceService {
     );
   }
 
+  // 批量将资料加入/移出专辑
+  batchAssignCollection(ids: string[], collection_id: string): Observable<{ affected: number }> {
+    return this.http.post<{ code: number; message: string; data: { affected: number } }>(
+      `${this.apiUrl.replace('/resources', '/collections')}/assign`,
+      { ids, collection_id }
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
   // 跨站资料包批量导入并直接上架
   batchImport(resources: Partial<ResourceItemDto>[], autoPublish: boolean = true): Observable<{ total: number; imported: number }> {
     return this.http.post<{ code: number; message: string; data: { total: number; imported: number } }>(

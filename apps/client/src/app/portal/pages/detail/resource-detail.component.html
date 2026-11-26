@@ -24,6 +24,11 @@
         </ng-container>
       </ng-container>
 
+      <ng-container *ngIf="resource()?.collection as col">
+        <span class="text-slate-400">/</span>
+        <a [routerLink]="['/collection', col.slug]" class="hover:text-emerald-700 text-emerald-700 font-semibold transition">📚 {{ col.title }}</a>
+      </ng-container>
+
       <span class="text-slate-400">/</span>
       <span class="text-slate-900 font-semibold truncate max-w-sm sm:max-w-md">{{ resource()?.title }}</span>
     </nav>
@@ -854,6 +859,57 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- 📚 同专辑系列资源目录 (当当前资源属于某个专辑时展示，支持直接切换同套其他分册) -->
+    <div *ngIf="resource()?.collection as col" class="mt-8 bg-white rounded-3xl border border-emerald-200/90 shadow-xs p-5 sm:p-7 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <span class="p-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl shadow-2xs text-xl flex items-center justify-center">
+            📚
+          </span>
+          <div>
+            <h3 class="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2 flex-wrap">
+              <span>所属专辑：《{{ col.title }}》</span>
+              <span *ngIf="collectionItems().length > 0" class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                共 {{ collectionItems().length }} 份
+              </span>
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+              {{ col.description || '点击下方任意分册即可直接切换查看与转存' }}
+            </p>
+          </div>
+        </div>
+        <a [routerLink]="['/collection', col.slug]"
+           class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full border border-emerald-200 transition self-start sm:self-center shrink-0">
+          <span>查看完整专辑页</span>
+          <span>→</span>
+        </a>
+      </div>
+
+      <div *ngIf="collectionItems().length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <a *ngFor="let item of collectionItems(); let idx = index"
+           [routerLink]="['/resource', item.slug || item.id]"
+           [class]="item.id === resource()?.id
+             ? 'bg-emerald-50/90 border-emerald-400 ring-1 ring-emerald-300 shadow-xs'
+             : 'bg-slate-50/70 hover:bg-white border-slate-200/80 hover:border-emerald-300 hover:shadow-sm'"
+           class="flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer">
+          <span [class]="item.id === resource()?.id ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200'"
+                class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black font-mono shrink-0">
+            {{ idx + 1 }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="text-xs sm:text-sm font-bold line-clamp-1"
+                 [class]="item.id === resource()?.id ? 'text-emerald-900' : 'text-slate-800'">
+              {{ item.title }}
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+              <span *ngIf="item.id === resource()?.id" class="text-emerald-700 font-bold">当前正在查看</span>
+              <span *ngIf="item.id !== resource()?.id">{{ item.file_size || '高清PDF' }}</span>
+            </div>
+          </div>
+        </a>
+      </div>
     </div>
 
     <!-- 📚 核心转化模块：猜你还需要 · 同年级配套教材 / 同学科备考推荐 (大杀器，提升连环转存率与留存) -->

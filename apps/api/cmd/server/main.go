@@ -201,6 +201,7 @@ func main() {
 	// 专辑/丛书合集管理
 	admin.Get("/collections", collectionH.ListAdminCollections)
 	admin.Post("/collections", collectionH.CreateAdminCollection)
+	admin.Post("/collections/assign", collectionH.BatchAssignCollection)
 	admin.Put("/collections/:id", collectionH.UpdateAdminCollection)
 	admin.Delete("/collections/:id", collectionH.DeleteAdminCollection)
 

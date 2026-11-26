@@ -224,3 +224,54 @@ func (h *CollectionHandler) DeleteAdminCollection(c fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"code": 200, "message": "已删除专辑"})
 }
+
+// BatchAssignCollection 后台批量将资源加入/移出专辑
+func (h *CollectionHandler) BatchAssignCollection(c fiber.Ctx) error {
+	var req struct {
+		IDs          []string `json:"ids"`
+		CollectionID string   `json:"collection_id"`
+	}
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
+	}
+	if len(req.IDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "请至少选择一条资料"})
+	}
+
+	var resUUIDs []uuid.UUID
+	for _, idStr := range req.IDs {
+		if uid, err := uuid.Parse(strings.TrimSpace(idStr)); err == nil {
+			resUUIDs = append(resUUIDs, uid)
+		}
+	}
+	if len(resUUIDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效的资源ID列表"})
+	}
+
+	var targetColID interface{} = nil
+	colIDStr := strings.TrimSpace(req.CollectionID)
+	if colIDStr != "" && colIDStr != "none" {
+		colUUID, err := uuid.Parse(colIDStr)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效专辑ID"})
+		}
+		var cnt int64
+		database.DB.Model(&model.Collection{}).Where("id = ?", colUUID).Count(&cnt)
+		if cnt == 0 {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"code": 404, "message": "目标专辑不存在"})
+		}
+		targetColID = colUUID
+	}
+
+	res := database.DB.Model(&model.Resource{}).Where("id IN ?", resUUIDs).Update("collection_id", targetColID)
+	if res.Error != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "批量设置专辑失败"})
+	}
+
+	return c.JSON(fiber.Map{
+		"code": 200,
+		"data": fiber.Map{
+			"affected": res.RowsAffected,
+		},
+	})
+}

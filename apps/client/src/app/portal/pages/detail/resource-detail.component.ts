@@ -186,6 +186,9 @@ export class ResourceDetailComponent implements OnInit {
   relatedResources = signal<ResourceItemDto[]>([]);
   isRelatedLoading = signal<boolean>(false);
 
+  // 同专辑系列资源列表
+  collectionItems = signal<ResourceItemDto[]>([]);
+
   // PC 端右侧常驻热门转存飙升榜 (TOP 8)
   hotRankList = signal<ResourceItemDto[]>([]);
   isRankLoading = signal<boolean>(false);
@@ -936,6 +939,16 @@ export class ResourceDetailComponent implements OnInit {
 
           // 加载同科目/同学段精选推荐资料 (打造连环转存闭环)
           this.loadRelatedResources(resourceItem.slug || resourceItem.id || idOrSlug);
+
+          // 若属于专辑，加载同专辑全套资源列表以供直接切换
+          if (resourceItem.collection?.slug) {
+            this.portalService.getPublicCollectionDetail(resourceItem.collection.slug).subscribe({
+              next: colData => this.collectionItems.set(colData?.items || []),
+              error: () => this.collectionItems.set([])
+            });
+          } else {
+            this.collectionItems.set([]);
+          }
         }
         // 若参数指定 share=poster 则自动唤起海报生成弹窗
         if (this.route.snapshot.queryParams['share'] === 'poster') {

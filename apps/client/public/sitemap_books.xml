@@ -18,6 +18,12 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://www.xuebaw.com/resource/res-keben-2051</loc>
+    <lastmod>2026-11-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://www.xuebaw.com/resource/res-keben-0001</loc>
     <lastmod>2026-11-24</lastmod>
     <changefreq>weekly</changefreq>
@@ -823,12 +829,6 @@
   </url>
   <url>
     <loc>https://www.xuebaw.com/resource/res-keben-0142</loc>
-    <lastmod>2026-11-24</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://www.xuebaw.com/resource/res-keben-0143</loc>
     <lastmod>2026-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
@@ -12192,7 +12192,7 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.xuebaw.com/resource/res-keben-2051</loc>
+    <loc>https://www.xuebaw.com/resource/res-keben-0143</loc>
     <lastmod>2026-11-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>

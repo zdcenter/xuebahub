@@ -746,6 +746,16 @@
                   <option value="book">划入: 统编电子教材专区 (book)</option>
                 </select>
 
+                <!-- 批量加入/移出专辑 -->
+                <select 
+                  #batchCollectionSelect
+                  style="padding: 4px 8px; border-radius: 6px; font-size: 12px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer;"
+                  (change)="batchAssignCollection(batchCollectionSelect.value); batchCollectionSelect.value = ''">
+                  <option value="">📚 批量加入专辑...</option>
+                  <option *ngFor="let col of collections()" [value]="col.id">加入: {{ col.title }}</option>
+                  <option value="none">移出所属专辑</option>
+                </select>
+
                 <button type="button" class="btn btn-sm btn-batch-enable" (click)="batchToggleResources(true)">
                   {{ i18n.t('resource.batchPublish') }}
                 </button>
