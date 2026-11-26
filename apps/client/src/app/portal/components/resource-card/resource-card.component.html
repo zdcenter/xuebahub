@@ -151,7 +151,8 @@
       <div class="flex items-center gap-1.5 text-[11px] font-mono text-slate-400 shrink-0">
         <span class="text-slate-500 font-medium">{{ resource.file_size || '12.8 MB' }}</span>
         <span class="text-emerald-700 font-bold flex items-center gap-0.5">
-          <span>⚡</span>{{ formattedSaveCount }}转存
+          <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+          <span>{{ formattedSaveCount }}转存</span>
         </span>
       </div>
 
@@ -275,7 +276,10 @@
       <div class="flex items-center gap-3 pt-0.5 text-xs text-slate-400 font-mono">
         <span>🕒 2026 最新收录</span>
         <span>💾 {{ resource.file_size || '12.8 MB' }}</span>
-        <span class="text-emerald-700 font-bold">⚡ {{ formattedSaveCount }} 人已转存</span>
+        <span class="text-emerald-700 font-bold flex items-center gap-0.5">
+          <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+          <span>{{ formattedSaveCount }} 人已转存</span>
+        </span>
       </div>
     </div>
   </div>

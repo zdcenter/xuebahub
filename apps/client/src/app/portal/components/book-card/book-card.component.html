@@ -72,9 +72,12 @@
     </div>
 
     <div class="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px] text-slate-400">
-      <div class="flex items-center gap-2 min-w-0 truncate">
-        <span>💾 {{ resource.file_size || '35.8 MB' }}</span>
-        <span class="text-emerald-700 font-semibold" title="转存次数">⚡ {{ resource.save_count || 0 }}</span>
+      <div class="flex items-center gap-2 min-w-0 truncate font-mono">
+        <span class="text-slate-500 font-medium">{{ resource.file_size || '35.8 MB' }}</span>
+        <span class="text-emerald-700 font-bold flex items-center gap-0.5" title="转存次数">
+          <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+          <span>{{ resource.save_count || 0 }}转存</span>
+        </span>
       </div>
       <a *ngIf="primaryLink"
          [href]="downloadUrl"
