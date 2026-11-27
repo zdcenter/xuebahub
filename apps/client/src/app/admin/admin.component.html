@@ -7584,7 +7584,7 @@
 
   <!-- 6. 网盘目标目录选择与管理弹窗 (Folder Picker & Manager Modal) -->
   @if (isFolderPickerOpen()) {
-    <div class="modal-backdrop" (click)="closeFolderPicker()">
+    <div class="modal-backdrop" style="z-index: 12000;" (click)="closeFolderPicker()">
       <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 540px;">
         <div class="modal-header">
           <h3>📁 网盘目录选择与管理</h3>
