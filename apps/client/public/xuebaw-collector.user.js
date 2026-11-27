@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.5.3
+// @version      1.5.4
 // @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别、Discourse论坛(linux.do)板块分页穿透提取；右侧贴边滑出抽屉工作台！
 // @author       学霸网开发团队
 // @match        *://*/*
@@ -742,11 +742,61 @@
   }
 
   const XUEBAW_CACHE_KEY = 'XUEBAW_COLLECTOR_CACHE_' + location.pathname;
+  const XUEBAW_SEL_KEY = 'XUEBAW_COLLECTOR_SEL_' + location.pathname;
 
   function saveDrawerCache(list) {
     try {
       sessionStorage.setItem(XUEBAW_CACHE_KEY, JSON.stringify(list || []));
+      const selMap = {};
+      for (const it of (list || [])) {
+        if (it.shareUrl) selMap[it.shareUrl] = !!it.selected;
+      }
+      localStorage.setItem(XUEBAW_SEL_KEY, JSON.stringify(selMap));
     } catch {}
+  }
+
+  function applyRememberedSelection(list) {
+    try {
+      const raw = localStorage.getItem(XUEBAW_SEL_KEY);
+      if (!raw) return list;
+      const selMap = JSON.parse(raw);
+      if (selMap && typeof selMap === 'object') {
+        return list.map(it => (
+          it.shareUrl && Object.prototype.hasOwnProperty.call(selMap, it.shareUrl)
+            ? { ...it, selected: !!selMap[it.shareUrl] }
+            : it
+        ));
+      }
+    } catch {}
+    return list;
+  }
+
+  function showCenterToast(title, detailLines = [], durationMs = 3000) {
+    const old = document.getElementById('xuebaw-center-toast');
+    if (old) old.remove();
+    const box = document.createElement('div');
+    box.id = 'xuebaw-center-toast';
+    box.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483647;background:rgba(15,23,42,0.94);color:#fff;padding:18px 24px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,0.35);min-width:300px;max-width:440px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;text-align:center;backdrop-filter:blur(8px);';
+    let remainSec = Math.ceil(durationMs / 1000);
+    const previewHtml = detailLines.length > 0
+      ? `<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.08);font-size:12px;color:#cbd5e1;text-align:left;max-height:110px;overflow:hidden;">${detailLines.slice(0, 4).map(t => `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">• ${escapeHtml(t)}</div>`).join('')}${detailLines.length > 4 ? `<div style="color:#94a3b8;margin-top:2px;">...等共 ${detailLines.length} 条</div>` : ''}</div>`
+      : '';
+    box.innerHTML = `
+      <div style="font-size:15px;font-weight:800;color:#34d399;">${escapeHtml(title)}</div>
+      ${previewHtml}
+      <div id="xb-toast-countdown" style="margin-top:10px;font-size:11px;color:#94a3b8;">${remainSec} 秒后自动关闭</div>
+    `;
+    document.body.appendChild(box);
+    const timer = setInterval(() => {
+      remainSec--;
+      const el = box.querySelector('#xb-toast-countdown');
+      if (remainSec <= 0) {
+        clearInterval(timer);
+        box.remove();
+      } else if (el) {
+        el.textContent = `${remainSec} 秒后自动关闭`;
+      }
+    }, 1000);
   }
 
   function loadDrawerCache() {
@@ -774,7 +824,7 @@
         return;
       }
     }
-    const items = deduplicateItemTitles(extractAllPageResources());
+    const items = applyRememberedSelection(deduplicateItemTitles(extractAllPageResources()));
     saveDrawerCache(items);
     showRightDrawer(items);
   }
@@ -929,6 +979,7 @@
           cb.checked = isSel;
         }
       });
+      saveDrawerCache(items);
     }
 
     container.querySelector('#xb-btn-close').addEventListener('click', () => {
@@ -965,7 +1016,7 @@
           progressEl.style.display = 'block';
           progressEl.textContent = '准备读取板块列表...';
         }
-        const found = deduplicateItemTitles(await scanDiscourseBoard(pagesCount, progressEl));
+        const found = applyRememberedSelection(deduplicateItemTitles(await scanDiscourseBoard(pagesCount, progressEl)));
         if (found.length > 0) {
           saveDrawerCache(found);
           showRightDrawer(found);
@@ -1040,8 +1091,14 @@
             alert('❌ 批量推送失败: ' + err);
             updateSelectionUI();
           } else {
-            alert(`✅ 批量录入成功！已将 ${selectedItems.length} 条资料同步至学霸网后台待审草稿池。`);
-            container.remove();
+            saveDrawerCache(items);
+            container.style.display = 'none';
+            updateSelectionUI();
+            showCenterToast(
+              `✅ 成功推送 ${selectedItems.length} 条资料到待审草稿池`,
+              selectedItems.map(it => it.title),
+              3000
+            );
           }
         });
       });
