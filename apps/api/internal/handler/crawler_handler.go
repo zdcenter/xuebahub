@@ -426,12 +426,6 @@ func (h *CrawlerHandler) IngestText(c fiber.Ctx) error {
 				skipped++
 				continue
 			}
-			var linkCnt int64
-			h.db.Model(&model.ResourceLink{}).Where("share_url = ?", shareURL).Count(&linkCnt)
-			if linkCnt > 0 {
-				skipped++
-				continue
-			}
 			var resCnt int64
 			h.db.Model(&model.Resource{}).Where("LOWER(title) = ?", strings.ToLower(title)).Count(&resCnt)
 			if resCnt > 0 {
