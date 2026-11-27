@@ -3193,15 +3193,28 @@
                     </div>
                   }
                 </div>
-                <!-- 选题列表分页条（靠左对齐+右侧留白，避免被右下角浮动极速粘贴按钮遮挡） -->
-                @if (scoutTotal() > 20) {
-                  <div style="display: flex; justify-content: flex-start; align-items: center; padding: 16px 200px 4px 0; margin-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 16px;">
-                    <span style="font-size: 13px; color: #64748b;">
-                      共 <strong>{{ scoutTotal() }}</strong> 条选题 · 第 <strong>{{ scoutPage() }}</strong> / {{ scoutTotalPages() }} 页
-                    </span>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                      <button type="button" class="btn btn-sm btn-secondary" [disabled]="scoutPage() <= 1" (click)="changeScoutPage(scoutPage() - 1)">« 上一页</button>
-                      <button type="button" class="btn btn-sm btn-secondary" [disabled]="scoutPage() >= scoutTotalPages()" (click)="changeScoutPage(scoutPage() + 1)">下一页 »</button>
+                <!-- 选题列表分页条（与资料库统一的分页样式） -->
+                @if (scoutTotal() > 0) {
+                  <div class="admin-pagination-container" style="margin-top: 16px;">
+                    <div class="pagination-info-summary">
+                      <span class="range-text">
+                        共 <strong class="total-highlight">{{ scoutTotal() }}</strong> 条选题 · 第 <strong>{{ scoutPage() }}</strong> / {{ scoutTotalPages() }} 页
+                      </span>
+                    </div>
+                    <div class="pagination-nav-actions">
+                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() <= 1" (click)="changeScoutPage(1)">« 首页</button>
+                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() <= 1" (click)="changeScoutPage(scoutPage() - 1)">‹ 上一页</button>
+                      <div class="page-number-group">
+                        @for (p of scoutPageList(); track $index) {
+                          @if (p === -1) {
+                            <span class="pg-ellipsis">…</span>
+                          } @else {
+                            <button type="button" class="pg-btn num-btn" [class.active]="scoutPage() === p" (click)="changeScoutPage(p)">{{ p }}</button>
+                          }
+                        }
+                      </div>
+                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() >= scoutTotalPages()" (click)="changeScoutPage(scoutPage() + 1)">下一页 ›</button>
+                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() >= scoutTotalPages()" (click)="changeScoutPage(scoutTotalPages())">末页 » ({{ scoutTotalPages() }})</button>
                     </div>
                   </div>
                 }

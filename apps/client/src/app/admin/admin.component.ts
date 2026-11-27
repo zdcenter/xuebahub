@@ -5090,6 +5090,22 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   scoutTotalPages = computed(() => Math.max(1, Math.ceil(this.scoutTotal() / 20)));
 
+  scoutPageList = computed<number[]>(() => {
+    const total = this.scoutTotalPages();
+    const cur = this.scoutPage();
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    const pages: number[] = [1];
+    if (cur > 3) pages.push(-1);
+    const start = Math.max(2, cur - 1);
+    const end = Math.min(total - 1, cur + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (cur < total - 2) pages.push(-1);
+    pages.push(total);
+    return pages;
+  });
+
   changeScoutPage(page: number) {
     const maxP = this.scoutTotalPages();
     if (page < 1 || page > maxP) return;

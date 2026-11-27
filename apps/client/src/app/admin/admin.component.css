@@ -327,6 +327,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  padding-bottom: 84px;
 }
 
 .topbar {
