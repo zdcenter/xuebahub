@@ -53,6 +53,7 @@ func main() {
 	quarkTransfer := service.NewQuarkTransferService()
 	smartMeta := service.NewSmartMetaService()
 	crawlerH := handler.NewCrawlerHandler(telegramCrawler, quarkTransfer, smartMeta)
+	scoutH := handler.NewScoutHandler(quarkTransfer, smartMeta)
 	resH := handler.NewResourceHandler(netdiskParser, netdiskChecker, coverGen, r2Service, telegramCrawler, seoService, quarkTransfer, smartMeta)
 	searchAgg := service.NewSearchAggregatorService()
 	searchH := handler.NewSearchHandler(searchAgg)
@@ -266,6 +267,14 @@ func main() {
 	admin.Delete("/crawler/drafts/:id", crawlerH.DeleteDraft)
 	admin.Post("/crawler/drafts/batch", crawlerH.BatchDraftAction)
 	admin.Post("/crawler/drafts/batch-approve", crawlerH.BatchApproveDrafts)
+
+	// 选题雷达：竞品网站标题采集与一键寻源补链转正
+	admin.Post("/scout/fetch", scoutH.FetchTitles)
+	admin.Post("/scout/import-text", scoutH.ImportTextTitles)
+	admin.Get("/scout/list", scoutH.ListTopics)
+	admin.Post("/scout/:id/publish", scoutH.PublishTopic)
+	admin.Patch("/scout/:id/status", scoutH.UpdateTopicStatus)
+	admin.Delete("/scout/:id", scoutH.DeleteTopic)
 
 	// 邮件营销与推广中枢 (Email Marketing & Contact Dispatch Hub)
 	admin.Get("/email/config", emailH.GetConfig)

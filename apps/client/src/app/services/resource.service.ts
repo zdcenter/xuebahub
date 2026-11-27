@@ -501,6 +501,53 @@ export class ResourceService {
     );
   }
 
+  // ==================== 选题雷达 (竞品标题采集与寻源) ====================
+  fetchScoutTitles(payload: { url: string; source_name?: string; selector?: string; max_items?: number }): Observable<{ fetched_count: number; added_count: number; skipped_count: number; message?: string }> {
+    return this.http.post<{ code: number; data: any }>(
+      `${this.apiUrl.replace('/resources', '/scout')}/fetch`,
+      payload
+    ).pipe(map(res => res.data));
+  }
+
+  importScoutText(payload: { source_name: string; text: string }): Observable<{ fetched_count: number; added_count: number; skipped_count: number }> {
+    return this.http.post<{ code: number; data: any }>(
+      `${this.apiUrl.replace('/resources', '/scout')}/import-text`,
+      payload
+    ).pipe(map(res => res.data));
+  }
+
+  listScoutTopics(params: { status?: string; source_name?: string; q?: string; page?: number; page_size?: number }): Observable<any> {
+    const qp = new URLSearchParams();
+    if (params.status) qp.set('status', params.status);
+    if (params.source_name && params.source_name !== 'all') qp.set('source_name', params.source_name);
+    if (params.q) qp.set('q', params.q);
+    if (params.page) qp.set('page', String(params.page));
+    if (params.page_size) qp.set('page_size', String(params.page_size));
+    return this.http.get<{ code: number; data: any }>(
+      `${this.apiUrl.replace('/resources', '/scout')}/list?${qp.toString()}`
+    ).pipe(map(res => res.data));
+  }
+
+  publishScoutTopic(id: string, payload: { title?: string; share_url: string; extract_code?: string; collection_id?: string; auto_transfer?: boolean }): Observable<any> {
+    return this.http.post<{ code: number; message: string; data: any }>(
+      `${this.apiUrl.replace('/resources', '/scout')}/${id}/publish`,
+      payload
+    );
+  }
+
+  updateScoutTopicStatus(id: string, status: 'need_source' | 'ignored' | 'approved'): Observable<any> {
+    return this.http.patch<{ code: number; message: string }>(
+      `${this.apiUrl.replace('/resources', '/scout')}/${id}/status`,
+      { status }
+    );
+  }
+
+  deleteScoutTopic(id: string): Observable<any> {
+    return this.http.delete<{ code: number; message: string }>(
+      `${this.apiUrl.replace('/resources', '/scout')}/${id}`
+    );
+  }
+
   // 跨站资料包批量导入并直接上架
   batchImport(resources: Partial<ResourceItemDto>[], autoPublish: boolean = true): Observable<{ total: number; imported: number }> {
     return this.http.post<{ code: number; message: string; data: { total: number; imported: number } }>(

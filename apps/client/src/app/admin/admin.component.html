@@ -146,6 +146,16 @@
         <div class="nav-section-title">{{ i18n.t('nav.groupCollector') }}</div>
         <button 
           type="button"
+          [class.active]="currentTab() === 'scout'" 
+          (click)="switchTab('scout')">
+          <span class="icon">🎯</span>
+          <span class="nav-label">选题雷达</span>
+          @if (scoutCounts().need_source > 0) {
+            <span class="nav-pill-badge hot">{{ scoutCounts().need_source }}</span>
+          }
+        </button>
+        <button 
+          type="button"
           [class.active]="currentTab() === 'drafts'" 
           (click)="switchTab('drafts')">
           <span class="icon">📥</span>
@@ -319,6 +329,7 @@
             @if (currentTab() === 'edit') { ✏️ 编辑修改资料 }
             @if (currentTab() === 'stats') { 📊 推广收益与转化分析 }
             @if (currentTab() === 'drafts') { 📥 待处理草稿箱 (全渠道采集中转池) }
+            @if (currentTab() === 'scout') { 🎯 选题雷达 (外部网站标题采集与一键寻源) }
             @if (currentTab() === 'collector') { 🧩 浏览器采集助手 (v1.4.0 全网自动化采集中枢) }
             @if (currentTab() === 'crawler') { ✈️ Telegram 机器人配置与频道运营 }
             @if (currentTab() === 'email') { 📧 {{ i18n.t('email.title') }} }
@@ -338,6 +349,7 @@
           <p class="subtitle">
             @if (currentTab() === 'edit') { 全屏宽幅视野沉浸式修改资料所有配置与封面海报，保存后自动返回资料管理库 }
             @else if (currentTab() === 'drafts') { 汇聚浏览器采集助手、Telegram 自动监控与极速粘贴的所有待审核资料，支持一键审查、补充元数据与秒级批量上架 }
+            @else if (currentTab() === 'scout') { 从主流站点提取公开资料标题并去重入待寻源库，一键搜 Google / 百度找公开网盘源，贴链即可自动分类并发布上架 }
             @else if (currentTab() === 'collector') { 深度打通夸克、百度、UC、迅雷、阿里等全网网盘分享页，右侧抽屉式极速识别，毫秒级直接落库或推送到草稿池 }
             @else if (currentTab() === 'crawler') { Telegram Bot 凭证、Webhook 实时监听、资源采集监听频道管理与站外官方广播推送通道 }
             @else if (currentTab() === 'members') { 自由配置游客、普通会员及各等级 VIP 的每日获取额度与标价，批量生成卡密并一键复制用于淘宝/闲鱼全自动发卡 }
@@ -3038,6 +3050,139 @@
                           </span>
                         }
                       </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- 2.0 🎯 选题雷达（外部网站标题采集与一键寻源工作台） -->
+      @if (currentTab() === 'scout') {
+        <div class="tab-content-fade" style="display: flex; flex-direction: column; gap: 18px;">
+          <!-- 顶部双栏：左侧网页抓取 + 右侧粘贴文本导入 -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px;">
+            <!-- 1. 网页列表抓取 -->
+            <div class="card">
+              <div class="card-header">
+                <h3 style="margin: 0;">🌐 从外部网站提取标题列表</h3>
+              </div>
+              <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                  <span style="font-size: 12px; color: #64748b;">常用参考站：</span>
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="applyScoutPreset('https://www.xue-ba.org/', 'xue-ba.org')">xue-ba.org</button>
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="applyScoutPreset('https://www.huix8.com/', 'huix8.com')">huix8.com</button>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <input type="text" [(ngModel)]="scoutUrl" name="scout_url" autocomplete="off" placeholder="输入目标网站列表页 URL（如 https://www.xue-ba.org/）" class="form-control" style="flex: 2; min-width: 220px;" />
+                  <input type="text" [(ngModel)]="scoutSourceName" name="scout_source" autocomplete="off" placeholder="来源名称（选填）" class="form-control" style="flex: 1; min-width: 120px;" />
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="text" [(ngModel)]="scoutSelector" name="scout_selector" autocomplete="off" placeholder="自定义 CSS 选择器（留空自动识别常见文章/资料标题）" class="form-control" style="flex: 1;" />
+                  <button type="button" class="btn btn-primary" [disabled]="scoutFetching()" (click)="fetchScoutTitles()" style="white-space: nowrap;">
+                    {{ scoutFetching() ? '⏳ 正在提取...' : '🚀 抓取标题入库' }}
+                  </button>
+                </div>
+                <p style="margin: 0; font-size: 12px; color: #64748b;">自动对比正式库与草稿库去重；若目标站开启了防爬拦截，可使用右侧「粘贴标题批量导入」。</p>
+              </div>
+            </div>
+
+            <!-- 2. 粘贴标题批量导入 -->
+            <div class="card">
+              <div class="card-header">
+                <h3 style="margin: 0;">📋 粘贴标题列表 / 网页源码批量导入</h3>
+              </div>
+              <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
+                <textarea [(ngModel)]="scoutImportTextContent" name="scout_import_text" rows="4" placeholder="每行粘贴一个资料标题（也支持直接粘贴网页 HTML 片段或 Markdown 链接），自动去重入待寻源库..." class="form-control"></textarea>
+                <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
+                  <input type="text" [(ngModel)]="scoutImportSource" name="scout_import_source" autocomplete="off" placeholder="来源标识（如 xue-ba.org）" class="form-control" style="max-width: 200px;" />
+                  <button type="button" class="btn btn-primary" [disabled]="scoutImporting()" (click)="importScoutText()">
+                    {{ scoutImporting() ? '⏳ 导入中...' : '📥 批量去重导入' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 待寻源工作台 -->
+          <div class="card">
+            <div class="card-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <button type="button" class="btn btn-sm" [class.btn-primary]="scoutStatusFilter() === 'need_source'" [class.btn-secondary]="scoutStatusFilter() !== 'need_source'" (click)="scoutStatusFilter.set('need_source'); scoutPage.set(1); loadScoutTopics()">
+                  🔍 待寻源 ({{ scoutCounts().need_source }})
+                </button>
+                <button type="button" class="btn btn-sm" [class.btn-primary]="scoutStatusFilter() === 'approved'" [class.btn-secondary]="scoutStatusFilter() !== 'approved'" (click)="scoutStatusFilter.set('approved'); scoutPage.set(1); loadScoutTopics()">
+                  ✅ 已找源上架 ({{ scoutCounts().approved }})
+                </button>
+                <button type="button" class="btn btn-sm" [class.btn-primary]="scoutStatusFilter() === 'ignored'" [class.btn-secondary]="scoutStatusFilter() !== 'ignored'" (click)="scoutStatusFilter.set('ignored'); scoutPage.set(1); loadScoutTopics()">
+                  🙈 已忽略 ({{ scoutCounts().ignored }})
+                </button>
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <select [ngModel]="scoutSourceFilter()" (ngModelChange)="scoutSourceFilter.set($event); scoutPage.set(1); loadScoutTopics()" class="form-control" style="width: auto; min-width: 140px;">
+                  <option value="all">全部来源站点</option>
+                  @for (src of scoutSources(); track src) {
+                    <option [value]="src">{{ src }}</option>
+                  }
+                </select>
+                <input type="text" [(ngModel)]="scoutKeyword" (keyup.enter)="scoutPage.set(1); loadScoutTopics()" placeholder="搜索标题关键词..." class="form-control" style="width: 190px;" />
+                <button type="button" class="btn btn-sm btn-secondary" (click)="scoutPage.set(1); loadScoutTopics()">🔍 查询</button>
+              </div>
+            </div>
+
+            <div class="card-body">
+              @if (scoutLoading()) {
+                <div style="padding: 32px; text-align: center; color: #64748b;">正在加载选题列表...</div>
+              } @else if (scoutTopics().length === 0) {
+                <div style="padding: 40px; text-align: center; color: #64748b;">当前分类下暂无选题，可在上方抓取或粘贴导入标题。</div>
+              } @else {
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                  @for (topic of scoutTopics(); track topic.id) {
+                    <div style="padding: 14px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; display: flex; flex-direction: column; gap: 10px;">
+                      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                        <div style="flex: 1; min-width: 260px;">
+                          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #0369a1;">{{ topic.source_name }}</span>
+                            <span style="font-size: 14px; font-weight: 800; color: #0f172a;">{{ topic.title }}</span>
+                            @if (topic.raw_text) {
+                              <a [href]="topic.raw_text" target="_blank" rel="noopener" style="font-size: 12px; color: #64748b; text-decoration: underline;">原页面 ↗</a>
+                            }
+                          </div>
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'google')" title="在 Google 搜索该资料网盘资源">G 搜 Google</button>
+                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'baidu')" title="在百度搜索该资料网盘资源">百 搜百度</button>
+                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'quark')" title="定向搜索夸克/百度网盘链接">🔍 搜网盘</button>
+                          @if (topic.status === 'need_source') {
+                            <button type="button" class="btn btn-sm btn-secondary" (click)="setScoutTopicStatus(topic, 'ignored')">🙈 暂忽略</button>
+                          } @else {
+                            <button type="button" class="btn btn-sm btn-secondary" (click)="setScoutTopicStatus(topic, 'need_source')">↩️ 恢复待寻源</button>
+                          }
+                          <button type="button" class="btn btn-sm btn-danger" (click)="deleteScoutTopic(topic)">🗑️</button>
+                        </div>
+                      </div>
+
+                      @if (topic.status === 'need_source' && scoutPublishInputs[topic.id]) {
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+                          <input type="text" [(ngModel)]="scoutPublishInputs[topic.id].share_url" [name]="'scout_url_' + topic.id" autocomplete="off" placeholder="粘贴找到的夸克 / 百度网盘分享链接..." class="form-control" style="flex: 2; min-width: 240px;" />
+                          <input type="text" [(ngModel)]="scoutPublishInputs[topic.id].extract_code" [name]="'scout_code_' + topic.id" autocomplete="off" placeholder="提取码(选填)" class="form-control" style="width: 110px;" />
+                          <select [(ngModel)]="scoutPublishInputs[topic.id].collection_id" [name]="'scout_col_' + topic.id" class="form-control" style="width: auto; max-width: 180px;">
+                            <option value="">不加入专辑</option>
+                            @for (col of collections(); track col.id) {
+                              <option [value]="col.id">📚 {{ col.title }}</option>
+                            }
+                          </select>
+                          <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #334155; cursor: pointer; margin: 0;">
+                            <input type="checkbox" [(ngModel)]="scoutPublishInputs[topic.id].auto_transfer" [name]="'scout_tx_' + topic.id" />
+                            <span>自动转存</span>
+                          </label>
+                          <button type="button" class="btn btn-sm btn-primary" [disabled]="scoutPublishInputs[topic.id].publishing" (click)="publishScoutTopic(topic)" style="white-space: nowrap;">
+                            {{ scoutPublishInputs[topic.id].publishing ? '⏳ 发布中...' : '✅ 补链并上架' }}
+                          </button>
+                        </div>
+                      }
                     </div>
                   }
                 </div>

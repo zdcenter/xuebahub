@@ -260,7 +260,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   dashboardStats = signal<DashboardStatsDto | null>(null);
   statsLoading = signal<boolean>(false);
 
-  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'collections' | 'settings' | 'requests' | 'members'>('list');
+  currentTab = signal<'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'scout' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'collections' | 'settings' | 'requests' | 'members'>('list');
   emailPreselectedResource = signal<any>(null);
 
   // --- 侧边栏折叠/展开系统（支持记忆） ---
@@ -4180,7 +4180,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
-  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'collections' | 'settings' | 'requests' | 'members') {
+  switchTab(tab: 'list' | 'add' | 'edit' | 'stats' | 'crawler' | 'collector' | 'drafts' | 'scout' | 'email' | 'seo' | 'accounts' | 'channels' | 'categories' | 'navmenus' | 'schools' | 'hotsearches' | 'searchlogs' | 'collections' | 'settings' | 'requests' | 'members') {
     this.currentTab.set(tab);
     if (tab === 'stats') {
       this.loadDashboardStats();
@@ -4195,6 +4195,9 @@ export class AdminComponent implements OnInit, OnDestroy {
     } else if (tab === 'drafts') {
       this.loadCrawlerDrafts();
       this.loadCrawlerConfigAndStats();
+    } else if (tab === 'scout') {
+      this.loadScoutTopics();
+      this.loadCollections();
     } else if (tab === 'accounts') {
       this.loadAccounts();
     } else if (tab === 'channels') {
@@ -4969,6 +4972,174 @@ export class AdminComponent implements OnInit, OnDestroy {
   searchLogs = signal<{ keyword: string; search_count: number; result_count: number; last_searched_at: string }[]>([]);
   searchLogsLoading = signal<boolean>(false);
   searchLogFilter = signal<'missed' | 'all'>('missed');
+
+  // ==================== 选题雷达 (竞品网站标题采集与一键寻源) ====================
+  scoutUrl = '';
+  scoutSourceName = '';
+  scoutSelector = '';
+  scoutFetching = signal<boolean>(false);
+  scoutImportSource = '手动导入';
+  scoutImportTextContent = '';
+  scoutImporting = signal<boolean>(false);
+
+  scoutTopics = signal<any[]>([]);
+  scoutLoading = signal<boolean>(false);
+  scoutStatusFilter = signal<'need_source' | 'approved' | 'ignored' | 'all'>('need_source');
+  scoutSourceFilter = signal<string>('all');
+  scoutKeyword = '';
+  scoutPage = signal<number>(1);
+  scoutTotal = signal<number>(0);
+  scoutCounts = signal<{ need_source: number; approved: number; ignored: number }>({ need_source: 0, approved: 0, ignored: 0 });
+  scoutSources = signal<string[]>([]);
+  scoutPublishInputs: Record<string, { share_url: string; extract_code: string; collection_id: string; auto_transfer: boolean; publishing?: boolean }> = {};
+
+  applyScoutPreset(url: string, name: string) {
+    this.scoutUrl = url;
+    this.scoutSourceName = name;
+  }
+
+  fetchScoutTitles() {
+    const url = (this.scoutUrl || '').trim();
+    if (!url) {
+      this.showToast('请输入要采集的目标网站列表网址', 'error');
+      return;
+    }
+    this.scoutFetching.set(true);
+    this.resService.fetchScoutTitles({
+      url,
+      source_name: this.scoutSourceName.trim(),
+      selector: this.scoutSelector.trim()
+    }).subscribe({
+      next: (data) => {
+        this.scoutFetching.set(false);
+        if (data?.message) {
+          this.showToast(data.message, 'error');
+        } else {
+          this.showToast(`抓取完成：识别 ${data.fetched_count} 条，新增入库 ${data.added_count} 条（已去重跳过 ${data.skipped_count} 条）`);
+        }
+        this.scoutPage.set(1);
+        this.loadScoutTopics();
+      },
+      error: (err) => {
+        this.scoutFetching.set(false);
+        this.showToast(err.error?.message || '采集失败，可使用下方粘贴标题导入', 'error');
+      }
+    });
+  }
+
+  importScoutText() {
+    const text = (this.scoutImportTextContent || '').trim();
+    if (!text) {
+      this.showToast('请粘贴至少一条标题文本', 'error');
+      return;
+    }
+    this.scoutImporting.set(true);
+    this.resService.importScoutText({
+      source_name: (this.scoutImportSource || '手动导入').trim(),
+      text
+    }).subscribe({
+      next: (data) => {
+        this.scoutImporting.set(false);
+        this.scoutImportTextContent = '';
+        this.showToast(`导入完成：识别 ${data.fetched_count} 条，新增 ${data.added_count} 条（去重跳过 ${data.skipped_count} 条）`);
+        this.scoutPage.set(1);
+        this.loadScoutTopics();
+      },
+      error: (err) => {
+        this.scoutImporting.set(false);
+        this.showToast(err.error?.message || '导入失败', 'error');
+      }
+    });
+  }
+
+  loadScoutTopics() {
+    this.scoutLoading.set(true);
+    this.resService.listScoutTopics({
+      status: this.scoutStatusFilter(),
+      source_name: this.scoutSourceFilter(),
+      q: this.scoutKeyword.trim(),
+      page: this.scoutPage(),
+      page_size: 20
+    }).subscribe({
+      next: (data) => {
+        const items = data?.items || [];
+        for (const it of items) {
+          if (!this.scoutPublishInputs[it.id]) {
+            this.scoutPublishInputs[it.id] = { share_url: '', extract_code: '', collection_id: '', auto_transfer: true };
+          }
+        }
+        this.scoutTopics.set(items);
+        this.scoutTotal.set(data?.total || 0);
+        this.scoutCounts.set({
+          need_source: data?.need_source_count || 0,
+          approved: data?.approved_count || 0,
+          ignored: data?.ignored_count || 0
+        });
+        this.scoutSources.set(data?.sources || []);
+        this.scoutLoading.set(false);
+      },
+      error: () => this.scoutLoading.set(false)
+    });
+  }
+
+  openScoutSearch(title: string, engine: 'google' | 'baidu' | 'quark') {
+    const clean = (title || '').replace(/【[^】]*】|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
+    let target = '';
+    if (engine === 'google') {
+      target = `https://www.google.com/search?q=${encodeURIComponent(`"${clean}" 夸克网盘 OR 百度网盘`)}`;
+    } else if (engine === 'baidu') {
+      target = `https://www.baidu.com/s?wd=${encodeURIComponent(`${clean} 夸克网盘`)}`;
+    } else {
+      target = `https://www.google.com/search?q=${encodeURIComponent(`${clean} site:pan.quark.cn OR pan.baidu.com`)}`;
+    }
+    window.open(target, '_blank', 'noopener');
+  }
+
+  publishScoutTopic(topic: any) {
+    const form = this.scoutPublishInputs[topic.id];
+    const url = (form?.share_url || '').trim();
+    if (!url) {
+      this.showToast('请先粘贴找到的网盘链接', 'error');
+      return;
+    }
+    form.publishing = true;
+    this.resService.publishScoutTopic(topic.id, {
+      title: topic.title,
+      share_url: url,
+      extract_code: (form.extract_code || '').trim(),
+      collection_id: form.collection_id || '',
+      auto_transfer: form.auto_transfer
+    }).subscribe({
+      next: (res) => {
+        form.publishing = false;
+        this.showToast(res.message || '已发布到正式资料库');
+        this.loadScoutTopics();
+        this.loadCollections();
+      },
+      error: (err) => {
+        form.publishing = false;
+        this.showToast(err.error?.message || '发布失败', 'error');
+      }
+    });
+  }
+
+  setScoutTopicStatus(topic: any, status: 'need_source' | 'ignored') {
+    this.resService.updateScoutTopicStatus(topic.id, status).subscribe({
+      next: () => {
+        this.showToast(status === 'ignored' ? '已标记为暂忽略（下次采集自动跳过）' : '已恢复到待寻源列表');
+        this.loadScoutTopics();
+      }
+    });
+  }
+
+  deleteScoutTopic(topic: any) {
+    this.resService.deleteScoutTopic(topic.id).subscribe({
+      next: () => {
+        this.showToast('已删除该选题记录');
+        this.loadScoutTopics();
+      }
+    });
+  }
 
   collections = signal<CollectionDto[]>([]);
   collectionsLoading = signal<boolean>(false);
