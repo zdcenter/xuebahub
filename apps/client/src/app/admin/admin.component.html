@@ -3286,155 +3286,21 @@
 
       <!-- 3.8 📥 待处理草稿箱 (全渠道采集统一待审池) -->
       @if (currentTab() === 'drafts') {
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-          <!-- 顶部业务横幅 -->
-          <div class="account-hero-banner" style="background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #0284c7 100%);">
-            <div class="hero-left">
-              <div class="hero-badge" style="background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); color: #ecfdf5;">
-                📥 自动化采集中枢 · 待处理草稿池
-              </div>
-              <h2>待处理草稿箱 · 全渠道采集审核入库工作台</h2>
-              <p>统一汇聚来自浏览器采集助手 (油猴插件)、Telegram 自动化频道监听与极速粘贴的所有待审核资料。支持一键快速审查、自动探测网盘目录结构、秒级批量审核与发布上架！</p>
-              
-              <!-- 快捷操作按钮组 -->
-              <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
-                <button 
-                  type="button" 
-                  class="btn btn-primary" 
-                  (click)="openCrawlerPasteModal()"
-                  style="background: #ffffff; color: #047857; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <span>📋</span>
-                  <span>快速粘贴解析抽屉</span>
-                </button>
-
-                <button 
-                  type="button" 
-                  class="btn btn-secondary" 
-                  (click)="loadCrawlerDrafts(); loadCrawlerConfigAndStats();"
-                  style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <span>🔄</span>
-                  <span>刷新草稿列表</span>
-                </button>
-
-                <button 
-                  type="button" 
-                  class="btn btn-secondary" 
-                  (click)="switchTab('collector')"
-                  style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <span>🧩</span>
-                  <span>浏览器采集助手</span>
-                </button>
-
-                <button 
-                  type="button" 
-                  class="btn btn-secondary" 
-                  (click)="switchTab('crawler')"
-                  style="background: rgba(255,255,255,0.18); color: #ffffff; border: 1px solid rgba(255,255,255,0.35); font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <span>✈️</span>
-                  <span>Telegram 运营配置</span>
-                </button>
-              </div>
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- 精简顶部状态条：直达草稿审核列表，不占用整屏高度 -->
+          <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #475569;">
+              <span>待审核草稿：<strong [style.color]="crawlerStats().pending_drafts > 0 ? '#d97706' : '#059669'">{{ crawlerStats().pending_drafts }}</strong></span>
+              <span>累计采入：<strong style="color: #0284c7;">{{ crawlerStats().total_drafts }}</strong></span>
+              <span>监听频道：<strong style="color: #0f172a;">{{ crawlerChannels().length }}</strong></span>
             </div>
-
-            <!-- 四大关键核心指标统计卡片 -->
-            <div class="hero-stats">
-              <div class="hero-stat-item">
-                <span class="stat-num" [style.color]="crawlerStats().pending_drafts > 0 ? '#fbbf24' : '#34d399'">
-                  {{ crawlerStats().pending_drafts }}
-                </span>
-                <span class="stat-label">待审核草稿</span>
-              </div>
-              <div class="hero-stat-item">
-                <span class="stat-num" style="color: #67e8f9;">
-                  {{ crawlerStats().total_drafts }}
-                </span>
-                <span class="stat-label">累计采入草稿</span>
-              </div>
-              <div class="hero-stat-item">
-                <span class="stat-num" style="color: #38bdf8;">
-                  {{ crawlerChannels().length }}
-                </span>
-                <span class="stat-label">📡 监听频道源</span>
-              </div>
-            </div>
+            <button
+              type="button"
+              class="btn btn-sm btn-secondary"
+              (click)="loadCrawlerDrafts(); loadCrawlerConfigAndStats();">
+              🔄 刷新草稿列表
+            </button>
           </div>
-
-          <!-- 快捷工作台：⚡ 极速粘贴智能提取与入库 (免弹窗、直连入库) -->
-              <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04); border-left: 4px solid #0284c7; padding: 20px 24px; background: #ffffff;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 22px;">📋</span>
-                    <div>
-                      <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                        <span>快速粘贴智能解析入库</span>
-                        <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 600;">免弹窗 · 极速录入</span>
-                      </h3>
-                      <p style="margin: 2px 0 0 0; font-size: 12.5px; color: #64748b;">
-                        直接粘贴从电报、微信群或网页复制的网盘分享文本，系统自动提取标题、网盘类型、分享链接与提取码，秒级存入草稿池！
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                  <textarea 
-                    id="fast-paste-textarea"
-                    class="form-control" 
-                    rows="3" 
-                    [(ngModel)]="pasteForm.rawText"
-                    (keydown)="onFastPasteKeyDown($event)"
-                    placeholder="在此直接粘贴网盘分享文本（例如：2026高考数学模拟卷 链接: https://pan.quark.cn/s/xxx 提取码: 1234）... 支持按 Ctrl + Enter 快捷提交"
-                    style="font-family: inherit; font-size: 13px; line-height: 1.6; padding: 12px 14px; border-radius: 8px; border: 1.5px solid #cbd5e1; resize: vertical; transition: border-color 0.2s;">
-                  </textarea>
-
-                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                      <input 
-                        type="text" 
-                        class="form-control" 
-                        [(ngModel)]="pasteForm.sourceName" 
-                        placeholder="来源备注 (可选，如: 高三家长群)" 
-                        style="font-size: 12.5px; width: 220px; padding: 7px 12px; border-radius: 6px;">
-                      
-                      <select class="form-control" [(ngModel)]="pasteForm.driveType" style="font-size: 12.5px; width: 130px; padding: 7px 10px; border-radius: 6px;">
-                        <option value="auto">自动识别网盘</option>
-                        <option value="quark">夸克网盘</option>
-                        <option value="baidu">百度网盘</option>
-                        <option value="alipan">阿里云盘</option>
-                        <option value="xunlei">迅雷云盘</option>
-                      </select>
-
-                      <span style="font-size: 11.5px; color: #94a3b8;">
-                        💡 提示：支持按 <kbd style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 1px 4px; border-radius: 4px; font-family: monospace;">Ctrl + Enter</kbd> 快捷提取
-                      </span>
-                    </div>
-
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                      @if (pasteForm.rawText.trim()) {
-                        <button 
-                          type="button" 
-                          class="btn btn-sm" 
-                          (click)="clearFastPaste()"
-                          style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; font-size: 12px; padding: 7px 14px; border-radius: 6px; cursor: pointer;">
-                          清空
-                        </button>
-                      }
-                      <button 
-                        type="button" 
-                        class="btn btn-primary" 
-                        (click)="submitPasteIngest()" 
-                        [disabled]="!pasteForm.rawText.trim() || isPastingCrawler()"
-                        style="background: #0284c7; color: #ffffff; font-weight: 700; font-size: 13px; padding: 8px 22px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(2,132,199,0.25);">
-                        @if (isPastingCrawler()) {
-                          <span>⏳ 正在提取并录入...</span>
-                        } @else {
-                          <span>⚡ 立即智能解析入库</span>
-                        }
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               <!-- 模块 1：资源采集箱与草稿审核池主区域 (Core Drafts Pool Area) -->
               <div class="card" style="box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
