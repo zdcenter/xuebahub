@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.5.0
-// @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别；全新五层DOM向前回溯算法精准配对标题与网盘；支持一键点选网页拾取标题；右侧贴边滑出抽屉工作台（原文零遮挡）！
+// @version      1.5.6
+// @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别、Discourse论坛(linux.do)板块分页穿透提取；右侧贴边滑出抽屉工作台！
 // @author       学霸网开发团队
 // @match        *://*/*
 // @exclude      *://localhost:*/*
@@ -304,68 +304,6 @@
         border-color: #2563eb !important;
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
       }
-      .xb-btn-pick-title {
-        background: #f1f5f9 !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 4px !important;
-        padding: 0 6px !important;
-        height: 26px !important;
-        line-height: 24px !important;
-        font-size: 11px !important;
-        font-weight: 600 !important;
-        color: #475569 !important;
-        cursor: pointer !important;
-        white-space: nowrap !important;
-        flex-shrink: 0 !important;
-        transition: all 0.15s ease !important;
-        user-select: none !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 2px !important;
-        box-sizing: border-box !important;
-      }
-      .xb-btn-pick-title:hover {
-        background: #e0f2fe !important;
-        color: #0284c7 !important;
-        border-color: #38bdf8 !important;
-      }
-      .xb-btn-pick-title.is-active {
-        background: #fef08a !important;
-        color: #854d0e !important;
-        border-color: #eab308 !important;
-        font-weight: 800 !important;
-        box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.3) !important;
-      }
-
-      /* 拾取模式顶部悬浮指示条 */
-      #xb-picker-indicator {
-        position: fixed !important;
-        top: 16px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        background: #0f172a !important;
-        color: #f8fafc !important;
-        padding: 8px 18px !important;
-        border-radius: 9999px !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
-        z-index: 9999999999 !important;
-        border: 1px solid #38bdf8 !important;
-        pointer-events: none !important;
-        animation: xbBounceIn 0.3s ease-out !important;
-      }
-      @keyframes xbBounceIn {
-        from { opacity: 0; transform: translate(-50%, -10px); }
-        to { opacity: 1; transform: translate(-50%, 0); }
-      }
-      /* 拾取模式下鼠标滑过左侧页面的高亮描边 */
-      .xb-picker-hover-outline {
-        outline: 2px dashed #2563eb !important;
-        outline-offset: 2px !important;
-        background-color: rgba(37, 99, 235, 0.08) !important;
-        cursor: crosshair !important;
-      }
 
       /* 【行 2：网盘地址独立一行 (完整展示，不截断)】 */
       .xb-item-url-row {
@@ -511,35 +449,6 @@
     });
   }
 
-  // 清洗资源标题，剔除前缀标签、无意义修饰词、噪点序号与杂质
-  function cleanResourceTitle(raw) {
-    if (!raw) return '';
-    let t = String(raw).trim();
-
-    // 剔除前后常见无意义提示性前缀
-    t = t.replace(/^(?:【?(?:资源名称|资料名称|课程名称|文件名称|资料简介|资源标题|资料标题|文件清单|课程介绍|下载地址|网盘地址|网盘链接|转存地址|资源分享|资料分享|夸克网盘|百度网盘|UC网盘|阿里云盘|迅雷网盘|123网盘|永久有效|点击下载|点此下载|高速直链)】?[:：\s]*)+/gi, '');
-    
-    // 剔除末尾无意义后缀，如 [复制链接]、(完整版)、[高清无水印] 等杂项
-    t = t.replace(/(?:\[|\()(?:复制链接|点此下载|立即下载|高速下载|高速转存|网盘下载|夸克网盘|百度网盘|提取码|密码|永久有效|密码见文末)(?:\]|\))/gi, '');
-
-    // 如果文本中包含明确的书名号《...》，且书名号内长度适中，优先提炼核心书名
-    const bookMatch = t.match(/《([^》]{3,80})》/);
-    if (bookMatch && bookMatch[1]) {
-      const bookName = bookMatch[1].trim();
-      if (bookName.length >= 4) {
-        t = bookName;
-      }
-    }
-
-    // 去掉开头的纯序号列表标记，如 "01. "、"1、"、"一、"、"（1）"、"【01】" 等（保留年份如 2024、高三等）
-    t = t.replace(/^(?:(?:\d{1,3}|[一二三四五六七八九十]{1,3})[、\.\-\s]+|(?:（|\()(?:\d{1,3}|[一二三四五六七八九十]{1,3})(?:）|\))|【\d{1,3}】)/, '');
-
-    // 去掉残余的首尾标点与空格
-    t = t.replace(/^[\s:：\-_|/·]+|[\s:：\-_|/·]+$/g, '').trim();
-
-    return t;
-  }
-
   // 判断是否为“点此访问”、“点击下载”等无意义通用锚文本
   function isGenericLinkText(text) {
     if (!text) return true;
@@ -549,110 +458,65 @@
       '点此访问', '点击访问', '点击下载', '立即下载', '点击这里', '点击查看', '点我下载', '点击获取', '立即查看',
       '夸克网盘', '夸克链接', '夸克下载', '百度网盘', '百度链接', '百度云', '下载地址', '立即转存', '高速下载',
       '直达链接', '网盘下载', '网盘链接', '夸克', '百度', '下载', '链接', '访问', '直链', '地址', '查看',
-      '转存', '获取', '提取码', '密码', '资源下载', '全套下载', '官方下载', '提取', '保存到网盘', '免费下载',
-      'click here', 'download', 'link', 'pan', 'quark', 'baidu', 'view'
+      'click here', 'download', 'link', 'pan', 'quark', 'baidu'
     ];
     return genericWords.some(w => t === w || t === `【${w}】` || t === `[${w}]` || t === `(${w})` || t.startsWith(w));
   }
 
-  // 智能寻找 a 标签对应的真实资源标题 (五层递进+向前回溯算法)
+  // 智能寻找 a 标签对应的真实资源标题
   function resolveRealTitleForAnchor(aElement, fallbackIndex) {
-    // 第 1 层：a 标签本身的锚文本
     const rawLinkText = aElement.innerText.trim();
     if (rawLinkText && rawLinkText.length >= 4 && !isGenericLinkText(rawLinkText) && !rawLinkText.startsWith('http')) {
-      const cleaned = cleanResourceTitle(rawLinkText);
-      if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
+      return rawLinkText;
     }
 
-    // 第 2 层：a 标签本身的 title / aria-label / download 属性
-    const attrTitle = aElement.getAttribute('title') || aElement.getAttribute('aria-label') || aElement.getAttribute('download') || aElement.getAttribute('data-title');
+    const attrTitle = aElement.getAttribute('title') || aElement.getAttribute('aria-label');
     if (attrTitle && attrTitle.trim().length >= 4 && !isGenericLinkText(attrTitle)) {
-      const cleaned = cleanResourceTitle(attrTitle);
-      if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
+      return attrTitle.trim();
     }
 
-    // 第 3 层：同行紧邻的前向兄弟文本节点 (例如: "<p>初中数学公式大全.pdf <a href="...">夸克下载</a></p>")
-    let prevNode = aElement.previousSibling;
-    while (prevNode) {
-      const text = (prevNode.nodeType === 3 ? prevNode.nodeValue : (prevNode.innerText || '')).trim();
-      if (text.length >= 4 && !text.startsWith('http') && !isGenericLinkText(text)) {
-        const cleaned = cleanResourceTitle(text);
-        if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
-      }
-      prevNode = prevNode.previousSibling;
-    }
-
-    // 第 4 层：检查是否处于表格行 <tr> 中 (例如：<td>高三语文文言文汇总</td><td><a href="...">下载</a></td>)
     const tr = aElement.closest('tr');
     if (tr) {
-      const cells = Array.from(tr.querySelectorAll('td, th'));
-      for (const cell of cells) {
-        if (cell.contains(aElement)) continue;
-        const cellText = cell.innerText.trim();
-        if (cellText.length >= 3 && !cellText.startsWith('http') && !isGenericLinkText(cellText)) {
-          const cleaned = cleanResourceTitle(cellText.split('\n')[0]);
-          if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
+      const tds = Array.from(tr.querySelectorAll('td, th'));
+      for (const td of tds) {
+        if (td.contains(aElement)) continue;
+        const tdText = td.innerText.trim();
+        if (tdText.length >= 4 && !tdText.startsWith('http') && !isGenericLinkText(tdText)) {
+          return tdText.split('\n')[0].trim();
         }
       }
     }
 
-    // 第 5 层：检查是否处于独立卡片/列表项容器 (li, .card, .item, .resource, dl, dd)
-    const container = aElement.closest('li, .item, .card, .resource, .post-item, dl, dd, article');
+    const container = aElement.closest('li, .item, .card, .resource, .post, article, dd, dt, p');
     if (container) {
-      const heading = container.querySelector('h1, h2, h3, h4, h5, h6, strong, b, [class*="title"], [class*="name"]');
-      if (heading && !heading.contains(aElement) && !aElement.contains(heading)) {
+      const heading = container.querySelector('h1, h2, h3, h4, h5, h6, strong, b, .title, .name');
+      if (heading && !heading.contains(aElement)) {
         const headingText = heading.innerText.trim();
-        if (headingText.length >= 3 && !isGenericLinkText(headingText) && !headingText.startsWith('http')) {
-          const cleaned = cleanResourceTitle(headingText);
-          if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
+        if (headingText.length >= 4 && !isGenericLinkText(headingText)) {
+          return headingText;
         }
+      }
+
+      let cText = container.innerText || '';
+      cText = cText.replace(/https?:\/\/\S+/g, '')
+        .replace(/(?:点此访问|点击访问|点击下载|立即下载|夸克网盘|百度网盘|提取码|密码|pwd|code)[:：\s]*/gi, '')
+        .trim();
+      const lines = cText.split('\n').map(l => l.trim()).filter(l => l.length >= 4 && !isGenericLinkText(l));
+      if (lines.length > 0) {
+        return lines[0];
       }
     }
 
-    // 第 6 层：【核心突破】DOM 向上向前多层回溯，寻找兄弟节点中的最近前置标题 (彻底解决 <h3>标题</h3> + <p>下载链接</p> 结构)
-    let curr = aElement;
-    let depth = 0;
-    while (curr && curr !== document.body && depth < 6) {
-      depth++;
-      let prev = curr.previousElementSibling;
-      while (prev) {
-        // 如果遇到了包含另一个网盘链接的元素，说明已经越界到了上一个资源，立即停止向前回溯！
-        if (prev.querySelector && prev.querySelector('a[href*="quark.cn/s/"], a[href*="baidu.com/"], a[href*="uc.cn/s/"], a[href*="alipan.com/s/"], a[href*="123pan.com/s/"], a[href*="123684.com/s/"], a[href*="xunlei.com/s/"], a[href*="189.cn/"]')) {
-          break;
-        }
-
-        // 检查前置兄弟节点本身或内部是否是 h1~h6, strong, b 或 title 类
-        const heading = (prev.matches && prev.matches('h1, h2, h3, h4, h5, h6, strong, b, [class*="title"], [class*="name"]'))
-          ? prev
-          : (prev.querySelector ? prev.querySelector('h1, h2, h3, h4, h5, h6, strong, b, [class*="title"], [class*="name"]') : null);
-
-        if (heading) {
-          const hText = heading.innerText.trim();
-          if (hText.length >= 3 && !hText.startsWith('http') && !isGenericLinkText(hText)) {
-            const cleaned = cleanResourceTitle(hText);
-            if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
-          }
-        }
-
-        // 如果前置兄弟是一个普通段落，取其最后一行非空白文本
-        const pText = (prev.innerText || '').trim();
-        if (pText.length >= 3 && !pText.startsWith('http') && !isGenericLinkText(pText)) {
-          const pLines = pText.split('\n').map(l => l.trim()).filter(Boolean);
-          for (let i = pLines.length - 1; i >= 0; i--) {
-            if (pLines[i].length >= 3 && !pLines[i].startsWith('http') && !isGenericLinkText(pLines[i])) {
-              const cleaned = cleanResourceTitle(pLines[i]);
-              if (cleaned.length >= 3 && !isGenericLinkText(cleaned)) return cleaned;
-            }
-          }
-        }
-
-        prev = prev.previousElementSibling;
+    let prev = aElement.previousElementSibling;
+    while (prev) {
+      const prevText = prev.innerText ? prev.innerText.trim() : '';
+      if (prevText.length >= 4 && !isGenericLinkText(prevText) && !prevText.startsWith('http')) {
+        return prevText;
       }
-      curr = curr.parentElement;
+      prev = prev.previousElementSibling;
     }
 
-    // 第 7 层：兜底策略，采用网页标题 + 序号
-    const docTitle = document.title ? cleanResourceTitle(document.title.replace(/[-_\|].*$/, '')) : '精选学习网盘资料';
+    const docTitle = document.title ? document.title.replace(/[-_\|].*$/, '').trim() : '精选学习网盘资料';
     return `${docTitle} (资源 ${fallbackIndex + 1})`;
   }
 
@@ -734,36 +598,19 @@
               } catch {}
             }
 
-            // 纯文本行标题匹配：
-            // 1. 同行在 URL 前方的文本：如 "01. 高中数学知识清单.pdf https://pan.quark.cn/s/... 提取码 1234"
-            let title = '';
-            const urlIdx = line.indexOf(cleanUrl);
-            if (urlIdx > 0) {
-              const beforeUrl = line.substring(0, urlIdx).trim();
-              if (beforeUrl.length >= 3 && !isGenericLinkText(beforeUrl)) {
-                title = cleanResourceTitle(beforeUrl);
+            let title = line.replace(cleanUrl, '')
+              .replace(/(?:夸克|百度|UC|阿里|迅雷|网盘|链接|下载|地址|提取码|密码|pwd|code|点此访问|点击下载)[:：\s]*/gi, '')
+              .replace(/[《【]([^》】]{4,80})[》】]/, '$1')
+              .trim();
+
+            if (!title || title.length < 3 || isGenericLinkText(title)) {
+              if (lineIndex > 0 && lines[lineIndex - 1].trim().length >= 3 && !lines[lineIndex - 1].includes('http')) {
+                title = lines[lineIndex - 1].trim().replace(/[《【]([^》】]{4,80})[》】]/, '$1');
               }
             }
 
-            // 2. 如果同行前方为空，向上回溯 1~6 行文本寻找标题
             if (!title || title.length < 3 || isGenericLinkText(title)) {
-              for (let k = lineIndex - 1; k >= Math.max(0, lineIndex - 6); k--) {
-                const prevLine = lines[k].trim();
-                // 遇到空行、包含其他 URL、或纯提取码行，跳过继续往前找
-                if (!prevLine || prevLine.includes('http://') || prevLine.includes('https://')) continue;
-                if (/^(?:提取码|密码|pwd|code|访问码|解压密码)[:：\s]*[a-zA-Z0-9]{4,8}$/i.test(prevLine)) continue;
-                if (isGenericLinkText(prevLine)) continue;
-
-                if (prevLine.length >= 3) {
-                  title = cleanResourceTitle(prevLine);
-                  break;
-                }
-              }
-            }
-
-            // 3. 兜底
-            if (!title || title.length < 3 || isGenericLinkText(title)) {
-              const docTitle = document.title ? cleanResourceTitle(document.title.replace(/[-_\|].*$/, '')) : '精选真题教辅资料';
+              const docTitle = document.title ? document.title.replace(/[-_\|].*$/, '').trim() : '精选真题教辅资料';
               title = `${docTitle} (资源 ${items.length + 1})`;
             }
 
@@ -783,28 +630,200 @@
       }
     });
 
-    // 智能去重与同名多网盘消歧义
-    // 如果存在多个完全相同的标题（如同一资源既有夸克又有百度），为标题自动打上网盘标签以示区分
-    const titleCountMap = new Map();
-    items.forEach(it => {
-      titleCountMap.set(it.title, (titleCountMap.get(it.title) || 0) + 1);
-    });
-
-    items.forEach(it => {
-      if (titleCountMap.get(it.title) > 1) {
-        const cleanLabel = it.driveLabel.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '');
-        if (!it.title.includes(cleanLabel)) {
-          it.title = `${it.title} (${cleanLabel}版)`;
-        }
-      }
-    });
-
     return items;
   }
 
-  // 触发采集抽屉
-  function triggerCollect() {
-    const items = extractAllPageResources();
+  // 对同页/同批重复标题自动区分（如提取到多个不同夸克链接但标题相同）
+  function deduplicateItemTitles(list) {
+    const titleCounts = new Map();
+    for (const it of list) {
+      const t = (it.title || '').trim();
+      titleCounts.set(t, (titleCounts.get(t) || 0) + 1);
+    }
+    const titleSeen = new Map();
+    return list.map(it => {
+      const t = (it.title || '').trim();
+      if ((titleCounts.get(t) || 0) > 1) {
+        const idx = (titleSeen.get(t) || 0) + 1;
+        titleSeen.set(t, idx);
+        return { ...it, title: `${t} (${idx})` };
+      }
+      return it;
+    });
+  }
+
+  function isDiscourseListPage() {
+    const isDiscourseMeta = !!document.querySelector('meta[name="generator"][content*="Discourse"]');
+    const isListPath = /^\/(c\/|latest|top|new|tag\/)/.test(location.pathname);
+    return (isDiscourseMeta || location.hostname.includes('linux.do')) && isListPath;
+  }
+
+  async function scanDiscourseBoard(pagesCount, progressEl) {
+    const basePath = location.pathname.replace(/\/$/, '') || '/latest';
+    const topics = [];
+    const seenTopicIds = new Set();
+
+    for (let p = 0; p < pagesCount; p++) {
+      if (progressEl) progressEl.textContent = `正在读取板块第 ${p + 1}/${pagesCount} 页列表...`;
+      try {
+        const res = await fetch(`${basePath}.json?page=${p}`, { credentials: 'include' });
+        if (!res.ok) break;
+        const json = await res.json();
+        const list = json?.topic_list?.topics || [];
+        if (list.length === 0) break;
+        for (const t of list) {
+          if (t.id && t.title && !seenTopicIds.has(t.id)) {
+            seenTopicIds.add(t.id);
+            topics.push({ id: t.id, title: t.title });
+          }
+        }
+      } catch (e) {
+        break;
+      }
+      await new Promise(r => setTimeout(r, 150));
+    }
+
+    if (topics.length === 0) {
+      return [];
+    }
+
+    const extracted = [];
+    const seenUrls = new Set();
+    const quarkRe = /https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9_\-]+/gi;
+    const allDriveRe = /https?:\/\/(?:pan\.quark\.cn\/s\/[a-zA-Z0-9_\-]+|pan\.baidu\.com\/(?:s\/[a-zA-Z0-9_\-]+|share\/init\?surl=[a-zA-Z0-9_\-]+)(?:\?pwd=[a-zA-Z0-9]+)?|(?:www\.)?(?:alipan|aliyundrive)\.com\/s\/[a-zA-Z0-9_\-]+|pan\.xunlei\.com\/s\/[a-zA-Z0-9_\-]+|(?:drive|fast)\.uc\.cn\/s\/[a-zA-Z0-9_\-]+)/gi;
+
+    for (let i = 0; i < topics.length; i++) {
+      const t = topics[i];
+      if (progressEl) progressEl.textContent = `正在穿透读取帖子 ${i + 1}/${topics.length}（已发现 ${extracted.length} 条）...`;
+      try {
+        const res = await fetch(`/t/${t.id}.json`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          const posts = data?.post_stream?.posts || [];
+          const firstPost = posts[0];
+          const cooked = firstPost?.cooked || '';
+          const tmpDiv = document.createElement('div');
+          tmpDiv.innerHTML = cooked;
+          const plainText = tmpDiv.innerText || tmpDiv.textContent || '';
+          const rawMatches = cooked.match(quarkRe) || cooked.match(allDriveRe) || [];
+          const matches = Array.from(new Set(rawMatches.map(u => u.trim())));
+          for (const cleanUrl of matches) {
+            if (!seenUrls.has(cleanUrl)) {
+              seenUrls.add(cleanUrl);
+              const uLower = cleanUrl.toLowerCase();
+              const driveType = uLower.includes('quark.cn') ? 'quark' : (uLower.includes('baidu.com') ? 'baidu' : 'other');
+              const driveLabel = driveType === 'quark' ? '⚡ 夸克' : (driveType === 'baidu' ? '☁️ 百度' : '🔗 网盘');
+              let code = '';
+              if (driveType !== 'quark') {
+                const codeMatch = plainText.match(/(?:提取码|密码|访问码|pwd)[:：\s]*([a-zA-Z0-9]{4,8})/i);
+                if (codeMatch && codeMatch[1].toLowerCase() !== 'class') code = codeMatch[1];
+              }
+              const itemTitle = t.title.slice(0, 100);
+              extracted.push({
+                id: 'ds_' + t.id + '_' + Math.random().toString(36).slice(2, 6),
+                title: itemTitle,
+                shareUrl: cleanUrl,
+                code,
+                driveType,
+                driveLabel,
+                selected: true
+              });
+              break; // 每个帖子取主夸克链接即可
+            }
+          }
+        }
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 120));
+    }
+
+    return extracted;
+  }
+
+  const XUEBAW_CACHE_KEY = 'XUEBAW_COLLECTOR_CACHE_' + location.pathname;
+  const XUEBAW_SEL_KEY = 'XUEBAW_COLLECTOR_SEL_' + location.pathname;
+
+  function saveDrawerCache(list) {
+    try {
+      sessionStorage.setItem(XUEBAW_CACHE_KEY, JSON.stringify(list || []));
+      const selMap = {};
+      for (const it of (list || [])) {
+        if (it.shareUrl) selMap[it.shareUrl] = !!it.selected;
+      }
+      localStorage.setItem(XUEBAW_SEL_KEY, JSON.stringify(selMap));
+    } catch {}
+  }
+
+  function applyRememberedSelection(list) {
+    try {
+      const raw = localStorage.getItem(XUEBAW_SEL_KEY);
+      if (!raw) return list;
+      const selMap = JSON.parse(raw);
+      if (selMap && typeof selMap === 'object') {
+        return list.map(it => (
+          it.shareUrl && Object.prototype.hasOwnProperty.call(selMap, it.shareUrl)
+            ? { ...it, selected: !!selMap[it.shareUrl] }
+            : it
+        ));
+      }
+    } catch {}
+    return list;
+  }
+
+  function showCenterToast(title, detailLines = [], durationMs = 3000) {
+    const old = document.getElementById('xuebaw-center-toast');
+    if (old) old.remove();
+    const box = document.createElement('div');
+    box.id = 'xuebaw-center-toast';
+    box.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483647;background:rgba(15,23,42,0.94);color:#fff;padding:18px 24px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,0.35);min-width:300px;max-width:440px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;text-align:center;backdrop-filter:blur(8px);';
+    let remainSec = Math.ceil(durationMs / 1000);
+    const previewHtml = detailLines.length > 0
+      ? `<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.08);font-size:12px;color:#cbd5e1;text-align:left;max-height:110px;overflow:hidden;">${detailLines.slice(0, 4).map(t => `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">• ${escapeHtml(t)}</div>`).join('')}${detailLines.length > 4 ? `<div style="color:#94a3b8;margin-top:2px;">...等共 ${detailLines.length} 条</div>` : ''}</div>`
+      : '';
+    box.innerHTML = `
+      <div style="font-size:15px;font-weight:800;color:#34d399;">${escapeHtml(title)}</div>
+      ${previewHtml}
+      <div id="xb-toast-countdown" style="margin-top:10px;font-size:11px;color:#94a3b8;">${remainSec} 秒后自动关闭</div>
+    `;
+    document.body.appendChild(box);
+    const timer = setInterval(() => {
+      remainSec--;
+      const el = box.querySelector('#xb-toast-countdown');
+      if (remainSec <= 0) {
+        clearInterval(timer);
+        box.remove();
+      } else if (el) {
+        el.textContent = `${remainSec} 秒后自动关闭`;
+      }
+    }, 1000);
+  }
+
+  function loadDrawerCache() {
+    try {
+      const raw = sessionStorage.getItem(XUEBAW_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return null;
+  }
+
+  // 触发采集抽屉（默认优先恢复未关闭前的缓存列表，forceRescan=true 时强制重新扫描）
+  function triggerCollect(forceRescan = false) {
+    const existing = document.getElementById('xuebaw-modal-container');
+    if (!forceRescan && existing) {
+      existing.style.display = 'flex';
+      return;
+    }
+    if (!forceRescan) {
+      const cached = loadDrawerCache();
+      if (cached && cached.length > 0) {
+        showRightDrawer(cached);
+        return;
+      }
+    }
+    const items = applyRememberedSelection(deduplicateItemTitles(extractAllPageResources()));
+    saveDrawerCache(items);
     showRightDrawer(items);
   }
 
@@ -832,11 +851,10 @@
         <div class="xb-item-card ${item.selected ? 'is-selected' : ''}" data-index="${idx}">
           <input type="checkbox" class="xb-checkbox" ${item.selected ? 'checked' : ''} data-index="${idx}" />
           <div class="xb-item-main">
-            <!-- 行 1：标题独立一行 (支持手动修改与一键点选页面拾取) -->
+            <!-- 行 1：标题独立一行 -->
             <div class="xb-item-title-row">
               <span class="xb-drive-tag ${item.driveType}">${item.driveLabel}</span>
               <input type="text" class="xb-item-title-input" value="${escapeHtml(item.title)}" data-index="${idx}" placeholder="资料标题 (可直接编辑)" />
-              <button type="button" class="xb-btn-pick-title" data-index="${idx}" title="点击进入拾取模式：在左侧网页中点击任意文字直接设为本资源标题">🎯 拾取</button>
             </div>
 
             <!-- 行 2：网盘地址独立一行 (完整显示不截断) -->
@@ -878,6 +896,21 @@
         <div class="xb-compare-banner">
           <span>👀 <strong>左侧原文零遮挡</strong>：左侧页面可自由滚动查阅，右侧对照核对无误后一键推送！</span>
         </div>
+
+        ${isDiscourseListPage() ? `
+          <div style="margin: 8px 16px 0; padding: 10px 12px; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <span style="font-size: 12px; font-weight: 700; color: #065f46;">🌐 检测到 Discourse 论坛板块</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 11px; color: #047857;">抓</span>
+                <input type="number" id="xb-discourse-pages" value="2" min="1" max="10" style="width: 44px; padding: 2px 4px; border: 1px solid #6ee7b7; border-radius: 4px; font-size: 12px; text-align: center;" />
+                <span style="font-size: 11px; color: #047857;">页</span>
+                <button type="button" id="xb-btn-discourse-scan" style="background: #059669; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 700; cursor: pointer;">🚀 穿透提取夸克链接</button>
+              </div>
+            </div>
+            <div id="xb-discourse-progress" style="font-size: 11px; color: #047857; display: none;"></div>
+          </div>
+        ` : ''}
 
         ${items.length > 0 ? `
           <div class="xb-toolbar-row">
@@ -944,96 +977,54 @@
           cb.checked = isSel;
         }
       });
+      saveDrawerCache(items);
     }
 
-    // 标题拾取模式状态管理
-    let activePickerIdx = null;
-    let pickerBanner = null;
-
-    function stopTitlePicker() {
-      if (activePickerIdx === null) return;
-      document.querySelectorAll('.xb-picker-hover-outline').forEach(el => el.classList.remove('xb-picker-hover-outline'));
-      container.querySelectorAll('.xb-btn-pick-title').forEach(b => b.classList.remove('is-active'));
-      if (pickerBanner) {
-        pickerBanner.remove();
-        pickerBanner = null;
-      }
-      document.removeEventListener('mouseover', onPickerMouseOver, true);
-      document.removeEventListener('mouseout', onPickerMouseOut, true);
-      document.removeEventListener('click', onPickerClick, true);
-      activePickerIdx = null;
-    }
-
-    function onPickerMouseOver(e) {
-      if (!e.target || e.target.closest('#xuebaw-modal-container') || e.target.closest('#xuebaw-collector-bubble')) return;
-      e.target.classList.add('xb-picker-hover-outline');
-    }
-
-    function onPickerMouseOut(e) {
-      if (e.target) e.target.classList.remove('xb-picker-hover-outline');
-    }
-
-    function onPickerClick(e) {
-      if (!e.target || e.target.closest('#xuebaw-modal-container') || e.target.closest('#xuebaw-collector-bubble')) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      const raw = e.target.innerText || e.target.textContent || '';
-      const pickedTitle = cleanResourceTitle(raw.trim());
-      if (pickedTitle && activePickerIdx !== null) {
-        items[activePickerIdx].title = pickedTitle;
-        const titleInput = container.querySelector(`.xb-item-title-input[data-index="${activePickerIdx}"]`);
-        if (titleInput) {
-          titleInput.value = pickedTitle;
-          titleInput.style.borderColor = '#10b981';
-          setTimeout(() => { if (titleInput) titleInput.style.borderColor = ''; }, 1200);
-        }
-      }
-      stopTitlePicker();
-    }
-
-    function startTitlePicker(idx) {
-      if (activePickerIdx === idx) {
-        stopTitlePicker();
-        return;
-      }
-      stopTitlePicker();
-      activePickerIdx = idx;
-
-      const btn = container.querySelector(`.xb-btn-pick-title[data-index="${idx}"]`);
-      if (btn) btn.classList.add('is-active');
-
-      pickerBanner = document.createElement('div');
-      pickerBanner.id = 'xb-picker-indicator';
-      pickerBanner.innerHTML = `🎯 <strong>拾取模式已激活</strong>：请在左侧网页中点击任意文字作为该资源的标题（按 Esc 或再次点击拾取退出）`;
-      document.body.appendChild(pickerBanner);
-
-      document.addEventListener('mouseover', onPickerMouseOver, true);
-      document.addEventListener('mouseout', onPickerMouseOut, true);
-      document.addEventListener('click', onPickerClick, true);
-    }
-
-    function closeDrawer() {
-      stopTitlePicker();
-      container.remove();
-      document.removeEventListener('keydown', onKeyEsc);
-    }
-
-    container.querySelector('#xb-btn-close').addEventListener('click', closeDrawer);
-    container.querySelector('#xb-btn-cancel').addEventListener('click', closeDrawer);
+    container.querySelector('#xb-btn-close').addEventListener('click', () => {
+      saveDrawerCache(items);
+      container.style.display = 'none';
+    });
+    container.querySelector('#xb-btn-cancel').addEventListener('click', () => {
+      saveDrawerCache(items);
+      container.style.display = 'none';
+    });
     container.querySelector('#xb-btn-config').addEventListener('click', () => {
-      closeDrawer();
+      saveDrawerCache(items);
+      container.style.display = 'none';
       openSettingsModal();
     });
 
     container.querySelector('#xb-btn-rescan').addEventListener('click', () => {
-      stopTitlePicker();
-      triggerCollect();
+      triggerCollect(true);
     });
 
     container.querySelector('#xb-btn-toggle-width').addEventListener('click', () => {
       drawer.classList.toggle('is-expanded');
     });
+
+    const discourseBtn = container.querySelector('#xb-btn-discourse-scan');
+    if (discourseBtn) {
+      discourseBtn.addEventListener('click', async () => {
+        const pagesInp = container.querySelector('#xb-discourse-pages');
+        const progressEl = container.querySelector('#xb-discourse-progress');
+        const pagesCount = Math.max(1, Math.min(10, parseInt(pagesInp?.value || '2', 10) || 2));
+        discourseBtn.disabled = true;
+        discourseBtn.textContent = '⏳ 穿透提取中...';
+        if (progressEl) {
+          progressEl.style.display = 'block';
+          progressEl.textContent = '准备读取板块列表...';
+        }
+        const found = applyRememberedSelection(deduplicateItemTitles(await scanDiscourseBoard(pagesCount, progressEl)));
+        if (found.length > 0) {
+          saveDrawerCache(found);
+          showRightDrawer(found);
+        } else {
+          discourseBtn.disabled = false;
+          discourseBtn.textContent = '🚀 穿透提取夸克链接';
+          if (progressEl) progressEl.textContent = '未提取到夸克链接（请确认当前账号已登录且帖子首楼包含分享地址）';
+        }
+      });
+    }
 
     if (items.length > 0) {
       container.querySelector('#xb-select-all').addEventListener('click', () => {
@@ -1068,15 +1059,6 @@
         });
       });
 
-      // 绑定页面标题拾取按钮
-      container.querySelectorAll('.xb-btn-pick-title').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const idx = parseInt(btn.getAttribute('data-index'), 10);
-          startTitlePicker(idx);
-        });
-      });
-
       const submitBtn = container.querySelector('#xb-btn-submit');
       submitBtn.addEventListener('click', () => {
         const selectedItems = items.filter(it => it.selected);
@@ -1090,17 +1072,32 @@
 
         const channel = container.querySelector('#xb-channel-select')?.value || 'edu';
         const combinedText = selectedItems.map(it => {
-          return `${it.title}\n${it.shareUrl} 提取码: ${it.code} #频道: ${channel}`;
+          const codePart = it.code ? ` 提取码: ${it.code}` : '';
+          return `${it.title}\n${it.shareUrl}${codePart} #频道: ${channel}`;
         }).join('\n\n');
 
-        sendToXueBaW(combinedText, (err, res) => {
+        const structuredItems = selectedItems.map(it => ({
+          title: it.title,
+          share_url: it.shareUrl,
+          extract_code: it.code || '',
+          drive_type: it.driveType || 'quark'
+        }));
+
+        sendToXueBaW({ rawText: combinedText, items: structuredItems }, (err, res) => {
           submitBtn.disabled = false;
           if (err) {
             alert('❌ 批量推送失败: ' + err);
             updateSelectionUI();
           } else {
-            alert(`✅ 批量录入成功！已将 ${selectedItems.length} 条资料同步至学霸网后台待审草稿池。`);
-            closeDrawer();
+            saveDrawerCache(items);
+            container.style.display = 'none';
+            updateSelectionUI();
+            const toastTitle = (res && res.message) ? `✅ ${res.message}` : `✅ 成功推送 ${selectedItems.length} 条资料到待审草稿池`;
+            showCenterToast(
+              toastTitle,
+              selectedItems.map(it => it.title),
+              3000
+            );
           }
         });
       });
@@ -1108,17 +1105,14 @@
 
     const onKeyEsc = (e) => {
       if (e.key === 'Escape') {
-        if (activePickerIdx !== null) {
-          stopTitlePicker();
-        } else {
-          closeDrawer();
-        }
+        container.remove();
+        document.removeEventListener('keydown', onKeyEsc);
       }
     };
     document.addEventListener('keydown', onKeyEsc);
   }
 
-  function sendToXueBaW(rawText, callback) {
+  function sendToXueBaW(payloadData, callback) {
     if (!API_BASE) {
       callback('未配置 API 基础地址');
       return;
@@ -1126,8 +1120,11 @@
 
     const endpoint = `${API_BASE.replace(/\/$/, '')}/api/v1/admin/crawler/drafts/ingest-text`;
     const fallbackEndpoint = `${API_BASE.replace(/\/$/, '')}/api/v1/admin/crawler/ingest-text`;
+    const rawText = typeof payloadData === 'string' ? payloadData : (payloadData.rawText || '');
+    const itemsPayload = typeof payloadData === 'object' && Array.isArray(payloadData.items) ? payloadData.items : [];
     const payload = JSON.stringify({
       raw_text: rawText,
+      items: itemsPayload,
       source_name: `浏览器助手 (${document.domain})`,
       drive_type: 'auto'
     });
@@ -1202,7 +1199,7 @@
     `;
 
     overlay.innerHTML = `
-      <div style="background: #ffffff; width: 440px; max-width: 92vw; border-radius: 12px; padding: 18px; box-shadow: 0 20px 45px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
+      <div id="xb-set-card" style="background: #ffffff; width: 440px; max-width: 92vw; border-radius: 12px; padding: 18px; box-shadow: 0 20px 45px rgba(0,0,0,0.25);">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
           <strong style="font-size: 15px; color: #0f172a;">⚙️ 学霸网采集助手配置</strong>
           <button style="background:none; border:none; font-size:16px; cursor:pointer; color:#94a3b8;" id="xb-set-close">✕</button>
@@ -1229,7 +1226,7 @@
 
     document.body.appendChild(overlay);
 
-    overlay.addEventListener('click', () => overlay.remove());
+    overlay.querySelector('#xb-set-card').addEventListener('click', (e) => e.stopPropagation());
     overlay.querySelector('#xb-set-close').addEventListener('click', () => overlay.remove());
     overlay.querySelector('#xb-set-cancel').addEventListener('click', () => overlay.remove());
     overlay.querySelector('#xb-set-save').addEventListener('click', () => {
