@@ -3159,9 +3159,10 @@
                           </div>
                         </div>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
-                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'google')" title="在 Google 搜索该资料网盘资源">G 搜 Google</button>
-                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'baidu')" title="在百度搜索该资料网盘资源">百 搜百度</button>
-                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'quark')" title="定向搜索夸克/百度网盘链接">🔍 搜网盘</button>
+                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'google')" title="在 Google 搜索该资料夸克网盘资源">G 搜 Google</button>
+                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'bing')" title="在必应搜索该资料夸克网盘资源">B 搜必应</button>
+                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'baidu')" title="在百度搜索该资料夸克网盘资源">百 搜百度</button>
+                          <button type="button" class="btn btn-sm btn-secondary" (click)="openScoutSearch(topic.title, 'quark')" title="定向搜索夸克网盘链接">🔍 搜夸克</button>
                           @if (topic.status === 'need_source') {
                             <button type="button" class="btn btn-sm btn-secondary" (click)="setScoutTopicStatus(topic, 'ignored')">🙈 暂忽略</button>
                           } @else {

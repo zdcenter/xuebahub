@@ -5142,15 +5142,17 @@ export class AdminComponent implements OnInit, OnDestroy {
     }
   }
 
-  openScoutSearch(title: string, engine: 'google' | 'baidu' | 'quark') {
+  openScoutSearch(title: string, engine: 'google' | 'bing' | 'baidu' | 'quark') {
     const clean = (title || '').replace(/【[^】]*】|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
     let target = '';
     if (engine === 'google') {
-      target = `https://www.google.com/search?q=${encodeURIComponent(`"${clean}" 夸克网盘 OR 百度网盘`)}`;
+      target = `https://www.google.com/search?q=${encodeURIComponent(`"${clean}" 夸克网盘`)}`;
+    } else if (engine === 'bing') {
+      target = `https://www.bing.com/search?q=${encodeURIComponent(`${clean} 夸克网盘`)}`;
     } else if (engine === 'baidu') {
       target = `https://www.baidu.com/s?wd=${encodeURIComponent(`${clean} 夸克网盘`)}`;
     } else {
-      target = `https://www.google.com/search?q=${encodeURIComponent(`${clean} site:pan.quark.cn OR pan.baidu.com`)}`;
+      target = `https://www.google.com/search?q=${encodeURIComponent(`${clean} site:pan.quark.cn`)}`;
     }
     window.open(target, '_blank', 'noopener');
   }
