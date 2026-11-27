@@ -6,7 +6,7 @@ import { MemberService, MemberLevelDto, ActivationCodeDto, FrontUserDto } from '
 import { CoverGeneratorService } from '../services/cover-generator.service';
 import { I18nService } from '../services/i18n.service';
 import { SmartMetaHelperService, AiConfig } from '../services/smart-meta-helper.service';
-import { APP_VERSION } from '../version';
+import { APP_VERSION, COLLECTOR_VERSION } from '../version';
 import { parseMarkdown } from '../utils/markdown.util';
 
 export interface StageConfigItem {
@@ -113,6 +113,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   // 编译构建版本号信息
   appVersion = APP_VERSION;
+  collectorVersion = COLLECTOR_VERSION;
 
   copyVersionInfo() {
     const text = `${this.appVersion.fullText} (构建时间: ${this.appVersion.buildTime})`;

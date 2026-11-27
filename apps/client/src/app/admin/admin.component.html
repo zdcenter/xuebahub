@@ -172,7 +172,7 @@
           (click)="switchTab('collector')">
           <span class="icon">🧩</span>
           <span class="nav-label">浏览器采集助手</span>
-          <span class="nav-pill-badge hot">v1.4.0</span>
+          <span class="nav-pill-badge hot">{{ collectorVersion }}</span>
         </button>
         <button 
           type="button"
@@ -330,7 +330,7 @@
             @if (currentTab() === 'stats') { 📊 推广收益与转化分析 }
             @if (currentTab() === 'drafts') { 📥 待处理草稿箱 (全渠道采集中转池) }
             @if (currentTab() === 'scout') { 🎯 选题雷达 (外部网站标题采集与一键寻源) }
-            @if (currentTab() === 'collector') { 🧩 浏览器采集助手 (v1.4.0 全网自动化采集中枢) }
+            @if (currentTab() === 'collector') { 🧩 浏览器采集助手 ({{ collectorVersion }} 全网自动化采集中枢) }
             @if (currentTab() === 'crawler') { ✈️ Telegram 机器人配置与频道运营 }
             @if (currentTab() === 'email') { 📧 {{ i18n.t('email.title') }} }
             @if (currentTab() === 'seo') { 🔍 {{ i18n.t('seo.title') }} }
@@ -3956,7 +3956,7 @@
           <div class="account-hero-banner" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1e40af 100%);">
             <div class="hero-left">
               <div class="hero-badge" style="background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); color: #e0e7ff;">
-                🧩 自动化采集中枢 · v1.5.0 升级版
+                🧩 自动化采集中枢 · {{ collectorVersion }} 升级版
               </div>
               <h2>浏览器智能采集助手 · 全网资源入库中枢</h2>
               <p>专为学霸网教辅与教材运营打造的油猴用户脚本。打开任意网盘分享页、资源论坛或公众号文章，右侧无遮挡抽屉滑出，一键提取真实试卷标题、自动匹配提取码、智能分配资料/教材频道，秒级落库发布！</p>
@@ -4011,7 +4011,7 @@
                 <span style="background: #dbeafe; color: #1e40af; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 9999px;">已发布最新</span>
               </div>
               <div style="font-size: 26px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                <span>v1.5.0</span>
+                <span>{{ collectorVersion }}</span>
                 <span style="font-size: 13px; font-weight: normal; color: #059669; background: #ecfdf5; padding: 2px 8px; border-radius: 4px;">左右分屏 · Discourse 板块穿透</span>
               </div>
               <div style="font-size: 12px; color: #64748b; line-height: 1.5;">
@@ -4058,7 +4058,7 @@
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
               <div>
                 <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">🌐 全网多网盘采集支持矩阵</h3>
-                <p style="font-size: 13px; color: #64748b;">v1.4.0 升级版新增 UC 网盘与百度网盘多种自定义提取码格式支持，覆盖全网 99% 的教辅与课本分享场景</p>
+                <p style="font-size: 13px; color: #64748b;">{{ collectorVersion }} 升级版新增 Discourse 论坛板块穿透、UC 网盘与百度网盘多种自定义提取码格式支持</p>
               </div>
               <span style="background: #f0fdf4; color: #16a34a; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; border: 1px solid #bbf7d0;">
                 7 大主流网盘原生支持
