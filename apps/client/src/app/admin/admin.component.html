@@ -3061,7 +3061,7 @@
 
       <!-- 2.0 🎯 选题雷达（外部网站标题采集与一键寻源工作台） -->
       @if (currentTab() === 'scout') {
-        <div class="tab-content-fade" style="display: flex; flex-direction: column; gap: 18px;">
+        <div class="tab-content-fade" style="display: flex; flex-direction: column; gap: 18px; padding-bottom: 72px;">
           <!-- 顶部双栏：左侧网页抓取 + 右侧粘贴文本导入 -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px;">
             <!-- 1. 网页列表抓取 -->
@@ -3193,9 +3193,9 @@
                     </div>
                   }
                 </div>
-                <!-- 选题列表分页条 -->
+                <!-- 选题列表分页条（靠左对齐+右侧留白，避免被右下角浮动极速粘贴按钮遮挡） -->
                 @if (scoutTotal() > 20) {
-                  <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px;">
+                  <div style="display: flex; justify-content: flex-start; align-items: center; padding: 16px 200px 4px 0; margin-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 16px;">
                     <span style="font-size: 13px; color: #64748b;">
                       共 <strong>{{ scoutTotal() }}</strong> 条选题 · 第 <strong>{{ scoutPage() }}</strong> / {{ scoutTotalPages() }} 页
                     </span>
