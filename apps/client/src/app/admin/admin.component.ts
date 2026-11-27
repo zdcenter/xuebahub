@@ -1286,14 +1286,10 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.newResource.subject = item.subject || meta.subject;
     this.newResource.edition = item.edition || meta.edition;
     this.newResource.channel_slug = item.channelSlug || raw.channel_slug || meta.channel_slug;
-    this.newResource.subtitle = item.subtitle || meta.selectedSubtitle;
+    this.newResource.subtitle = '';
     this.cachedNewSubtitles = meta.subtitles;
     this.newSubtitleIndex = 0;
-    if (item.description) {
-      this.newResource.description = item.description;
-    } else if (!this.newResource.description || this.newResource.description.trim() === '') {
-      this.newResource.description = meta.description;
-    }
+    this.newResource.description = '';
     if (meta.has_video) {
       this.newResource.has_video = true;
     }
@@ -1891,12 +1887,10 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.newResource.subject = meta.subject;
     this.newResource.edition = meta.edition;
     this.newResource.channel_slug = meta.channel_slug;
-    this.newResource.subtitle = meta.selectedSubtitle;
+    this.newResource.subtitle = '';
     this.cachedNewSubtitles = meta.subtitles;
     this.newSubtitleIndex = 0;
-    if (!this.newResource.description || this.newResource.description.trim() === '') {
-      this.newResource.description = meta.description;
-    }
+    this.newResource.description = '';
     if (meta.has_video) {
       this.newResource.has_video = true;
     }
@@ -1911,7 +1905,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.newResource.quarkUrl = draft.share_url;
     }
 
-    this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 已将草稿填入表单，已智能匹配学科并生成通俗副标题与说明！' : 'Draft imported with smart meta generated!', 'success');
+    this.showToast(this.i18n.lang() === 'zh-CN' ? '✅ 已将草稿填入表单，已智能匹配学科与分类！' : 'Draft imported with smart taxonomy matched!', 'success');
   }
 
   // ⚡ 1. 本地智能推导（纯本地规则，0 延迟、0 费用、100% 离线稳定，排在前面）
@@ -2138,7 +2132,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   newResource = {
     channel_slug: 'edu',
     title: '',
-    subtitle: (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_subtitle') : '') || '',
+    subtitle: '',
     stage: 'primary',
     grade: '通用 (1-6年级通用)',
     subject: '数学',
@@ -2177,7 +2171,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     id: '',
     channel_slug: 'edu',
     title: '',
-    subtitle: (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_subtitle') : '') || '',
+    subtitle: '',
     stage: 'primary',
     grade: '通用 (1-6年级通用)',
     subject: '数学',
@@ -4139,8 +4133,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       collection_id: this.editForm.collection_id || null,
       cover_image: finalCover || undefined,
       poster_image: (this.editForm.poster_image || '').trim() || undefined,
-      subtitle: this.editForm.subtitle || (this.editForm.has_video ? '【含高清精讲视频】' : '【含手写解析】'),
-      description: this.editForm.description || this.editForm.title,
+      subtitle: (this.editForm.subtitle || '').trim(),
+      description: (this.editForm.description || '').trim(),
       stage: this.editForm.stage,
       grade: this.editForm.grade,
       subject: this.editForm.subject,
@@ -4609,8 +4603,8 @@ export class AdminComponent implements OnInit, OnDestroy {
       title: this.newResource.title,
       cover_image: finalCover || undefined,
       poster_image: (this.newResource.poster_image || '').trim() || undefined,
-      subtitle: this.newResource.subtitle || (this.newResource.has_video ? '【含高清精讲视频】' : '【含手写解析】'),
-      description: this.newResource.description || this.newResource.title,
+      subtitle: (this.newResource.subtitle || '').trim(),
+      description: (this.newResource.description || '').trim(),
       stage: this.newResource.stage,
       grade: this.newResource.grade,
       subject: this.newResource.subject,
@@ -4639,11 +4633,8 @@ export class AdminComponent implements OnInit, OnDestroy {
           });
           this.currentImportingDraftId = null;
         }
-        if (typeof localStorage !== 'undefined' && this.newResource.subtitle?.trim()) {
-          localStorage.setItem('preferred_subtitle', this.newResource.subtitle.trim());
-        }
         this.newResource.title = '';
-        this.newResource.subtitle = (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_subtitle') : '') || '';
+        this.newResource.subtitle = '';
         this.newResource.description = '';
         this.newResource.region = (typeof localStorage !== 'undefined' ? localStorage.getItem('preferred_region') : '') || '';
         this.newResource.school = '';
