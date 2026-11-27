@@ -3,9 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -434,7 +436,17 @@ func (h *ScoutHandler) ListTopics(c fiber.Ctx) error {
 }
 
 // PublishTopic 为待寻源选题补齐网盘链接并一键发布到正式资料库
-func (h *ScoutHandler) PublishTopic(c fiber.Ctx) error {
+func (h *ScoutHandler) PublishTopic(c fiber.Ctx) (retErr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[ScoutPublish PANIC] %v\n%s", r, string(debug.Stack()))
+			retErr = c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"code":    500,
+				"message": fmt.Sprintf("发布异常: %v", r),
+			})
+		}
+	}()
+
 	draftUUID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "无效选题ID"})
@@ -460,13 +472,13 @@ func (h *ScoutHandler) PublishTopic(c fiber.Ctx) error {
 		BaiduFileType    string          `json:"baidu_file_type"`
 		BaiduDesc        string          `json:"baidu_desc"`
 		AccountID        string          `json:"account_id"`
-		FileTree         json.RawMessage `json:"file_tree"`
+		FileTree         interface{}     `json:"file_tree"`
 		CollectionID     string          `json:"collection_id"`
 		ChannelSlug      string          `json:"channel_slug"`
 		AutoTransfer     bool            `json:"auto_transfer"`
 	}
-	if err := c.Bind().JSON(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
+	if err := json.Unmarshal(c.Body(), &req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误: " + err.Error()})
 	}
 
 	quarkURL := strings.TrimSpace(req.QuarkURL)
@@ -603,8 +615,10 @@ func (h *ScoutHandler) PublishTopic(c fiber.Ctx) error {
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
-	if len(req.FileTree) > 2 && string(req.FileTree) != "null" && json.Valid(req.FileTree) {
-		newRes.FileTree = datatypes.JSON(req.FileTree)
+	if req.FileTree != nil {
+		if ftBytes, err := json.Marshal(req.FileTree); err == nil && len(ftBytes) > 2 && string(ftBytes) != "null" {
+			newRes.FileTree = datatypes.JSON(ftBytes)
+		}
 	}
 
 	if err := database.DB.Create(&newRes).Error; err != nil {
