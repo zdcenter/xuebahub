@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.5.2
+// @version      1.5.3
 // @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别、Discourse论坛(linux.do)板块分页穿透提取；右侧贴边滑出抽屉工作台！
 // @author       学霸网开发团队
 // @match        *://*/*
@@ -1023,10 +1023,18 @@
 
         const channel = container.querySelector('#xb-channel-select')?.value || 'edu';
         const combinedText = selectedItems.map(it => {
-          return `${it.title}\n${it.shareUrl} 提取码: ${it.code} #频道: ${channel}`;
+          const codePart = it.code ? ` 提取码: ${it.code}` : '';
+          return `${it.title}\n${it.shareUrl}${codePart} #频道: ${channel}`;
         }).join('\n\n');
 
-        sendToXueBaW(combinedText, (err, res) => {
+        const structuredItems = selectedItems.map(it => ({
+          title: it.title,
+          share_url: it.shareUrl,
+          extract_code: it.code || '',
+          drive_type: it.driveType || 'quark'
+        }));
+
+        sendToXueBaW({ rawText: combinedText, items: structuredItems }, (err, res) => {
           submitBtn.disabled = false;
           if (err) {
             alert('❌ 批量推送失败: ' + err);
@@ -1048,7 +1056,7 @@
     document.addEventListener('keydown', onKeyEsc);
   }
 
-  function sendToXueBaW(rawText, callback) {
+  function sendToXueBaW(payloadData, callback) {
     if (!API_BASE) {
       callback('未配置 API 基础地址');
       return;
@@ -1056,8 +1064,11 @@
 
     const endpoint = `${API_BASE.replace(/\/$/, '')}/api/v1/admin/crawler/drafts/ingest-text`;
     const fallbackEndpoint = `${API_BASE.replace(/\/$/, '')}/api/v1/admin/crawler/ingest-text`;
+    const rawText = typeof payloadData === 'string' ? payloadData : (payloadData.rawText || '');
+    const itemsPayload = typeof payloadData === 'object' && Array.isArray(payloadData.items) ? payloadData.items : [];
     const payload = JSON.stringify({
       raw_text: rawText,
+      items: itemsPayload,
       source_name: `浏览器助手 (${document.domain})`,
       drive_type: 'auto'
     });

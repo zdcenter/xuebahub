@@ -380,17 +380,66 @@ func (h *CrawlerHandler) ListDrafts(c fiber.Ctx) error {
 	})
 }
 
-// IngestText 手动粘贴一段文本一键提取并加入草稿池
+// IngestText 手动粘贴一段文本或结构化列表一键提取并加入草稿池
 func (h *CrawlerHandler) IngestText(c fiber.Ctx) error {
+	type IngestItem struct {
+		Title       string `json:"title"`
+		ShareURL    string `json:"share_url"`
+		ExtractCode string `json:"extract_code"`
+		DriveType   string `json:"drive_type"`
+	}
 	type IngestReq struct {
-		RawText    string `json:"raw_text"`
-		SourceName string `json:"source_name"`
-		DriveType  string `json:"drive_type"`
+		RawText    string       `json:"raw_text"`
+		SourceName string       `json:"source_name"`
+		DriveType  string       `json:"drive_type"`
+		Items      []IngestItem `json:"items"`
 	}
 
 	var req IngestReq
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "参数格式错误"})
+	}
+
+	if len(req.Items) > 0 {
+		sourceName := strings.TrimSpace(req.SourceName)
+		if sourceName == "" {
+			sourceName = "浏览器采集助手"
+		}
+		var inserted []model.ResourceDraft
+		for _, it := range req.Items {
+			shareURL := strings.TrimSpace(it.ShareURL)
+			title := strings.TrimSpace(it.Title)
+			if shareURL == "" || title == "" {
+				continue
+			}
+			var existing model.ResourceDraft
+			if err := h.db.Where("share_url = ?", shareURL).First(&existing).Error; err == nil {
+				continue
+			}
+			dt := strings.TrimSpace(it.DriveType)
+			if dt == "" {
+				dt = detectDriveTypeFromURL(shareURL)
+			}
+			draft := model.ResourceDraft{
+				Title:       title,
+				SourceName:  sourceName,
+				ChannelID:   "manual",
+				MessageID:   time.Now().UnixNano(),
+				DriveType:   dt,
+				ShareURL:    shareURL,
+				ExtractCode: strings.TrimSpace(it.ExtractCode),
+				Status:      "pending",
+				IsSafe:      true,
+				RawText:     fmt.Sprintf("%s\n%s", title, shareURL),
+			}
+			if err := h.db.Create(&draft).Error; err == nil {
+				inserted = append(inserted, draft)
+			}
+		}
+		return c.JSON(fiber.Map{
+			"message": fmt.Sprintf("成功解析并录入 %d 条待审核草稿", len(inserted)),
+			"drafts":  inserted,
+		})
 	}
 
 	drafts, err := h.crawlerService.ManualIngest(req.RawText, req.SourceName, req.DriveType)
