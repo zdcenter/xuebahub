@@ -3623,7 +3623,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     const accId = this.folderPickerAccountId();
 
     const acc = this.accounts().find(a => a.id === accId);
-    if (acc && (!this.accountForm.id || this.accountForm.id !== acc.id)) {
+    if (acc && !this.isAccountModalOpen()) {
       this.resService.saveAccount({
         id: acc.id,
         drive_type: acc.drive_type,
