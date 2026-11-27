@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.5.1
+// @version      1.5.2
 // @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别、Discourse论坛(linux.do)板块分页穿透提取；右侧贴边滑出抽屉工作台！
 // @author       学霸网开发团队
 // @match        *://*/*
@@ -633,6 +633,25 @@
     return items;
   }
 
+  // 对同页/同批重复标题自动区分（如提取到多个不同夸克链接但标题相同）
+  function deduplicateItemTitles(list) {
+    const titleCounts = new Map();
+    for (const it of list) {
+      const t = (it.title || '').trim();
+      titleCounts.set(t, (titleCounts.get(t) || 0) + 1);
+    }
+    const titleSeen = new Map();
+    return list.map(it => {
+      const t = (it.title || '').trim();
+      if ((titleCounts.get(t) || 0) > 1) {
+        const idx = (titleSeen.get(t) || 0) + 1;
+        titleSeen.set(t, idx);
+        return { ...it, title: `${t} (${idx})` };
+      }
+      return it;
+    });
+  }
+
   function isDiscourseListPage() {
     const isDiscourseMeta = !!document.querySelector('meta[name="generator"][content*="Discourse"]');
     const isListPath = /^\/(c\/|latest|top|new|tag\/)/.test(location.pathname);
@@ -683,27 +702,35 @@
           const posts = data?.post_stream?.posts || [];
           const firstPost = posts[0];
           const cooked = firstPost?.cooked || '';
+          const tmpDiv = document.createElement('div');
+          tmpDiv.innerHTML = cooked;
+          const plainText = tmpDiv.innerText || tmpDiv.textContent || '';
           const matches = cooked.match(quarkRe) || cooked.match(allDriveRe) || [];
+          let postLinkIndex = 0;
           for (const rawUrl of matches) {
             const cleanUrl = rawUrl.trim();
             if (!seenUrls.has(cleanUrl)) {
               seenUrls.add(cleanUrl);
+              postLinkIndex++;
               const uLower = cleanUrl.toLowerCase();
               const driveType = uLower.includes('quark.cn') ? 'quark' : (uLower.includes('baidu.com') ? 'baidu' : 'other');
               const driveLabel = driveType === 'quark' ? '⚡ 夸克' : (driveType === 'baidu' ? '☁️ 百度' : '🔗 网盘');
               let code = '';
-              const codeMatch = cooked.match(/(?:提取码|密码|pwd|code)[:：\s]*([a-zA-Z0-9]{4,8})/i);
-              if (codeMatch) code = codeMatch[1];
+              if (driveType !== 'quark') {
+                const codeMatch = plainText.match(/(?:提取码|密码|访问码|pwd)[:：\s]*([a-zA-Z0-9]{4,8})/i);
+                if (codeMatch && codeMatch[1].toLowerCase() !== 'class') code = codeMatch[1];
+              }
+              const itemTitle = matches.length > 1 ? `${t.title.slice(0, 90)} (${postLinkIndex})` : t.title.slice(0, 100);
               extracted.push({
                 id: 'ds_' + t.id + '_' + Math.random().toString(36).slice(2, 6),
-                title: t.title.slice(0, 100),
+                title: itemTitle,
                 shareUrl: cleanUrl,
                 code,
                 driveType,
                 driveLabel,
                 selected: true
               });
-              break; // 每个帖子取主夸克链接即可，避免重复
+              break; // 每个帖子取主夸克链接即可
             }
           }
         }
@@ -714,9 +741,41 @@
     return extracted;
   }
 
-  // 触发采集抽屉
-  function triggerCollect() {
-    const items = extractAllPageResources();
+  const XUEBAW_CACHE_KEY = 'XUEBAW_COLLECTOR_CACHE_' + location.pathname;
+
+  function saveDrawerCache(list) {
+    try {
+      sessionStorage.setItem(XUEBAW_CACHE_KEY, JSON.stringify(list || []));
+    } catch {}
+  }
+
+  function loadDrawerCache() {
+    try {
+      const raw = sessionStorage.getItem(XUEBAW_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return null;
+  }
+
+  // 触发采集抽屉（默认优先恢复未关闭前的缓存列表，forceRescan=true 时强制重新扫描）
+  function triggerCollect(forceRescan = false) {
+    const existing = document.getElementById('xuebaw-modal-container');
+    if (!forceRescan && existing) {
+      existing.style.display = 'flex';
+      return;
+    }
+    if (!forceRescan) {
+      const cached = loadDrawerCache();
+      if (cached && cached.length > 0) {
+        showRightDrawer(cached);
+        return;
+      }
+    }
+    const items = deduplicateItemTitles(extractAllPageResources());
+    saveDrawerCache(items);
     showRightDrawer(items);
   }
 
@@ -872,15 +931,22 @@
       });
     }
 
-    container.querySelector('#xb-btn-close').addEventListener('click', () => container.remove());
-    container.querySelector('#xb-btn-cancel').addEventListener('click', () => container.remove());
+    container.querySelector('#xb-btn-close').addEventListener('click', () => {
+      saveDrawerCache(items);
+      container.style.display = 'none';
+    });
+    container.querySelector('#xb-btn-cancel').addEventListener('click', () => {
+      saveDrawerCache(items);
+      container.style.display = 'none';
+    });
     container.querySelector('#xb-btn-config').addEventListener('click', () => {
-      container.remove();
+      saveDrawerCache(items);
+      container.style.display = 'none';
       openSettingsModal();
     });
 
     container.querySelector('#xb-btn-rescan').addEventListener('click', () => {
-      triggerCollect();
+      triggerCollect(true);
     });
 
     container.querySelector('#xb-btn-toggle-width').addEventListener('click', () => {
@@ -899,8 +965,9 @@
           progressEl.style.display = 'block';
           progressEl.textContent = '准备读取板块列表...';
         }
-        const found = await scanDiscourseBoard(pagesCount, progressEl);
+        const found = deduplicateItemTitles(await scanDiscourseBoard(pagesCount, progressEl));
         if (found.length > 0) {
+          saveDrawerCache(found);
           showRightDrawer(found);
         } else {
           discourseBtn.disabled = false;
