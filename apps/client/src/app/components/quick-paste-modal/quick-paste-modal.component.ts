@@ -313,9 +313,14 @@ export class QuickPasteModalComponent {
     }).subscribe({
       next: (res) => {
         this.isSubmitting.set(false);
+        this.rawText.set('');
+        this.parsedItems.set([]);
         this.feedback.set(`✅ 成功批量录入 ${selected.length} 条资料至草稿池！`);
         this.draftCreated.emit();
-        setTimeout(() => this.close(), 1000);
+        setTimeout(() => {
+          this.feedback.set(null);
+          this.close();
+        }, 1000);
       },
       error: (err) => {
         this.isSubmitting.set(false);
@@ -332,6 +337,7 @@ export class QuickPasteModalComponent {
       return;
     }
     this.directPublish.emit(item);
+    this.clear();
     this.close();
   }
 
@@ -379,9 +385,14 @@ export class QuickPasteModalComponent {
     this.resService.batchImport(resources, true).subscribe({
       next: (res) => {
         this.isSubmitting.set(false);
+        this.rawText.set('');
+        this.parsedItems.set([]);
         this.feedback.set(`🎉 成功直接入库并上架 ${res.imported} 套资料！`);
         this.draftCreated.emit();
-        setTimeout(() => this.close(), 1000);
+        setTimeout(() => {
+          this.feedback.set(null);
+          this.close();
+        }, 1000);
       },
       error: (err) => {
         this.isSubmitting.set(false);
