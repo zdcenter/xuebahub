@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 
 	"netdisk/api/internal/database"
 	"netdisk/api/internal/model"
@@ -444,52 +446,83 @@ func (h *ScoutHandler) PublishTopic(c fiber.Ctx) error {
 	}
 
 	var req struct {
-		Title        string `json:"title"`
-		ShareURL     string `json:"share_url"`
-		ExtractCode  string `json:"extract_code"`
-		DriveType    string `json:"drive_type"`
-		CollectionID string `json:"collection_id"`
-		ChannelSlug  string `json:"channel_slug"`
-		AutoTransfer bool   `json:"auto_transfer"`
+		Title            string          `json:"title"`
+		ShareURL         string          `json:"share_url"`
+		ExtractCode      string          `json:"extract_code"`
+		DriveType        string          `json:"drive_type"`
+		QuarkURL         string          `json:"quark_url"`
+		QuarkFileSize    string          `json:"quark_file_size"`
+		QuarkFileType    string          `json:"quark_file_type"`
+		QuarkDesc        string          `json:"quark_desc"`
+		BaiduURL         string          `json:"baidu_url"`
+		BaiduExtractCode string          `json:"baidu_extract_code"`
+		BaiduFileSize    string          `json:"baidu_file_size"`
+		BaiduFileType    string          `json:"baidu_file_type"`
+		BaiduDesc        string          `json:"baidu_desc"`
+		AccountID        string          `json:"account_id"`
+		FileTree         json.RawMessage `json:"file_tree"`
+		CollectionID     string          `json:"collection_id"`
+		ChannelSlug      string          `json:"channel_slug"`
+		AutoTransfer     bool            `json:"auto_transfer"`
 	}
 	if err := c.Bind().JSON(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
 	}
 
-	shareURL := strings.TrimSpace(req.ShareURL)
-	if shareURL == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "请粘贴找到的网盘分享链接"})
+	quarkURL := strings.TrimSpace(req.QuarkURL)
+	baiduURL := strings.TrimSpace(req.BaiduURL)
+	legacyURL := strings.TrimSpace(req.ShareURL)
+	if quarkURL == "" && baiduURL == "" && legacyURL != "" {
+		if detectDriveTypeFromURL(legacyURL) == "baidu" {
+			baiduURL = legacyURL
+		} else {
+			quarkURL = legacyURL
+		}
+	}
+
+	if quarkURL == "" && baiduURL == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "请至少提供夸克或百度网盘链接（可从我的网盘中直接选取）"})
 	}
 
 	title := cleanScoutTitle(req.Title)
 	if title == "" {
 		title = draft.Title
 	}
-	driveType := strings.TrimSpace(req.DriveType)
-	if driveType == "" {
-		driveType = detectDriveTypeFromURL(shareURL)
+	quarkFileSize := strings.TrimSpace(req.QuarkFileSize)
+	quarkFileType := strings.TrimSpace(req.QuarkFileType)
+	if quarkFileType == "" {
+		quarkFileType = "PDF"
 	}
-	extractCode := strings.TrimSpace(req.ExtractCode)
-	fileSize := "完整高清版"
 
 	var usedAccID *uuid.UUID
 	var usedAccName string
+	if accIDStr := strings.TrimSpace(req.AccountID); accIDStr != "" {
+		if parsedAcc, err := uuid.Parse(accIDStr); err == nil {
+			var acc model.NetdiskAccount
+			if err := database.DB.First(&acc, "id = ?", parsedAcc).Error; err == nil {
+				usedAccID = &acc.ID
+				usedAccName = acc.AccountName
+			}
+		}
+	}
 
-	if req.AutoTransfer && driveType == "quark" && h.transferSvc != nil {
+	if quarkURL != "" && req.AutoTransfer && h.transferSvc != nil {
 		var accounts []model.NetdiskAccount
-		database.DB.Where("drive_type = ? AND status = ?", "quark", "valid").Order("is_default DESC, created_at ASC").Find(&accounts)
+		if usedAccID != nil {
+			database.DB.Where("id = ? AND status = ?", *usedAccID, "valid").Find(&accounts)
+		}
+		if len(accounts) == 0 {
+			database.DB.Where("drive_type = ? AND status = ?", "quark", "valid").Order("is_default DESC, created_at ASC").Find(&accounts)
+		}
 		for _, acc := range accounts {
 			fid := acc.TargetFolderFID
 			if fid == "" {
 				fid = "0"
 			}
-			if tRes, tErr := h.transferSvc.TransferAndShare(acc.Cookie, fid, shareURL, extractCode); tErr == nil && tRes != nil && tRes.NewShareURL != "" {
-				shareURL = tRes.NewShareURL
-				if tRes.ExtractCode != "" {
-					extractCode = tRes.ExtractCode
-				}
-				if tRes.FileSize != "" && tRes.FileSize != "完整资源包" {
-					fileSize = tRes.FileSize
+			if tRes, tErr := h.transferSvc.TransferAndShare(acc.Cookie, fid, quarkURL, ""); tErr == nil && tRes != nil && tRes.NewShareURL != "" {
+				quarkURL = tRes.NewShareURL
+				if tRes.FileSize != "" && tRes.FileSize != "完整资源包" && quarkFileSize == "" {
+					quarkFileSize = tRes.FileSize
 				}
 				usedAccID = &acc.ID
 				usedAccName = acc.AccountName
@@ -519,6 +552,20 @@ func (h *ScoutHandler) PublishTopic(c fiber.Ctx) error {
 	if finalTitle == "" {
 		finalTitle = title
 	}
+	resFileSize := quarkFileSize
+	if resFileSize == "" {
+		resFileSize = strings.TrimSpace(req.BaiduFileSize)
+	}
+	if resFileSize == "" {
+		resFileSize = "完整高清版"
+	}
+	resFileType := quarkFileType
+	if resFileType == "" {
+		resFileType = strings.TrimSpace(req.BaiduFileType)
+	}
+	if resFileType == "" {
+		resFileType = "PDF"
+	}
 
 	newRes := model.Resource{
 		ID:           resID,
@@ -533,44 +580,89 @@ func (h *ScoutHandler) PublishTopic(c fiber.Ctx) error {
 		Subject:      meta.Subject,
 		Edition:      meta.Edition,
 		CollectionID: colID,
-		FileType:     "PDF",
-		FileSize:     fileSize,
+		FileType:     resFileType,
+		FileSize:     resFileSize,
 		IsPublished:  true,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
+	}
+	if len(req.FileTree) > 2 {
+		newRes.FileTree = datatypes.JSON(req.FileTree)
 	}
 
 	if err := database.DB.Create(&newRes).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "发布到正式库失败"})
 	}
 
-	linkDesc := "夸克官方高速免密通道"
-	if driveType == "baidu" {
-		linkDesc = "百度网盘备用通道"
+	if quarkURL != "" {
+		qDesc := strings.TrimSpace(req.QuarkDesc)
+		if qDesc == "" {
+			qDesc = "夸克官方高速免密通道"
+		}
+		qSize := quarkFileSize
+		if qSize == "" {
+			qSize = resFileSize
+		}
+		database.DB.Create(&model.ResourceLink{
+			ID:           uuid.New(),
+			ResourceID:   resID,
+			DriveType:    "quark",
+			ShareURL:     quarkURL,
+			IsPrimary:    true,
+			Status:       "active",
+			FileSize:     qSize,
+			FileType:     resFileType,
+			ResourceDesc: qDesc,
+			AccountID:    usedAccID,
+			AccountName:  usedAccName,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		})
 	}
-	newLink := model.ResourceLink{
-		ID:           uuid.New(),
-		ResourceID:   resID,
-		DriveType:    driveType,
-		ShareURL:     shareURL,
-		ExtractCode:  extractCode,
-		IsPrimary:    true,
-		Status:       "active",
-		FileSize:     fileSize,
-		FileType:     "PDF",
-		ResourceDesc: linkDesc,
-		AccountID:    usedAccID,
-		AccountName:  usedAccName,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+
+	if baiduURL != "" {
+		bCode := strings.TrimSpace(req.BaiduExtractCode)
+		if bCode == "" {
+			bCode = strings.TrimSpace(req.ExtractCode)
+		}
+		bDesc := strings.TrimSpace(req.BaiduDesc)
+		if bDesc == "" {
+			bDesc = "百度网盘备用通道"
+		}
+		bSize := strings.TrimSpace(req.BaiduFileSize)
+		if bSize == "" {
+			bSize = resFileSize
+		}
+		bType := strings.TrimSpace(req.BaiduFileType)
+		if bType == "" {
+			bType = "PDF"
+		}
+		database.DB.Create(&model.ResourceLink{
+			ID:           uuid.New(),
+			ResourceID:   resID,
+			DriveType:    "baidu",
+			ShareURL:     baiduURL,
+			ExtractCode:  bCode,
+			IsPrimary:    quarkURL == "",
+			Status:       "active",
+			FileSize:     bSize,
+			FileType:     bType,
+			ResourceDesc: bDesc,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		})
 	}
-	database.DB.Create(&newLink)
+
+	savedShareURL := quarkURL
+	if savedShareURL == "" {
+		savedShareURL = baiduURL
+	}
 
 	database.DB.Model(&draft).Updates(map[string]interface{}{
 		"title":                title,
 		"drive_type":           "topic_scout",
-		"share_url":            shareURL,
-		"extract_code":         extractCode,
+		"share_url":            savedShareURL,
+		"extract_code":         strings.TrimSpace(req.BaiduExtractCode),
 		"status":               "approved",
 		"approved_resource_id": resID,
 	})

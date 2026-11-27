@@ -528,7 +528,7 @@ export class ResourceService {
     ).pipe(map(res => res.data));
   }
 
-  publishScoutTopic(id: string, payload: { title?: string; share_url: string; extract_code?: string; collection_id?: string; auto_transfer?: boolean }): Observable<any> {
+  publishScoutTopic(id: string, payload: any): Observable<any> {
     return this.http.post<{ code: number; message: string; data: any }>(
       `${this.apiUrl.replace('/resources', '/scout')}/${id}/publish`,
       payload

@@ -3039,7 +3039,8 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   // 夸克网盘文件浏览器（从默认账号直接选取文件/目录生成免密公开分享）
   isDrivePickerOpen = signal<boolean>(false);
-  drivePickerMode = signal<'new' | 'edit'>('new');
+  drivePickerMode = signal<'new' | 'edit' | 'scout'>('new');
+  drivePickerScoutId = signal<string | null>(null);
   drivePickerAccountName = signal<string>('');
   drivePickerList = signal<any[]>([]);
   drivePickerLoading = signal<boolean>(false);
@@ -3647,13 +3648,21 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   // --- 夸克网盘文件浏览器与一键免密公开分享 ---
-  openDrivePicker(mode: 'new' | 'edit' = 'new') {
+  openDrivePicker(mode: 'new' | 'edit' | 'scout' = 'new') {
     this.drivePickerMode.set(mode);
+    if (mode !== 'scout') {
+      this.drivePickerScoutId.set(null);
+    }
     this.isDrivePickerOpen.set(true);
     this.drivePickerCurrentFid.set('0');
     this.drivePickerCurrentName.set('根目录');
     this.drivePickerBreadcrumbs.set([{ fid: '0', name: '根目录' }]);
     this.fetchDrivePickerFiles('0');
+  }
+
+  openDrivePickerForScout(topicId: string) {
+    this.drivePickerScoutId.set(topicId);
+    this.openDrivePicker('scout');
   }
 
   closeDrivePicker() {
@@ -3720,6 +3729,18 @@ export class AdminComponent implements OnInit, OnDestroy {
           }
           if (item.dir) {
             this.newResource.quarkFileType = '合集/文件夹';
+          }
+        } else if (mode === 'scout') {
+          const scoutId = this.drivePickerScoutId();
+          if (scoutId && this.scoutPublishInputs[scoutId]) {
+            const form = this.scoutPublishInputs[scoutId];
+            form.quark_url = res.share_url;
+            if (item.format_size && item.format_size !== '0 B') {
+              form.quark_file_size = item.format_size;
+            }
+            if (item.dir) {
+              form.quark_file_type = '合集/文件夹';
+            }
           }
         } else {
           this.editForm.quarkUrl = res.share_url;
@@ -4996,7 +5017,25 @@ export class AdminComponent implements OnInit, OnDestroy {
   scoutTotal = signal<number>(0);
   scoutCounts = signal<{ need_source: number; approved: number; ignored: number }>({ need_source: 0, approved: 0, ignored: 0 });
   scoutSources = signal<string[]>([]);
-  scoutPublishInputs: Record<string, { share_url: string; extract_code: string; collection_id: string; auto_transfer: boolean; publishing?: boolean }> = {};
+  scoutPublishInputs: Record<string, {
+    quark_url: string;
+    quark_file_size: string;
+    quark_file_type: string;
+    quark_desc: string;
+    account_id: string;
+    baidu_url: string;
+    baidu_extract_code: string;
+    baidu_file_size: string;
+    baidu_file_type: string;
+    baidu_desc: string;
+    file_tree: any[];
+    collection_id: string;
+    auto_transfer: boolean;
+    show_baidu?: boolean;
+    publishing?: boolean;
+    parsing?: boolean;
+    transferring?: boolean;
+  }> = {};
 
   applyScoutPreset(url: string, name: string, selector = '') {
     this.scoutUrl = url;
@@ -5074,7 +5113,22 @@ export class AdminComponent implements OnInit, OnDestroy {
         const items = data?.items || [];
         for (const it of items) {
           if (!this.scoutPublishInputs[it.id]) {
-            this.scoutPublishInputs[it.id] = { share_url: '', extract_code: '', collection_id: '', auto_transfer: true };
+            this.scoutPublishInputs[it.id] = {
+              quark_url: '',
+              quark_file_size: '',
+              quark_file_type: 'PDF',
+              quark_desc: '',
+              account_id: '',
+              baidu_url: '',
+              baidu_extract_code: '',
+              baidu_file_size: '',
+              baidu_file_type: 'PDF',
+              baidu_desc: '',
+              file_tree: [],
+              collection_id: '',
+              auto_transfer: false,
+              show_baidu: false
+            };
           }
         }
         this.scoutTopics.set(items);
@@ -5157,20 +5211,110 @@ export class AdminComponent implements OnInit, OnDestroy {
     window.open(target, '_blank', 'noopener');
   }
 
+  detectScoutQuark(topicId: string) {
+    const form = this.scoutPublishInputs[topicId];
+    const url = (form?.quark_url || '').trim();
+    if (!url) return;
+    form.parsing = true;
+    this.resService.parseNetdisk(url, 'quark').subscribe({
+      next: (info) => {
+        form.parsing = false;
+        if (info?.success) {
+          if (info.file_size && info.file_size !== '0 B') form.quark_file_size = info.file_size;
+          if (info.file_type) form.quark_file_type = info.file_type;
+          if (info.resource_desc) form.quark_desc = info.resource_desc;
+          if (info.file_list?.length) form.file_tree = info.file_list;
+          this.showToast(`⚡ 夸克探测成功：${info.file_size || ''} (${info.file_type || 'PDF'})`);
+        } else {
+          this.showToast(info?.message || '夸克网盘探测失败', 'error');
+        }
+      },
+      error: () => {
+        form.parsing = false;
+        this.showToast('夸克网盘探测超时，请重试', 'error');
+      }
+    });
+  }
+
+  transferScoutQuark(topicId: string) {
+    const form = this.scoutPublishInputs[topicId];
+    const url = (form?.quark_url || '').trim();
+    if (!url) {
+      this.showToast('请先输入或贴入需要转存的夸克链接', 'error');
+      return;
+    }
+    form.transferring = true;
+    this.resService.autoTransferAndShare({
+      share_url: url,
+      account_id: form.account_id || undefined
+    }).subscribe({
+      next: (res: any) => {
+        form.transferring = false;
+        const newUrl = res.new_share_url || res.my_share_url;
+        if (newUrl) {
+          form.quark_url = newUrl;
+          if (res.account_id) form.account_id = res.account_id;
+          if (res.file_size) form.quark_file_size = res.file_size;
+          if (res.file_type) form.quark_file_type = res.file_type;
+          if (res.resource_desc) form.quark_desc = res.resource_desc;
+          this.showToast(`🎉 已转存到我的夸克网盘并回填专属链接！`);
+        }
+      },
+      error: (err) => {
+        form.transferring = false;
+        this.showToast('转存失败: ' + (err.error?.message || err.message), 'error');
+      }
+    });
+  }
+
+  detectScoutBaidu(topicId: string) {
+    const form = this.scoutPublishInputs[topicId];
+    const url = (form?.baidu_url || '').trim();
+    if (!url) return;
+    form.parsing = true;
+    this.resService.parseNetdisk(url, 'baidu', form.baidu_extract_code || '').subscribe({
+      next: (info) => {
+        form.parsing = false;
+        if (info?.success) {
+          if (info.file_size && info.file_size !== '0 B') form.baidu_file_size = info.file_size;
+          if (info.file_type) form.baidu_file_type = info.file_type;
+          if (info.resource_desc) form.baidu_desc = info.resource_desc;
+          this.showToast(`⚡ 百度网盘读取成功：${info.file_size || ''}`);
+        } else {
+          this.showToast(info?.message || '百度网盘读取失败', 'error');
+        }
+      },
+      error: () => {
+        form.parsing = false;
+        this.showToast('百度网盘读取超时', 'error');
+      }
+    });
+  }
+
   publishScoutTopic(topic: any) {
     const form = this.scoutPublishInputs[topic.id];
-    const url = (form?.share_url || '').trim();
-    if (!url) {
-      this.showToast('请先粘贴找到的网盘链接', 'error');
+    const qUrl = (form?.quark_url || '').trim();
+    const bUrl = (form?.baidu_url || '').trim();
+    if (!qUrl && !bUrl) {
+      this.showToast('请先从我的网盘选取，或填写夸克/百度网盘链接', 'error');
       return;
     }
     form.publishing = true;
     this.resService.publishScoutTopic(topic.id, {
       title: topic.title,
-      share_url: url,
-      extract_code: (form.extract_code || '').trim(),
+      quark_url: qUrl,
+      quark_file_size: (form.quark_file_size || '').trim(),
+      quark_file_type: (form.quark_file_type || '').trim(),
+      quark_desc: (form.quark_desc || '').trim(),
+      account_id: form.account_id || '',
+      baidu_url: bUrl,
+      baidu_extract_code: (form.baidu_extract_code || '').trim(),
+      baidu_file_size: (form.baidu_file_size || '').trim(),
+      baidu_file_type: (form.baidu_file_type || '').trim(),
+      baidu_desc: (form.baidu_desc || '').trim(),
+      file_tree: form.file_tree || [],
       collection_id: form.collection_id || '',
-      auto_transfer: form.auto_transfer
+      auto_transfer: false
     }).subscribe({
       next: (res) => {
         form.publishing = false;

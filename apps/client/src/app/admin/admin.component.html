@@ -3173,22 +3173,59 @@
                       </div>
 
                       @if (topic.status === 'need_source' && scoutPublishInputs[topic.id]) {
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
-                          <input type="text" [(ngModel)]="scoutPublishInputs[topic.id].share_url" [name]="'scout_url_' + topic.id" autocomplete="off" placeholder="粘贴找到的夸克 / 百度网盘分享链接..." class="form-control" style="flex: 2; min-width: 240px;" />
-                          <input type="text" [(ngModel)]="scoutPublishInputs[topic.id].extract_code" [name]="'scout_code_' + topic.id" autocomplete="off" placeholder="提取码(选填)" class="form-control" style="width: 110px;" />
-                          <select [(ngModel)]="scoutPublishInputs[topic.id].collection_id" [name]="'scout_col_' + topic.id" class="form-control" style="width: auto; max-width: 180px;">
-                            <option value="">不加入专辑</option>
-                            @for (col of collections(); track col.id) {
-                              <option [value]="col.id">📚 {{ col.title }}</option>
+                        <div style="padding: 12px; border-radius: 10px; background: #ffffff; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 10px;">
+                          <!-- 夸克网盘分发配置（与上架试卷同款：选账号 + 从我的网盘中选取 + 探测 + 一键转存） -->
+                          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                            <span style="font-size: 12px; font-weight: 700; color: #0369a1; white-space: nowrap;">⚡ 夸克:</span>
+                            <select [(ngModel)]="scoutPublishInputs[topic.id].account_id" [name]="'scout_acc_' + topic.id" class="form-control" style="width: auto; max-width: 190px; font-size: 12px; padding: 4px 8px;">
+                              <option value="">默认网盘账号</option>
+                              @for (acc of accounts(); track acc.id) {
+                                <option [value]="acc.id">{{ acc.drive_type === 'quark' ? '⚡' : '📦' }} {{ acc.account_name }}</option>
+                              }
+                            </select>
+                            <input type="text" [(ngModel)]="scoutPublishInputs[topic.id].quark_url" (blur)="detectScoutQuark(topic.id)" [name]="'scout_qurl_' + topic.id" autocomplete="off" placeholder="https://pan.quark.cn/s/... 或点击右侧「从我的网盘选取」" class="form-control" style="flex: 2; min-width: 220px;" />
+                            <button type="button" class="btn-pick-drive" (click)="openDrivePickerForScout(topic.id)" style="padding: 6px 10px; font-size: 12px;" title="打开我的网盘目录，选择文件/文件夹自动生成分享链接并回填">
+                              📂 从我的网盘选取
+                            </button>
+                            <button type="button" class="btn-detect" [disabled]="scoutPublishInputs[topic.id].parsing || scoutPublishInputs[topic.id].transferring" (click)="detectScoutQuark(topic.id)" style="padding: 6px 10px; font-size: 12px;">
+                              {{ scoutPublishInputs[topic.id].parsing ? '探测中...' : '⚡ 探测' }}
+                            </button>
+                            <button type="button" class="btn-transfer" [disabled]="scoutPublishInputs[topic.id].transferring || scoutPublishInputs[topic.id].parsing" (click)="transferScoutQuark(topic.id)" style="padding: 6px 10px; font-size: 12px;" title="若贴的是他人分享，一键转存并替换为我的链接">
+                              {{ scoutPublishInputs[topic.id].transferring ? '转存中...' : '🔄 转存换链' }}
+                            </button>
+                          </div>
+
+                          <!-- 可选百度网盘备用通道 + 规格 + 所属专辑 + 补链上架 -->
+                          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                            <button type="button" class="btn btn-sm btn-secondary" (click)="scoutPublishInputs[topic.id].show_baidu = !scoutPublishInputs[topic.id].show_baidu" style="font-size: 12px;">
+                              {{ scoutPublishInputs[topic.id].show_baidu ? '📦 收起百度网盘' : '📦 + 百度网盘' }}
+                            </button>
+                            @if (scoutPublishInputs[topic.id].quark_file_size) {
+                              <span style="font-size: 12px; color: #059669; font-weight: 600;">
+                                {{ scoutPublishInputs[topic.id].quark_file_size }} · {{ scoutPublishInputs[topic.id].quark_file_type || 'PDF' }}
+                              </span>
                             }
-                          </select>
-                          <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #334155; cursor: pointer; margin: 0;">
-                            <input type="checkbox" [(ngModel)]="scoutPublishInputs[topic.id].auto_transfer" [name]="'scout_tx_' + topic.id" />
-                            <span>自动转存</span>
-                          </label>
-                          <button type="button" class="btn btn-sm btn-primary" [disabled]="scoutPublishInputs[topic.id].publishing" (click)="publishScoutTopic(topic)" style="white-space: nowrap;">
-                            {{ scoutPublishInputs[topic.id].publishing ? '⏳ 发布中...' : '✅ 补链并上架' }}
-                          </button>
+                            <select [(ngModel)]="scoutPublishInputs[topic.id].collection_id" [name]="'scout_col_' + topic.id" class="form-control" style="width: auto; max-width: 190px; margin-left: auto;">
+                              <option value="">不加入专辑</option>
+                              @for (col of collections(); track col.id) {
+                                <option [value]="col.id">📚 {{ col.title }}</option>
+                              }
+                            </select>
+                            <button type="button" class="btn btn-sm btn-primary" [disabled]="scoutPublishInputs[topic.id].publishing" (click)="publishScoutTopic(topic)" style="white-space: nowrap;">
+                              {{ scoutPublishInputs[topic.id].publishing ? '⏳ 发布中...' : '✅ 补链并上架' }}
+                            </button>
+                          </div>
+
+                          @if (scoutPublishInputs[topic.id].show_baidu) {
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                              <span style="font-size: 12px; font-weight: 700; color: #2563eb;">📦 百度:</span>
+                              <input type="text" [(ngModel)]="scoutPublishInputs[topic.id].baidu_url" [name]="'scout_burl_' + topic.id" autocomplete="off" placeholder="https://pan.baidu.com/s/..." class="form-control" style="flex: 2; min-width: 220px;" />
+                              <input type="text" [(ngModel)]="scoutPublishInputs[topic.id].baidu_extract_code" [name]="'scout_bcode_' + topic.id" autocomplete="off" placeholder="提取码" class="form-control" style="width: 90px;" />
+                              <button type="button" class="btn-detect" [disabled]="scoutPublishInputs[topic.id].parsing" (click)="detectScoutBaidu(topic.id)" style="padding: 6px 10px; font-size: 12px;">
+                                ⚡ 读取大小
+                              </button>
+                            </div>
+                          }
                         </div>
                       }
                     </div>
