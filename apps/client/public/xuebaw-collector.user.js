@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.4.0
-// @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别；右侧贴边滑出抽屉工作台（原文零遮挡）；紧凑三行排版、智能提取码匹配与目标频道划转！
+// @version      1.5.0
+// @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别、Discourse论坛(linux.do)板块分页穿透提取；右侧贴边滑出抽屉工作台！
 // @author       学霸网开发团队
 // @match        *://*/*
 // @exclude      *://localhost:*/*
@@ -633,6 +633,87 @@
     return items;
   }
 
+  function isDiscourseListPage() {
+    const isDiscourseMeta = !!document.querySelector('meta[name="generator"][content*="Discourse"]');
+    const isListPath = /^\/(c\/|latest|top|new|tag\/)/.test(location.pathname);
+    return (isDiscourseMeta || location.hostname.includes('linux.do')) && isListPath;
+  }
+
+  async function scanDiscourseBoard(pagesCount, progressEl) {
+    const basePath = location.pathname.replace(/\/$/, '') || '/latest';
+    const topics = [];
+    const seenTopicIds = new Set();
+
+    for (let p = 0; p < pagesCount; p++) {
+      if (progressEl) progressEl.textContent = `正在读取板块第 ${p + 1}/${pagesCount} 页列表...`;
+      try {
+        const res = await fetch(`${basePath}.json?page=${p}`, { credentials: 'include' });
+        if (!res.ok) break;
+        const json = await res.json();
+        const list = json?.topic_list?.topics || [];
+        if (list.length === 0) break;
+        for (const t of list) {
+          if (t.id && t.title && !seenTopicIds.has(t.id)) {
+            seenTopicIds.add(t.id);
+            topics.push({ id: t.id, title: t.title });
+          }
+        }
+      } catch (e) {
+        break;
+      }
+      await new Promise(r => setTimeout(r, 150));
+    }
+
+    if (topics.length === 0) {
+      return [];
+    }
+
+    const extracted = [];
+    const seenUrls = new Set();
+    const quarkRe = /https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9_\-]+/gi;
+    const allDriveRe = /https?:\/\/(?:pan\.quark\.cn\/s\/[a-zA-Z0-9_\-]+|pan\.baidu\.com\/(?:s\/[a-zA-Z0-9_\-]+|share\/init\?surl=[a-zA-Z0-9_\-]+)(?:\?pwd=[a-zA-Z0-9]+)?|(?:www\.)?(?:alipan|aliyundrive)\.com\/s\/[a-zA-Z0-9_\-]+|pan\.xunlei\.com\/s\/[a-zA-Z0-9_\-]+|(?:drive|fast)\.uc\.cn\/s\/[a-zA-Z0-9_\-]+)/gi;
+
+    for (let i = 0; i < topics.length; i++) {
+      const t = topics[i];
+      if (progressEl) progressEl.textContent = `正在穿透读取帖子 ${i + 1}/${topics.length}（已发现 ${extracted.length} 条）...`;
+      try {
+        const res = await fetch(`/t/${t.id}.json`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          const posts = data?.post_stream?.posts || [];
+          const firstPost = posts[0];
+          const cooked = firstPost?.cooked || '';
+          const matches = cooked.match(quarkRe) || cooked.match(allDriveRe) || [];
+          for (const rawUrl of matches) {
+            const cleanUrl = rawUrl.trim();
+            if (!seenUrls.has(cleanUrl)) {
+              seenUrls.add(cleanUrl);
+              const uLower = cleanUrl.toLowerCase();
+              const driveType = uLower.includes('quark.cn') ? 'quark' : (uLower.includes('baidu.com') ? 'baidu' : 'other');
+              const driveLabel = driveType === 'quark' ? '⚡ 夸克' : (driveType === 'baidu' ? '☁️ 百度' : '🔗 网盘');
+              let code = '';
+              const codeMatch = cooked.match(/(?:提取码|密码|pwd|code)[:：\s]*([a-zA-Z0-9]{4,8})/i);
+              if (codeMatch) code = codeMatch[1];
+              extracted.push({
+                id: 'ds_' + t.id + '_' + Math.random().toString(36).slice(2, 6),
+                title: t.title.slice(0, 100),
+                shareUrl: cleanUrl,
+                code,
+                driveType,
+                driveLabel,
+                selected: true
+              });
+              break; // 每个帖子取主夸克链接即可，避免重复
+            }
+          }
+        }
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 120));
+    }
+
+    return extracted;
+  }
+
   // 触发采集抽屉
   function triggerCollect() {
     const items = extractAllPageResources();
@@ -708,6 +789,21 @@
         <div class="xb-compare-banner">
           <span>👀 <strong>左侧原文零遮挡</strong>：左侧页面可自由滚动查阅，右侧对照核对无误后一键推送！</span>
         </div>
+
+        ${isDiscourseListPage() ? `
+          <div style="margin: 8px 16px 0; padding: 10px 12px; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <span style="font-size: 12px; font-weight: 700; color: #065f46;">🌐 检测到 Discourse 论坛板块</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 11px; color: #047857;">抓</span>
+                <input type="number" id="xb-discourse-pages" value="2" min="1" max="10" style="width: 44px; padding: 2px 4px; border: 1px solid #6ee7b7; border-radius: 4px; font-size: 12px; text-align: center;" />
+                <span style="font-size: 11px; color: #047857;">页</span>
+                <button type="button" id="xb-btn-discourse-scan" style="background: #059669; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 700; cursor: pointer;">🚀 穿透提取夸克链接</button>
+              </div>
+            </div>
+            <div id="xb-discourse-progress" style="font-size: 11px; color: #047857; display: none;"></div>
+          </div>
+        ` : ''}
 
         ${items.length > 0 ? `
           <div class="xb-toolbar-row">
@@ -790,6 +886,29 @@
     container.querySelector('#xb-btn-toggle-width').addEventListener('click', () => {
       drawer.classList.toggle('is-expanded');
     });
+
+    const discourseBtn = container.querySelector('#xb-btn-discourse-scan');
+    if (discourseBtn) {
+      discourseBtn.addEventListener('click', async () => {
+        const pagesInp = container.querySelector('#xb-discourse-pages');
+        const progressEl = container.querySelector('#xb-discourse-progress');
+        const pagesCount = Math.max(1, Math.min(10, parseInt(pagesInp?.value || '2', 10) || 2));
+        discourseBtn.disabled = true;
+        discourseBtn.textContent = '⏳ 穿透提取中...';
+        if (progressEl) {
+          progressEl.style.display = 'block';
+          progressEl.textContent = '准备读取板块列表...';
+        }
+        const found = await scanDiscourseBoard(pagesCount, progressEl);
+        if (found.length > 0) {
+          showRightDrawer(found);
+        } else {
+          discourseBtn.disabled = false;
+          discourseBtn.textContent = '🚀 穿透提取夸克链接';
+          if (progressEl) progressEl.textContent = '未提取到夸克链接（请确认当前账号已登录且帖子首楼包含分享地址）';
+        }
+      });
+    }
 
     if (items.length > 0) {
       container.querySelector('#xb-select-all').addEventListener('click', () => {
