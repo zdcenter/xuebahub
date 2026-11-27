@@ -3875,6 +3875,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.loadSearchLogs();
     this.loadCollections();
     this.loadCrawlerConfigAndStats();
+    this.loadScoutTopics();
     this.loadAllCategories();
   }
 
@@ -4990,6 +4991,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   scoutSourceFilter = signal<string>('all');
   scoutKeyword = '';
   scoutPage = signal<number>(1);
+  scoutPageSize = signal<number>(20);
+  scoutJumpPageInput = signal<string>('1');
   scoutTotal = signal<number>(0);
   scoutCounts = signal<{ need_source: number; approved: number; ignored: number }>({ need_source: 0, approved: 0, ignored: 0 });
   scoutSources = signal<string[]>([]);
@@ -5065,7 +5068,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       source_name: this.scoutSourceFilter(),
       q: this.scoutKeyword.trim(),
       page: this.scoutPage(),
-      page_size: 20
+      page_size: this.scoutPageSize()
     }).subscribe({
       next: (data) => {
         const items = data?.items || [];
@@ -5088,7 +5091,16 @@ export class AdminComponent implements OnInit, OnDestroy {
     });
   }
 
-  scoutTotalPages = computed(() => Math.max(1, Math.ceil(this.scoutTotal() / 20)));
+  scoutTotalPages = computed(() => Math.max(1, Math.ceil(this.scoutTotal() / this.scoutPageSize())));
+
+  scoutRangeStart = computed(() => {
+    if (this.scoutTotal() === 0) return 0;
+    return (this.scoutPage() - 1) * this.scoutPageSize() + 1;
+  });
+
+  scoutRangeEnd = computed(() => {
+    return Math.min(this.scoutPage() * this.scoutPageSize(), this.scoutTotal());
+  });
 
   scoutPageList = computed<number[]>(() => {
     const total = this.scoutTotalPages();
@@ -5110,7 +5122,24 @@ export class AdminComponent implements OnInit, OnDestroy {
     const maxP = this.scoutTotalPages();
     if (page < 1 || page > maxP) return;
     this.scoutPage.set(page);
+    this.scoutJumpPageInput.set(String(page));
     this.loadScoutTopics();
+  }
+
+  changeScoutPageSize(sizeVal: string | number) {
+    const size = Number(sizeVal) || 20;
+    this.scoutPageSize.set(size);
+    this.scoutPage.set(1);
+    this.scoutJumpPageInput.set('1');
+    this.loadScoutTopics();
+  }
+
+  applyScoutJumpPage() {
+    const p = parseInt(this.scoutJumpPageInput(), 10);
+    if (!isNaN(p)) {
+      const target = Math.max(1, Math.min(this.scoutTotalPages(), p));
+      this.changeScoutPage(target);
+    }
   }
 
   openScoutSearch(title: string, engine: 'google' | 'baidu' | 'quark') {

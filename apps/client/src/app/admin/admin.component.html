@@ -3193,17 +3193,25 @@
                     </div>
                   }
                 </div>
-                <!-- 选题列表分页条（与资料库统一的分页样式） -->
+                <!-- 选题列表分页条（与资料库 100% 一致的完整分页控制中枢） -->
                 @if (scoutTotal() > 0) {
                   <div class="admin-pagination-container" style="margin-top: 16px;">
                     <div class="pagination-info-summary">
                       <span class="range-text">
-                        共 <strong class="total-highlight">{{ scoutTotal() }}</strong> 条选题 · 第 <strong>{{ scoutPage() }}</strong> / {{ scoutTotalPages() }} 页
+                        显示第 <strong>{{ scoutRangeStart() }}</strong> - <strong>{{ scoutRangeEnd() }}</strong> 条，共 <strong class="total-highlight">{{ scoutTotal() }}</strong> 条选题
                       </span>
+                      <div class="page-size-picker">
+                        <span class="size-label">每页显示:</span>
+                        <select [value]="scoutPageSize()" (change)="changeScoutPageSize($any($event.target).value)" class="size-select">
+                          <option [value]="20">20 条/页</option>
+                          <option [value]="50">50 条/页</option>
+                          <option [value]="100">100 条/页</option>
+                        </select>
+                      </div>
                     </div>
                     <div class="pagination-nav-actions">
-                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() <= 1" (click)="changeScoutPage(1)">« 首页</button>
-                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() <= 1" (click)="changeScoutPage(scoutPage() - 1)">‹ 上一页</button>
+                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() <= 1" (click)="changeScoutPage(1)" title="跳转到第 1 页">« 首页</button>
+                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() <= 1" (click)="changeScoutPage(scoutPage() - 1)" title="上一页">‹ 上一页</button>
                       <div class="page-number-group">
                         @for (p of scoutPageList(); track $index) {
                           @if (p === -1) {
@@ -3213,8 +3221,22 @@
                           }
                         }
                       </div>
-                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() >= scoutTotalPages()" (click)="changeScoutPage(scoutPage() + 1)">下一页 ›</button>
-                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() >= scoutTotalPages()" (click)="changeScoutPage(scoutTotalPages())">末页 » ({{ scoutTotalPages() }})</button>
+                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() >= scoutTotalPages()" (click)="changeScoutPage(scoutPage() + 1)" title="下一页">下一页 ›</button>
+                      <button type="button" class="pg-btn nav-btn" [disabled]="scoutPage() >= scoutTotalPages()" (click)="changeScoutPage(scoutTotalPages())" title="跳转到最后一页">末页 » ({{ scoutTotalPages() }})</button>
+                      <div class="pg-jump-box">
+                        <span>跳至</span>
+                        <input
+                          type="number"
+                          min="1"
+                          [max]="scoutTotalPages()"
+                          [value]="scoutJumpPageInput()"
+                          (input)="scoutJumpPageInput.set($any($event.target).value)"
+                          (keydown.enter)="applyScoutJumpPage()"
+                          class="pg-jump-input"
+                        />
+                        <span>页</span>
+                        <button type="button" class="pg-jump-go" (click)="applyScoutJumpPage()">GO</button>
+                      </div>
                     </div>
                   </div>
                 }
