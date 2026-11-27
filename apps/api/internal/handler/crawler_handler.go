@@ -406,14 +406,36 @@ func (h *CrawlerHandler) IngestText(c fiber.Ctx) error {
 			sourceName = "浏览器采集助手"
 		}
 		var inserted []model.ResourceDraft
+		skipped := 0
+		seenURLs := make(map[string]bool)
 		for _, it := range req.Items {
 			shareURL := strings.TrimSpace(it.ShareURL)
 			title := strings.TrimSpace(it.Title)
 			if shareURL == "" || title == "" {
 				continue
 			}
-			var existing model.ResourceDraft
-			if err := h.db.Where("share_url = ?", shareURL).First(&existing).Error; err == nil {
+			if seenURLs[shareURL] {
+				skipped++
+				continue
+			}
+			seenURLs[shareURL] = true
+
+			var draftCnt int64
+			h.db.Model(&model.ResourceDraft{}).Where("share_url = ? OR LOWER(title) = ?", shareURL, strings.ToLower(title)).Count(&draftCnt)
+			if draftCnt > 0 {
+				skipped++
+				continue
+			}
+			var linkCnt int64
+			h.db.Model(&model.ResourceLink{}).Where("share_url = ?", shareURL).Count(&linkCnt)
+			if linkCnt > 0 {
+				skipped++
+				continue
+			}
+			var resCnt int64
+			h.db.Model(&model.Resource{}).Where("LOWER(title) = ?", strings.ToLower(title)).Count(&resCnt)
+			if resCnt > 0 {
+				skipped++
 				continue
 			}
 			dt := strings.TrimSpace(it.DriveType)
@@ -436,9 +458,14 @@ func (h *CrawlerHandler) IngestText(c fiber.Ctx) error {
 				inserted = append(inserted, draft)
 			}
 		}
+		msg := fmt.Sprintf("成功解析并录入 %d 条待审核草稿", len(inserted))
+		if skipped > 0 {
+			msg = fmt.Sprintf("成功录入 %d 条待审核草稿（已去重跳过 %d 条）", len(inserted), skipped)
+		}
 		return c.JSON(fiber.Map{
-			"message": fmt.Sprintf("成功解析并录入 %d 条待审核草稿", len(inserted)),
-			"drafts":  inserted,
+			"message":       msg,
+			"drafts":        inserted,
+			"skipped_count": skipped,
 		})
 	}
 

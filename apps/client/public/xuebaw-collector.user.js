@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.5.4
+// @version      1.5.5
 // @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别、Discourse论坛(linux.do)板块分页穿透提取；右侧贴边滑出抽屉工作台！
 // @author       学霸网开发团队
 // @match        *://*/*
@@ -1094,8 +1094,9 @@
             saveDrawerCache(items);
             container.style.display = 'none';
             updateSelectionUI();
+            const toastTitle = (res && res.message) ? `✅ ${res.message}` : `✅ 成功推送 ${selectedItems.length} 条资料到待审草稿池`;
             showCenterToast(
-              `✅ 成功推送 ${selectedItems.length} 条资料到待审草稿池`,
+              toastTitle,
               selectedItems.map(it => it.title),
               3000
             );
