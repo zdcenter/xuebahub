@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.5.0
+// @version      1.5.1
 // @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别、Discourse论坛(linux.do)板块分页穿透提取；右侧贴边滑出抽屉工作台！
 // @author       学霸网开发团队
 // @match        *://*/*
@@ -1065,7 +1065,7 @@
     `;
 
     overlay.innerHTML = `
-      <div style="background: #ffffff; width: 440px; max-width: 92vw; border-radius: 12px; padding: 18px; box-shadow: 0 20px 45px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
+      <div id="xb-set-card" style="background: #ffffff; width: 440px; max-width: 92vw; border-radius: 12px; padding: 18px; box-shadow: 0 20px 45px rgba(0,0,0,0.25);">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
           <strong style="font-size: 15px; color: #0f172a;">⚙️ 学霸网采集助手配置</strong>
           <button style="background:none; border:none; font-size:16px; cursor:pointer; color:#94a3b8;" id="xb-set-close">✕</button>
@@ -1092,7 +1092,7 @@
 
     document.body.appendChild(overlay);
 
-    overlay.addEventListener('click', () => overlay.remove());
+    overlay.querySelector('#xb-set-card').addEventListener('click', (e) => e.stopPropagation());
     overlay.querySelector('#xb-set-close').addEventListener('click', () => overlay.remove());
     overlay.querySelector('#xb-set-cancel').addEventListener('click', () => overlay.remove());
     overlay.querySelector('#xb-set-save').addEventListener('click', () => {
