@@ -75,7 +75,7 @@ func (s *SmartMetaService) CleanTitle(title string) string {
 	}
 
 	// 1. 去除引流微信、公众号、群聊、防失联、淘宝闲鱼等括号标签
-	reSpamBracket := regexp.MustCompile(`(?i)[\[\(\{\【\（][^\]\)\}\】\）]*(?:加[v微V]|微信|vx|VX|关注公众号|防失联|进群|代找|淘宝|闲鱼|免费领|私信|首发|独家首发|一手资源|备用群)[^\]\)\}\】\）]*[\]\)\}\】\）]`)
+	reSpamBracket := regexp.MustCompile(`(?i)[\[\(\{【（][^\]\)\}】）]*(?:加[v微V]|微信|vx|VX|关注公众号|防失联|进群|代找|淘宝|闲鱼|免费领|私信|首发|独家首发|一手资源|备用群)[^\]\)\}】）]*[\]\)\}】）]`)
 	t = reSpamBracket.ReplaceAllString(t, "")
 
 	// 2. 去除多余营销前缀
