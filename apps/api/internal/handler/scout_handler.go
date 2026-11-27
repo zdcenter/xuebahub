@@ -567,31 +567,48 @@ func (h *ScoutHandler) PublishTopic(c fiber.Ctx) error {
 		resFileType = "PDF"
 	}
 
-	newRes := model.Resource{
-		ID:           resID,
-		Slug:         fmt.Sprintf("res-%d-%s", time.Now().UnixNano(), uuid.New().String()[:8]),
-		ChannelSlug:  chSlug,
-		Title:        finalTitle,
-		Subtitle:     meta.Subtitle,
-		Description:  meta.Description,
-		Stage:        meta.Stage,
-		Grade:        meta.Grade,
-		Term:         meta.Term,
-		Subject:      meta.Subject,
-		Edition:      meta.Edition,
-		CollectionID: colID,
-		FileType:     resFileType,
-		FileSize:     resFileSize,
-		IsPublished:  true,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
+	if utf8.RuneCountInString(finalTitle) > 250 {
+		finalTitle = string([]rune(finalTitle)[:250])
 	}
-	if len(req.FileTree) > 2 {
+	subTitle := meta.Subtitle
+	if utf8.RuneCountInString(subTitle) > 250 {
+		subTitle = string([]rune(subTitle)[:250])
+	}
+	if utf8.RuneCountInString(resFileType) > 20 {
+		resFileType = string([]rune(resFileType)[:20])
+	}
+	if utf8.RuneCountInString(resFileSize) > 50 {
+		resFileSize = string([]rune(resFileSize)[:50])
+	}
+
+	newRes := model.Resource{
+		ID:            resID,
+		Slug:          fmt.Sprintf("res-%d-%s", time.Now().UnixNano(), uuid.New().String()[:8]),
+		ChannelSlug:   chSlug,
+		Title:         finalTitle,
+		Subtitle:      subTitle,
+		Description:   meta.Description,
+		Stage:         meta.Stage,
+		Grade:         meta.Grade,
+		Term:          meta.Term,
+		Subject:       meta.Subject,
+		Edition:       meta.Edition,
+		CollectionID:  colID,
+		PreviewImages: datatypes.JSON("[]"),
+		ExtraMetadata: datatypes.JSON("{}"),
+		FileTree:      datatypes.JSON("[]"),
+		FileType:      resFileType,
+		FileSize:      resFileSize,
+		IsPublished:   true,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+	if len(req.FileTree) > 2 && string(req.FileTree) != "null" && json.Valid(req.FileTree) {
 		newRes.FileTree = datatypes.JSON(req.FileTree)
 	}
 
 	if err := database.DB.Create(&newRes).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "发布到正式库失败"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": fmt.Sprintf("发布到正式库失败: %v", err)})
 	}
 
 	if quarkURL != "" {
