@@ -502,7 +502,7 @@ export class ResourceService {
   }
 
   // ==================== 选题雷达 (竞品标题采集与寻源) ====================
-  fetchScoutTitles(payload: { url: string; source_name?: string; selector?: string; max_items?: number }): Observable<{ fetched_count: number; added_count: number; skipped_count: number; message?: string }> {
+  fetchScoutTitles(payload: { url: string; source_name?: string; selector?: string; start_page?: number; max_pages?: number; max_items?: number }): Observable<{ pages_fetched?: number; fetched_count: number; added_count: number; skipped_count: number; stopped_reason?: string; message?: string }> {
     return this.http.post<{ code: number; data: any }>(
       `${this.apiUrl.replace('/resources', '/scout')}/fetch`,
       payload

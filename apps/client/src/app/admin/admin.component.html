@@ -3071,21 +3071,28 @@
               </div>
               <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
-                  <span style="font-size: 12px; color: #64748b;">常用参考站：</span>
-                  <button type="button" class="btn btn-sm btn-secondary" (click)="applyScoutPreset('https://www.xue-ba.org/', 'xue-ba.org')">xue-ba.org</button>
-                  <button type="button" class="btn btn-sm btn-secondary" (click)="applyScoutPreset('https://www.huix8.com/', 'huix8.com')">huix8.com</button>
+                  <span style="font-size: 12px; color: #64748b;">常用分页模板：</span>
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="applyScoutPreset('https://www.huix8.com/page/{page}', 'huix8.com', '.entry-title a')">huix8.com (分页)</button>
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="applyScoutPreset('https://www.xue-ba.org/category/xue-ba-jiao-cheng/gao-zhong/page/{page}', 'xue-ba.org', '.yc-hm-card, .entry-title a')">xue-ba.org (高中分页)</button>
                 </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                  <input type="text" [(ngModel)]="scoutUrl" name="scout_url" autocomplete="off" placeholder="输入目标网站列表页 URL（如 https://www.xue-ba.org/）" class="form-control" style="flex: 2; min-width: 220px;" />
-                  <input type="text" [(ngModel)]="scoutSourceName" name="scout_source" autocomplete="off" placeholder="来源名称（选填）" class="form-control" style="flex: 1; min-width: 120px;" />
+                  <input type="text" [(ngModel)]="scoutUrl" name="scout_url" autocomplete="off" placeholder="支持 {page} 分页占位符，如 https://www.huix8.com/page/{page}" class="form-control" style="flex: 2; min-width: 220px;" />
+                  <input type="text" [(ngModel)]="scoutSourceName" name="scout_source" autocomplete="off" placeholder="来源名称（选填）" class="form-control" style="flex: 1; min-width: 110px;" />
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <input type="text" [(ngModel)]="scoutSelector" name="scout_selector" autocomplete="off" placeholder="自定义 CSS 选择器（留空自动识别常见文章/资料标题）" class="form-control" style="flex: 1;" />
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                  <input type="text" [(ngModel)]="scoutSelector" name="scout_selector" autocomplete="off" placeholder="CSS 选择器（留空自动识别）" class="form-control" style="flex: 1; min-width: 150px;" />
+                  <label style="font-size: 12px; color: #475569; display: flex; align-items: center; gap: 4px; margin: 0;">
+                    <span>从第</span>
+                    <input type="number" min="1" [(ngModel)]="scoutStartPage" name="scout_start_page" class="form-control" style="width: 56px; padding: 4px 6px;" />
+                    <span>页抓</span>
+                    <input type="number" min="1" max="50" [(ngModel)]="scoutMaxPages" name="scout_max_pages" class="form-control" style="width: 56px; padding: 4px 6px;" />
+                    <span>页</span>
+                  </label>
                   <button type="button" class="btn btn-primary" [disabled]="scoutFetching()" (click)="fetchScoutTitles()" style="white-space: nowrap;">
-                    {{ scoutFetching() ? '⏳ 正在提取...' : '🚀 抓取标题入库' }}
+                    {{ scoutFetching() ? '⏳ 循环抓取中...' : '🚀 循环抓取标题' }}
                   </button>
                 </div>
-                <p style="margin: 0; font-size: 12px; color: #64748b;">自动对比正式库与草稿库去重；若目标站开启了防爬拦截，可使用右侧「粘贴标题批量导入」。</p>
+                <p style="margin: 0; font-size: 12px; color: #64748b;">网址含 <code>&#123;page&#125;</code> 时会自动从起始页循环抓取（遇空页或 404 自动停止），单次最多 50 页。</p>
               </div>
             </div>
 
@@ -3186,6 +3193,18 @@
                     </div>
                   }
                 </div>
+                <!-- 选题列表分页条 -->
+                @if (scoutTotal() > 20) {
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; margin-top: 16px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px;">
+                    <span style="font-size: 13px; color: #64748b;">
+                      共 <strong>{{ scoutTotal() }}</strong> 条选题 · 第 <strong>{{ scoutPage() }}</strong> / {{ scoutTotalPages() }} 页
+                    </span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <button type="button" class="btn btn-sm btn-secondary" [disabled]="scoutPage() <= 1" (click)="changeScoutPage(scoutPage() - 1)">« 上一页</button>
+                      <button type="button" class="btn btn-sm btn-secondary" [disabled]="scoutPage() >= scoutTotalPages()" (click)="changeScoutPage(scoutPage() + 1)">下一页 »</button>
+                    </div>
+                  </div>
+                }
               }
             </div>
           </div>

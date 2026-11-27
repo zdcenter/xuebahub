@@ -4977,6 +4977,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   scoutUrl = '';
   scoutSourceName = '';
   scoutSelector = '';
+  scoutStartPage = 1;
+  scoutMaxPages = 5;
   scoutFetching = signal<boolean>(false);
   scoutImportSource = '手动导入';
   scoutImportTextContent = '';
@@ -4993,9 +4995,10 @@ export class AdminComponent implements OnInit, OnDestroy {
   scoutSources = signal<string[]>([]);
   scoutPublishInputs: Record<string, { share_url: string; extract_code: string; collection_id: string; auto_transfer: boolean; publishing?: boolean }> = {};
 
-  applyScoutPreset(url: string, name: string) {
+  applyScoutPreset(url: string, name: string, selector = '') {
     this.scoutUrl = url;
     this.scoutSourceName = name;
+    this.scoutSelector = selector;
   }
 
   fetchScoutTitles() {
@@ -5008,14 +5011,17 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.resService.fetchScoutTitles({
       url,
       source_name: this.scoutSourceName.trim(),
-      selector: this.scoutSelector.trim()
+      selector: this.scoutSelector.trim(),
+      start_page: this.scoutStartPage || 1,
+      max_pages: this.scoutMaxPages || 5
     }).subscribe({
       next: (data) => {
         this.scoutFetching.set(false);
         if (data?.message) {
           this.showToast(data.message, 'error');
         } else {
-          this.showToast(`抓取完成：识别 ${data.fetched_count} 条，新增入库 ${data.added_count} 条（已去重跳过 ${data.skipped_count} 条）`);
+          const pagesInfo = data.pages_fetched && data.pages_fetched > 1 ? `共扫描 ${data.pages_fetched} 页，` : '';
+          this.showToast(`抓取完成：${pagesInfo}识别 ${data.fetched_count} 条，新增入库 ${data.added_count} 条（已去重跳过 ${data.skipped_count} 条）`);
         }
         this.scoutPage.set(1);
         this.loadScoutTopics();
@@ -5080,6 +5086,15 @@ export class AdminComponent implements OnInit, OnDestroy {
       },
       error: () => this.scoutLoading.set(false)
     });
+  }
+
+  scoutTotalPages = computed(() => Math.max(1, Math.ceil(this.scoutTotal() / 20)));
+
+  changeScoutPage(page: number) {
+    const maxP = this.scoutTotalPages();
+    if (page < 1 || page > maxP) return;
+    this.scoutPage.set(page);
+    this.loadScoutTopics();
   }
 
   openScoutSearch(title: string, engine: 'google' | 'baidu' | 'quark') {

@@ -124,66 +124,56 @@ func saveScoutCandidates(sourceName string, candidates []scoutCandidate) (added 
 	return added, skipped, created
 }
 
-// FetchTitles 从目标网页抓取公开标题列表并去重存入待寻源选题库
+// FetchTitles 从目标网页（支持 {page} 分页占位符循环抓取）提取公开标题列表并去重存入待寻源选题库
 func (h *ScoutHandler) FetchTitles(c fiber.Ctx) error {
 	var req struct {
 		URL        string `json:"url"`
 		SourceName string `json:"source_name"`
 		Selector   string `json:"selector"`
+		StartPage  int    `json:"start_page"`
+		MaxPages   int    `json:"max_pages"`
 		MaxItems   int    `json:"max_items"`
 	}
 	if err := c.Bind().JSON(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "参数格式错误"})
 	}
 
-	targetURL := strings.TrimSpace(req.URL)
-	if !strings.HasPrefix(targetURL, "http://") && !strings.HasPrefix(targetURL, "https://") {
+	rawURL := strings.TrimSpace(req.URL)
+	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "请输入以 http:// 或 https:// 开头的有效网址"})
 	}
 
-	parsedURL, err := url.Parse(targetURL)
+	firstPageURL := strings.ReplaceAll(rawURL, "{page}", "1")
+	parsedFirst, err := url.Parse(firstPageURL)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "网址格式无效"})
 	}
 
 	sourceName := strings.TrimSpace(req.SourceName)
 	if sourceName == "" {
-		sourceName = parsedURL.Hostname()
+		sourceName = parsedFirst.Hostname()
 	}
 
-	maxItems := req.MaxItems
-	if maxItems <= 0 || maxItems > 200 {
-		maxItems = 80
+	hasPagePlaceholder := strings.Contains(rawURL, "{page}")
+	startPage := req.StartPage
+	if startPage < 1 {
+		startPage = 1
+	}
+	maxPages := req.MaxPages
+	if !hasPagePlaceholder {
+		maxPages = 1
+	} else {
+		if maxPages < 1 {
+			maxPages = 5
+		}
+		if maxPages > 50 {
+			maxPages = 50
+		}
 	}
 
-	client := &http.Client{Timeout: 15 * time.Second}
-	httpReq, err := http.NewRequest("GET", targetURL, nil)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"code": 400, "message": "构建请求失败"})
-	}
-	httpReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-	httpReq.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-	httpReq.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-			"code":    502,
-			"message": fmt.Sprintf("访问目标网址失败（%v），可改用下方「粘贴标题批量导入」", err),
-		})
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"code":    400,
-			"message": fmt.Sprintf("目标站点返回状态码 %d（可能存在防爬或需登录），建议在浏览器打开页面后复制标题，使用「粘贴标题批量导入」", resp.StatusCode),
-		})
-	}
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"code": 500, "message": "解析网页 HTML 失败"})
+	maxItemsPerPage := req.MaxItems
+	if maxItemsPerPage <= 0 || maxItemsPerPage > 200 {
+		maxItemsPerPage = 100
 	}
 
 	selectors := []string{}
@@ -191,60 +181,137 @@ func (h *ScoutHandler) FetchTitles(c fiber.Ctx) error {
 		selectors = append(selectors, sel)
 	} else {
 		selectors = []string{
-			"article h2 a, article h3 a, .entry-title a, .post-title a, .item-title a, .card-title a, .title a",
-			"h2 a, h3 a, .list-group-item a, .topic-title a",
-			"a[title]",
+			".entry-title a",
+			".yc-hm-card",
+			"article h2 a, .post-title a, .item-title a, .card-title a",
+			"h2 a, h3 a",
 		}
 	}
 
-	var candidates []scoutCandidate
-	for _, sel := range selectors {
-		doc.Find(sel).Each(func(i int, s *goquery.Selection) {
-			if len(candidates) >= maxItems {
-				return
-			}
-			title := cleanScoutTitle(s.Text())
-			if title == "" {
-				if tAttr, ok := s.Attr("title"); ok {
-					title = cleanScoutTitle(tAttr)
-				}
-			}
-			href, _ := s.Attr("href")
-			itemURL := targetURL
-			if href != "" {
-				if refURL, err := url.Parse(href); err == nil {
-					itemURL = parsedURL.ResolveReference(refURL).String()
-				}
-			}
-			if isValidScoutTitle(title) {
-				candidates = append(candidates, scoutCandidate{Title: title, URL: itemURL})
-			}
-		})
-		if len(candidates) >= 3 {
+	client := &http.Client{Timeout: 15 * time.Second}
+	var allCandidates []scoutCandidate
+	pagesFetched := 0
+	stoppedReason := ""
+
+	for p := startPage; p < startPage+maxPages; p++ {
+		pageURL := rawURL
+		if hasPagePlaceholder {
+			pageURL = strings.ReplaceAll(rawURL, "{page}", strconv.Itoa(p))
+		}
+		parsedURL, err := url.Parse(pageURL)
+		if err != nil {
 			break
 		}
+
+		httpReq, err := http.NewRequest("GET", pageURL, nil)
+		if err != nil {
+			break
+		}
+		httpReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+		httpReq.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+		httpReq.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+
+		resp, err := client.Do(httpReq)
+		if err != nil {
+			if pagesFetched == 0 {
+				return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+					"code":    502,
+					"message": fmt.Sprintf("访问目标网址失败（%v），可改用下方「粘贴标题批量导入」", err),
+				})
+			}
+			stoppedReason = fmt.Sprintf("第 %d 页请求失败，已停止", p)
+			break
+		}
+
+		if resp.StatusCode >= 400 {
+			resp.Body.Close()
+			if pagesFetched == 0 {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"code":    400,
+					"message": fmt.Sprintf("目标站点返回状态码 %d（可能存在防爬或需登录），建议使用「粘贴标题批量导入」", resp.StatusCode),
+				})
+			}
+			stoppedReason = fmt.Sprintf("第 %d 页返回 %d（已到达末页）", p, resp.StatusCode)
+			break
+		}
+
+		doc, err := goquery.NewDocumentFromReader(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			break
+		}
+
+		pagesFetched++
+		var pageCandidates []scoutCandidate
+		for _, sel := range selectors {
+			doc.Find(sel).Each(func(i int, s *goquery.Selection) {
+				if len(pageCandidates) >= maxItemsPerPage {
+					return
+				}
+				// 优先取 title 属性或内部 .yc-hm-title，避免把分类/日期拼接进标题
+				title := ""
+				if sub := s.Find(".yc-hm-title"); sub.Length() > 0 {
+					title = cleanScoutTitle(sub.First().Text())
+				}
+				if title == "" {
+					if tAttr, ok := s.Attr("title"); ok {
+						title = cleanScoutTitle(tAttr)
+					}
+				}
+				if title == "" {
+					title = cleanScoutTitle(s.Text())
+				}
+				href, _ := s.Attr("href")
+				itemURL := pageURL
+				if href != "" {
+					if refURL, err := url.Parse(href); err == nil {
+						itemURL = parsedURL.ResolveReference(refURL).String()
+					}
+				}
+				if isValidScoutTitle(title) {
+					pageCandidates = append(pageCandidates, scoutCandidate{Title: title, URL: itemURL})
+				}
+			})
+			if len(pageCandidates) > 0 {
+				break
+			}
+		}
+
+		if len(pageCandidates) == 0 {
+			stoppedReason = fmt.Sprintf("第 %d 页无更多有效标题，已自动结束", p)
+			break
+		}
+		allCandidates = append(allCandidates, pageCandidates...)
+
+		if p+1 < startPage+maxPages {
+			time.Sleep(250 * time.Millisecond)
+		}
 	}
 
-	if len(candidates) == 0 {
+	if len(allCandidates) == 0 {
 		return c.JSON(fiber.Map{
 			"code": 200,
 			"data": fiber.Map{
-				"fetched_count": 0,
-				"added_count":   0,
-				"skipped_count": 0,
-				"message":       "未自动识别到有效资料标题（可能是前端 JS 渲染或选择器不匹配），建议使用「粘贴标题批量导入」或填写自定义 CSS 选择器",
+				"pages_fetched":  pagesFetched,
+				"fetched_count":  0,
+				"added_count":    0,
+				"skipped_count":  0,
+				"stopped_reason": stoppedReason,
+				"message":        "未自动识别到有效资料标题（建议填写 CSS 选择器或使用右侧「粘贴标题批量导入」）",
 			},
 		})
 	}
 
-	added, skipped, created := saveScoutCandidates(sourceName, candidates)
+	added, skipped, created := saveScoutCandidates(sourceName, allCandidates)
 	return c.JSON(fiber.Map{
 		"code": 200,
 		"data": fiber.Map{
-			"fetched_count": len(candidates),
-			"added_count":   added,
-			"skipped_count": skipped,
-			"items":         created,
+			"pages_fetched":  pagesFetched,
+			"fetched_count":  len(allCandidates),
+			"added_count":    added,
+			"skipped_count":  skipped,
+			"stopped_reason": stoppedReason,
+			"items":          created,
 		},
 	})
 }
