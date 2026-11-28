@@ -3558,15 +3558,26 @@
                         <td style="text-align: right;">
                           <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                             @if (draft.drive_type === 'quark' && draft.share_url) {
-                              <button 
-                                type="button" 
-                                class="btn btn-sm" 
-                                [disabled]="transferringDraftId() === draft.id"
-                                (click)="quickTransferDraft(draft)"
-                                title="自动将此第三方夸克链接转存到我的网盘，并一键替换为专属分成推广链"
-                                style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-size: 11px; padding: 4px 8px; cursor: pointer; white-space: nowrap; font-weight: 700;">
-                                {{ transferringDraftId() === draft.id ? '🔄 转存中...' : '⚡ 转存换链' }}
-                              </button>
+                              @if (draft.is_transferred) {
+                                <button
+                                  type="button"
+                                  class="btn btn-sm"
+                                  disabled
+                                  title="已完成转存换链，分享地址已替换为您的专属夸克链接"
+                                  style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px; padding: 4px 8px; cursor: not-allowed; white-space: nowrap; font-weight: 700; opacity: 0.9;">
+                                  ✅ 已转存
+                                </button>
+                              } @else {
+                                <button 
+                                  type="button" 
+                                  class="btn btn-sm" 
+                                  [disabled]="transferringDraftId() === draft.id"
+                                  (click)="quickTransferDraft(draft)"
+                                  title="自动将此第三方夸克链接转存到我的网盘，并一键替换为专属分成推广链"
+                                  style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-size: 11px; padding: 4px 8px; cursor: pointer; white-space: nowrap; font-weight: 700;">
+                                  {{ transferringDraftId() === draft.id ? '🔄 转存中...' : '⚡ 转存换链' }}
+                                </button>
+                              }
                             }
 
                             @if (dup && draft.status !== 'approved') {

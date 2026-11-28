@@ -1838,6 +1838,10 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   // 草稿箱极速一键转存换链
   quickTransferDraft(draft: ResourceDraftDto) {
+    if (draft?.is_transferred) {
+      this.showToast('该草稿已转存换链，无需重复操作');
+      return;
+    }
     if (!draft?.share_url) {
       this.showToast('该草稿无有效分享链接', 'error');
       return;
@@ -1855,7 +1859,15 @@ export class AdminComponent implements OnInit, OnDestroy {
           draft.share_url = result.new_share_url;
           if (result.file_size) draft.file_size = result.file_size;
           if (result.extract_code) draft.extract_code = result.extract_code;
-          this.showToast(`🎉 转存成功！已自动替换为您专属的夸克推广链：${result.new_share_url}`);
+          draft.is_transferred = true;
+          this.resService.saveCrawlerDraftTransfer(draft.id, {
+            share_url: result.new_share_url,
+            extract_code: result.extract_code || '',
+            file_size: result.file_size || ''
+          }).subscribe({
+            error: () => {}
+          });
+          this.showToast(`🎉 转存成功！已替换为您的专属夸克推广链并标记为「已转存」：${result.new_share_url}`);
         }
       },
       error: (err) => {

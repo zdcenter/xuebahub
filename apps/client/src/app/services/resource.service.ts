@@ -1067,6 +1067,10 @@ export class ResourceService {
     return this.http.patch(`${this.baseUrl}/api/v1/admin/crawler/drafts/${id}/status`, { status });
   }
 
+  saveCrawlerDraftTransfer(id: string, payload: { share_url: string; extract_code?: string; file_size?: string }): Observable<any> {
+    return this.http.patch(`${this.baseUrl}/api/v1/admin/crawler/drafts/${id}/transfer`, payload);
+  }
+
   deleteCrawlerDraft(id: string): Observable<any> {
     return this.http.delete(`${this.baseUrl}/api/v1/admin/crawler/drafts/${id}`);
   }
@@ -1417,6 +1421,7 @@ export interface ResourceDraftDto {
   file_size?: string;
   raw_text: string;
   status: 'pending' | 'approved' | 'ignored';
+  is_transferred?: boolean;
   approved_resource_id?: string;
   is_safe: boolean;
   created_at: string;

@@ -264,6 +264,7 @@ func main() {
 	admin.Post("/crawler/drafts/ingest-text", crawlerH.IngestText)
 	admin.Post("/crawler/ingest-text", crawlerH.IngestText)
 	admin.Patch("/crawler/drafts/:id/status", crawlerH.UpdateDraftStatus)
+	admin.Patch("/crawler/drafts/:id/transfer", crawlerH.SaveDraftTransfer)
 	admin.Delete("/crawler/drafts/:id", crawlerH.DeleteDraft)
 	admin.Post("/crawler/drafts/batch", crawlerH.BatchDraftAction)
 	admin.Post("/crawler/drafts/batch-approve", crawlerH.BatchApproveDrafts)

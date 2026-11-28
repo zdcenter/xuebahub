@@ -193,6 +193,7 @@ type ResourceDraft struct {
 	FileSize           string         `gorm:"type:varchar(50)" json:"file_size"`
 	RawText            string         `gorm:"type:text" json:"raw_text"`
 	Status             string         `gorm:"type:varchar(30);default:'pending';index" json:"status"` // pending(待审核), approved(已入库), ignored(已忽略)
+	IsTransferred      bool           `gorm:"default:false" json:"is_transferred"`
 	ApprovedResourceID *uuid.UUID     `gorm:"type:uuid" json:"approved_resource_id"`
 	IsSafe             bool           `gorm:"default:true" json:"is_safe"`
 	RawInfo            datatypes.JSON `gorm:"type:jsonb" json:"raw_info"`

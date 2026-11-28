@@ -77,6 +77,9 @@ func Init(dsn string) (*gorm.DB, error) {
 	if err := db.Exec(`ALTER TABLE resources ADD COLUMN IF NOT EXISTS collection_order INT DEFAULT 0;`).Error; err != nil {
 		log.Printf("Ensure resources.collection_order column error: %v", err)
 	}
+	if err := db.Exec(`ALTER TABLE resource_drafts ADD COLUMN IF NOT EXISTS is_transferred BOOLEAN DEFAULT FALSE;`).Error; err != nil {
+		log.Printf("Ensure resource_drafts.is_transferred column error: %v", err)
+	}
 
 	DB = db
 	seedInitialData(db)

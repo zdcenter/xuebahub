@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         学霸网专属浏览器采集助手 (XueBaW Resource Collector)
 // @namespace    https://xuebaw.com/
-// @version      1.5.6
+// @version      1.5.11
 // @description  全网教育与网盘资源一键多资源批量采集神器！支持夸克/百度/UC/阿里/迅雷/123网盘自动识别、Discourse论坛(linux.do)板块分页穿透提取；右侧贴边滑出抽屉工作台！
 // @author       学霸网开发团队
 // @match        *://*/*
@@ -560,8 +560,10 @@
         }
         if (!code) {
           const parentText = a.parentElement ? a.parentElement.innerText : '';
-          const codeMatch = parentText.match(/(?:提取码|密码|pwd|code|访问码)[:：\s]*([a-zA-Z0-9]{4,8})/i);
-          if (codeMatch) code = codeMatch[1].trim();
+          const nextSiblingText = a.parentElement?.nextElementSibling ? a.parentElement.nextElementSibling.innerText : '';
+          const searchZone = `${parentText}\n${nextSiblingText}`;
+          const codeMatch = searchZone.match(/(?:提取码|密码|pwd|code|访问码)[:：\s]*([a-zA-Z0-9]{4,8})/i);
+          if (codeMatch && codeMatch[1].toLowerCase() !== 'class') code = codeMatch[1].trim();
         }
 
         const driveInfo = detectDriveInfo(href);
@@ -633,7 +635,7 @@
     return items;
   }
 
-  // 对同页/同批重复标题自动区分（如提取到多个不同夸克链接但标题相同）
+  // 对同页/同批重复标题自动区分（仅从第 2 条起追加序号，保留首条原标题）
   function deduplicateItemTitles(list) {
     const titleCounts = new Map();
     for (const it of list) {
@@ -646,6 +648,7 @@
       if ((titleCounts.get(t) || 0) > 1) {
         const idx = (titleSeen.get(t) || 0) + 1;
         titleSeen.set(t, idx);
+        if (idx === 1) return it;
         return { ...it, title: `${t} (${idx})` };
       }
       return it;
@@ -654,17 +657,22 @@
 
   function isDiscourseListPage() {
     const isDiscourseMeta = !!document.querySelector('meta[name="generator"][content*="Discourse"]');
-    const isListPath = /^\/(c\/|latest|top|new|tag\/)/.test(location.pathname);
+    const isListPath = location.pathname === '/' || /^\/(c\/|latest|top|new|hot|unread|posted|bookmarks|tag\/|tags\/)/.test(location.pathname);
     return (isDiscourseMeta || location.hostname.includes('linux.do')) && isListPath;
   }
 
-  async function scanDiscourseBoard(pagesCount, progressEl) {
+  let discourseStartPage = 1;
+  let discoursePagesCount = 2;
+
+  async function scanDiscourseBoard(startPage, pagesCount, progressEl) {
     const basePath = location.pathname.replace(/\/$/, '') || '/latest';
     const topics = [];
     const seenTopicIds = new Set();
+    const startIdx = Math.max(0, (parseInt(startPage, 10) || 1) - 1);
 
-    for (let p = 0; p < pagesCount; p++) {
-      if (progressEl) progressEl.textContent = `正在读取板块第 ${p + 1}/${pagesCount} 页列表...`;
+    for (let offset = 0; offset < pagesCount; offset++) {
+      const p = startIdx + offset;
+      if (progressEl) progressEl.textContent = `正在读取板块第 ${p + 1} 页列表（${offset + 1}/${pagesCount}）...`;
       try {
         const res = await fetch(`${basePath}.json?page=${p}`, { credentials: 'include' });
         if (!res.ok) break;
@@ -689,14 +697,22 @@
 
     const extracted = [];
     const seenUrls = new Set();
+    let failCount = 0;
     const quarkRe = /https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9_\-]+/gi;
     const allDriveRe = /https?:\/\/(?:pan\.quark\.cn\/s\/[a-zA-Z0-9_\-]+|pan\.baidu\.com\/(?:s\/[a-zA-Z0-9_\-]+|share\/init\?surl=[a-zA-Z0-9_\-]+)(?:\?pwd=[a-zA-Z0-9]+)?|(?:www\.)?(?:alipan|aliyundrive)\.com\/s\/[a-zA-Z0-9_\-]+|pan\.xunlei\.com\/s\/[a-zA-Z0-9_\-]+|(?:drive|fast)\.uc\.cn\/s\/[a-zA-Z0-9_\-]+)/gi;
 
     for (let i = 0; i < topics.length; i++) {
       const t = topics[i];
-      if (progressEl) progressEl.textContent = `正在穿透读取帖子 ${i + 1}/${topics.length}（已发现 ${extracted.length} 条）...`;
+      if (progressEl) {
+        const failTip = failCount > 0 ? `，失败/限流 ${failCount}` : '';
+        progressEl.textContent = `正在穿透读取帖子 ${i + 1}/${topics.length}（已发现 ${extracted.length} 条${failTip}）...`;
+      }
       try {
-        const res = await fetch(`/t/${t.id}.json`, { credentials: 'include' });
+        let res = await fetch(`/t/${t.id}.json`, { credentials: 'include' });
+        if (res.status === 429) {
+          await new Promise(r => setTimeout(r, 1500));
+          res = await fetch(`/t/${t.id}.json`, { credentials: 'include' });
+        }
         if (res.ok) {
           const data = await res.json();
           const posts = data?.post_stream?.posts || [];
@@ -714,7 +730,13 @@
               const driveType = uLower.includes('quark.cn') ? 'quark' : (uLower.includes('baidu.com') ? 'baidu' : 'other');
               const driveLabel = driveType === 'quark' ? '⚡ 夸克' : (driveType === 'baidu' ? '☁️ 百度' : '🔗 网盘');
               let code = '';
-              if (driveType !== 'quark') {
+              if (cleanUrl.includes('pwd=')) {
+                try {
+                  const u = new URL(cleanUrl);
+                  code = u.searchParams.get('pwd') || '';
+                } catch {}
+              }
+              if (!code) {
                 const codeMatch = plainText.match(/(?:提取码|密码|访问码|pwd)[:：\s]*([a-zA-Z0-9]{4,8})/i);
                 if (codeMatch && codeMatch[1].toLowerCase() !== 'class') code = codeMatch[1];
               }
@@ -731,11 +753,19 @@
               break; // 每个帖子取主夸克链接即可
             }
           }
+        } else {
+          failCount++;
         }
-      } catch (e) {}
+      } catch (e) {
+        failCount++;
+      }
       await new Promise(r => setTimeout(r, 120));
     }
 
+    if (extracted.length === 0 && progressEl) {
+      progressEl.dataset.failCount = String(failCount);
+      progressEl.dataset.topicCount = String(topics.length);
+    }
     return extracted;
   }
 
@@ -901,9 +931,11 @@
           <div style="margin: 8px 16px 0; padding: 10px 12px; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; display: flex; flex-direction: column; gap: 6px;">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
               <span style="font-size: 12px; font-weight: 700; color: #065f46;">🌐 检测到 Discourse 论坛板块</span>
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span style="font-size: 11px; color: #047857;">抓</span>
-                <input type="number" id="xb-discourse-pages" value="2" min="1" max="10" style="width: 44px; padding: 2px 4px; border: 1px solid #6ee7b7; border-radius: 4px; font-size: 12px; text-align: center;" />
+              <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                <span style="font-size: 11px; color: #047857;">从第</span>
+                <input type="number" id="xb-discourse-start-page" value="${discourseStartPage}" min="1" max="100" style="width: 44px; padding: 2px 4px; border: 1px solid #6ee7b7; border-radius: 4px; font-size: 12px; text-align: center;" />
+                <span style="font-size: 11px; color: #047857;">页抓</span>
+                <input type="number" id="xb-discourse-pages" value="${discoursePagesCount}" min="1" max="10" style="width: 40px; padding: 2px 4px; border: 1px solid #6ee7b7; border-radius: 4px; font-size: 12px; text-align: center;" />
                 <span style="font-size: 11px; color: #047857;">页</span>
                 <button type="button" id="xb-btn-discourse-scan" style="background: #059669; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 700; cursor: pointer;">🚀 穿透提取夸克链接</button>
               </div>
@@ -1005,23 +1037,37 @@
     const discourseBtn = container.querySelector('#xb-btn-discourse-scan');
     if (discourseBtn) {
       discourseBtn.addEventListener('click', async () => {
+        const startInp = container.querySelector('#xb-discourse-start-page');
         const pagesInp = container.querySelector('#xb-discourse-pages');
         const progressEl = container.querySelector('#xb-discourse-progress');
+        const startPage = Math.max(1, Math.min(100, parseInt(startInp?.value || '1', 10) || 1));
         const pagesCount = Math.max(1, Math.min(10, parseInt(pagesInp?.value || '2', 10) || 2));
+        discourseStartPage = startPage;
+        discoursePagesCount = pagesCount;
         discourseBtn.disabled = true;
         discourseBtn.textContent = '⏳ 穿透提取中...';
         if (progressEl) {
           progressEl.style.display = 'block';
-          progressEl.textContent = '准备读取板块列表...';
+          progressEl.textContent = `准备从第 ${startPage} 页起读取板块列表...`;
         }
-        const found = applyRememberedSelection(deduplicateItemTitles(await scanDiscourseBoard(pagesCount, progressEl)));
+        const found = applyRememberedSelection(await scanDiscourseBoard(startPage, pagesCount, progressEl));
         if (found.length > 0) {
           saveDrawerCache(found);
           showRightDrawer(found);
         } else {
           discourseBtn.disabled = false;
           discourseBtn.textContent = '🚀 穿透提取夸克链接';
-          if (progressEl) progressEl.textContent = '未提取到夸克链接（请确认当前账号已登录且帖子首楼包含分享地址）';
+          if (progressEl) {
+            const failCount = parseInt(progressEl.dataset.failCount || '0', 10);
+            const topicCount = parseInt(progressEl.dataset.topicCount || '0', 10);
+            if (failCount > 0) {
+              progressEl.textContent = `未提取到链接（${topicCount} 个帖子中有 ${failCount} 个请求失败或被限流，请稍后重试或减少抓取页数）`;
+            } else if (topicCount > 0) {
+              progressEl.textContent = `已扫描 ${topicCount} 个帖子，均未包含网盘分享链接（如在全站首页，请先切换到网盘/资源分类或标签页）`;
+            } else {
+              progressEl.textContent = '未提取到夸克链接（请确认当前账号已登录且帖子首楼包含分享地址）';
+            }
+          }
         }
       });
     }

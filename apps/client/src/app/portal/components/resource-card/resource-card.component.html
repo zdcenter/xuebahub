@@ -55,11 +55,11 @@
           <div class="text-3xl sm:text-4xl font-black tracking-tight font-serif drop-shadow-md text-white">
             {{ resource.subject || '综合' }}
           </div>
-          <div class="mt-0.5 text-[11px] font-bold text-white/90 truncate max-w-[140px]">
+          <div class="mt-0.5 text-[11px] font-bold text-white/90 truncate max-w-[140px]" *ngIf="cleanGrade">
             {{ cleanGrade }}
           </div>
           <div class="text-[9px] text-white/75 truncate max-w-[130px]">
-            {{ resource.edition || '精选同步讲义' }}
+            {{ cleanEdition || '精选同步讲义' }}
           </div>
 
           <!-- 动态直达详情页防伪二维码印章 (仅平板/PC展示，手机端小卡片保持清爽) -->
@@ -114,16 +114,16 @@
     <div class="flex items-center gap-1.5 text-[10px] text-slate-500 flex-wrap">
       <span *ngIf="stageLabel || cleanGrade"
             class="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium">
-        {{ stageLabel }} {{ cleanGrade }}
+        {{ stageLabel }}{{ cleanGrade ? (stageLabel ? ' ' + cleanGrade : cleanGrade) : '' }}
       </span>
-      <span *ngIf="resource.subject"
+      <span *ngIf="cleanSubject"
             [class]="subjectTheme.badgeBg"
             class="px-1.5 py-0.5 rounded-md font-bold border text-[10px]">
-        {{ resource.subject }}
+        {{ cleanSubject }}
       </span>
-      <span *ngIf="resource.edition"
+      <span *ngIf="cleanEdition"
             class="px-1.5 py-0.5 rounded-md bg-slate-100/80 text-slate-600 truncate max-w-[90px]">
-        {{ resource.edition }}
+        {{ cleanEdition }}
       </span>
       <span *ngIf="highlightFeature"
             class="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80 text-[10px]">
@@ -249,16 +249,16 @@
       <div class="flex items-center gap-1.5 text-[11px] flex-wrap">
         <span *ngIf="stageLabel || cleanGrade"
               class="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-200/60">
-          {{ stageLabel }} {{ cleanGrade }}
+          {{ stageLabel }}{{ cleanGrade ? (stageLabel ? ' ' + cleanGrade : cleanGrade) : '' }}
         </span>
-        <span *ngIf="resource.subject"
+        <span *ngIf="cleanSubject"
               class="px-2 py-0.5 rounded-md font-bold border"
               [ngClass]="subjectTheme.badgeBg">
-          {{ resource.subject }}
+          {{ cleanSubject }}
         </span>
-        <span *ngIf="resource.edition"
+        <span *ngIf="cleanEdition"
               class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 truncate max-w-[120px]">
-          {{ resource.edition }}
+          {{ cleanEdition }}
         </span>
         <span *ngIf="highlightFeature"
               class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80 text-[10px]">

@@ -97,11 +97,25 @@ export class ResourceCardComponent {
     return this.stageTheme.shortLabel;
   }
 
-  // 年级精简标签 (消除 "通用 (1-6年级通用)" 这类过长文本)
+  // 年级精简标签（过滤「通用 / 通用版 / 全年级」等无意义占位词）
   get cleanGrade(): string {
     const g = (this.resource.grade || '').trim();
-    if (g.includes('通用') || g.includes('1-6')) return '通用版';
+    if (!g || g.includes('通用') || g.includes('1-6') || g.includes('全年级') || g.includes('不限')) return '';
     return g;
+  }
+
+  // 学科精简标签（过滤「通用/全科」「全科」「综合」等无意义占位词）
+  get cleanSubject(): string {
+    const s = (this.resource.subject || '').trim();
+    if (!s || s.includes('通用') || s === '全科' || s === '综合') return '';
+    return s;
+  }
+
+  // 版本精简标签（过滤「通用版本」「通用版」等非具体教材版本）
+  get cleanEdition(): string {
+    const e = (this.resource.edition || '').trim();
+    if (!e || e.includes('通用')) return '';
+    return e;
   }
 
   // 清洗副标题/简介（消除开头的 ": "、"：" 等历史遗留符号）

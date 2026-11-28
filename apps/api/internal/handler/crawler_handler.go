@@ -497,6 +497,44 @@ func (h *CrawlerHandler) UpdateDraftStatus(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "草稿状态更新成功"})
 }
 
+// SaveDraftTransfer 持久化单条草稿的转存换链结果并标记为已转存
+func (h *CrawlerHandler) SaveDraftTransfer(c fiber.Ctx) error {
+	idStr := c.Params("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "非法草稿 ID"})
+	}
+
+	type TransferSaveReq struct {
+		ShareURL    string `json:"share_url"`
+		ExtractCode string `json:"extract_code"`
+		FileSize    string `json:"file_size"`
+	}
+	var req TransferSaveReq
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "参数错误"})
+	}
+
+	updates := map[string]interface{}{
+		"is_transferred": true,
+	}
+	if strings.TrimSpace(req.ShareURL) != "" {
+		updates["share_url"] = strings.TrimSpace(req.ShareURL)
+	}
+	if strings.TrimSpace(req.ExtractCode) != "" {
+		updates["extract_code"] = strings.TrimSpace(req.ExtractCode)
+	}
+	if strings.TrimSpace(req.FileSize) != "" {
+		updates["file_size"] = strings.TrimSpace(req.FileSize)
+	}
+
+	if err := h.db.Model(&model.ResourceDraft{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "保存转存结果失败"})
+	}
+
+	return c.JSON(fiber.Map{"message": "已保存转存换链结果", "is_transferred": true})
+}
+
 // DeleteDraft 删除单条草稿
 func (h *CrawlerHandler) DeleteDraft(c fiber.Ctx) error {
 	idStr := c.Params("id")
@@ -625,8 +663,8 @@ func (h *CrawlerHandler) BatchApproveDrafts(c fiber.Ctx) error {
 			usedAccName = availableAccounts[0].AccountName
 		}
 
-		// 若启用自动转存且属于夸克链接
-		if req.AutoTransfer && draft.DriveType == "quark" && len(availableAccounts) > 0 && h.transferSvc != nil {
+		// 若启用自动转存且属于夸克链接（已转存过的草稿跳过，避免重复转存）
+		if req.AutoTransfer && !draft.IsTransferred && draft.DriveType == "quark" && len(availableAccounts) > 0 && h.transferSvc != nil {
 			// 依次尝试：默认账号 -> 其他可用正常账号 (自动故障转移 Failover)
 			for _, acc := range availableAccounts {
 				targetFolderFID := acc.TargetFolderFID
